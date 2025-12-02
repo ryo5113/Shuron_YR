@@ -230,7 +230,7 @@ def plot_spectrogram_rel(M, fs, hop, n_fft, title, out_path, fmax=None):
         plt.ylim((0, fmax))
 
     cbar = plt.colorbar(img, format="%.0f dB")
-    cbar.set_label("Relative Intensity (dB)")
+    cbar.set_label("Relative Intensity(dB)")
     plt.xlabel("Time [s]")
     plt.ylabel("Amplitude")
     plt.title(title)
@@ -261,7 +261,7 @@ def plot_spectrogram_rel_segment(M, fs, hop, t_start, t_end, title, out_path, fm
     DB_FLOOR = -60.0
     S_db = np.maximum(S_db, DB_FLOOR)
 
-    plt.figure(figsize=(10,3))
+    plt.figure(figsize=(20,3))
     import librosa.display
     img = librosa.display.specshow(
         S_db,
@@ -275,9 +275,11 @@ def plot_spectrogram_rel_segment(M, fs, hop, t_start, t_end, title, out_path, fm
         plt.ylim((0, fmax))
 
     cbar = plt.colorbar(img, format="%.0f dB")
-    cbar.set_label("Relative Intensity (dB)")
-    plt.xlabel("Time [s]")
-    plt.ylabel("Amplitude")
+    cbar.set_label("Relative Intensity(dB)", fontsize=17)
+    plt.xlabel("Time [s]", fontsize=22)
+    plt.ylabel("Amplitude", fontsize=22)
+    plt.tick_params(axis="x", labelsize=20)
+    plt.tick_params(axis="y", labelsize=17)
     plt.title(title)
     plt.tight_layout()
     plt.savefig(out_path, dpi=200)
@@ -294,7 +296,7 @@ def plot_and_save_amp_spectrum(freq, amp, title, out_path):
     thresh = THRESH_AMP
     amp = (amp >= thresh).astype(int)
 
-    plt.figure()
+    plt.figure(figsize=(8,15))
     plt.step(freq, amp, where="mid")
     plt.xlabel("Frequency [Hz]")
     plt.xlim(0, BAND_HIGH)
@@ -417,18 +419,19 @@ def main():
 
         # ① 各ファイルごとに「3区間FFT重ね描き」
         if file_segment_fft:
-            plt.figure()
+            plt.figure(figsize=(20,3))
             for freq, amp, seg_num in file_segment_fft:
                 plt.plot(freq, amp, label=f"seg{seg_num}")
-            plt.xlabel("Frequency [Hz]")
+            plt.xlabel("Frequency [Hz]", fontsize=30)
             plt.xlim(0, BAND_HIGH)
-            plt.ylabel("Amplitude")
+            plt.ylabel("Amplitude", fontsize=30)
             plt.ylim(0, 0.04)
-            plt.title(f"Amplitude Spectrum Overlay (all segments) - {label}")
+            plt.title(f"Amplitude Spectrum(All) - {label}")
             plt.grid(True)
+            plt.tick_params(labelsize=24)
             plt.legend()
             plt.tight_layout()
-            plt.savefig(out_dir / "fft_tone_denoised_overlay_allSegments.png", dpi=200)
+            plt.savefig(out_dir / "fft_tone_denoised_allSegments.png", dpi=200)
             plt.close()
 
         # ---- スペクトログラム（元・ノイズ除去後）----
@@ -440,7 +443,7 @@ def main():
             fs=fs,
             hop=HOP,
             n_fft=N_FFT_STFT,
-            title=f"Spectrogram (Original) - {label}",
+            title=f"Spectrogram - {label}",
             out_path=out_dir / "spectrogram_original.png",
             fmax=BAND_HIGH
         )
@@ -541,7 +544,7 @@ def main():
         n_files = len(series)
         fig, axes = plt.subplots(
             n_files, 1, sharex=True,
-            figsize=(8, 2.5 * n_files)
+            figsize=(8, 3 * n_files)
         )
         if n_files == 1:
             axes = [axes]
@@ -549,13 +552,15 @@ def main():
         for ax, (freq, binary, label) in zip(axes, series):
             ax.step(freq, binary, where="mid")
             ax.set_xlim(0, BAND_HIGH)
+            ax.tick_params(axis='x', labelsize=24)
             ax.set_ylim(-0.2, 1.2)
             ax.set_yticks([0, 1])
-            ax.set_ylabel(label)
+            ax.set_ylabel(label, fontsize=20)
+            ax.tick_params(axis='y', labelsize=24)
             ax.grid(True)
 
-        axes[-1].set_xlabel("Frequency [Hz]")
-        fig.suptitle(f"Binary Spectrum (all files) - seg{seg_num}", fontsize=16)
+        axes[-1].set_xlabel("Frequency [Hz]", fontsize=30)
+        fig.suptitle(f"Binary Spectrum (all files) - seg{seg_num}", fontsize=25)
         fig.tight_layout(rect=[0, 0.03, 1, 0.95])
         out_name = f"fft_tone_binary_overlay_seg{seg_num}_allFiles.png"
         fig.savefig(base_out_dir / out_name, dpi=200)
