@@ -1,0 +1,11 @@
+# tongue.yaml
+# データのルート（この yaml からの相対、または絶対パス）
+path: dataset
+
+# 画像ディレクトリ（path からの相対）
+train: images/train
+val: images/train   # ← 暫定で train と同じにする（本来は images/val を用意）
+
+# クラス名（ラベル変換時に 0 番が tongue のはず）
+names:
+  - bero

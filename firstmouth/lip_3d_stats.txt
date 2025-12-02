@@ -1,0 +1,55 @@
+=== 基準 capture_id = 0 ===
+  点数: 42
+  --- 基準キャプチャの3D座標の幅 ---
+    X 幅: 32.21 [mm] (min=-12.52 @ landmark 61, max=19.70 @ landmark 409)
+    Y 幅: 37.37 [mm] (min=-10.96 @ landmark 267, max=26.41 @ landmark 84)
+    Z 幅: 11.00 [mm] (min=497.00 @ landmark 37, max=508.00 @ landmark 314)
+
+=== capture_id = 1 ===
+  共通ランドマーク数: 42
+  各ランドマーク移動距離の平均: 47.68 [mm]
+  各ランドマーク移動距離の標準偏差: 3.99 [mm]
+  平均変位ベクトル: dx=-44.11 mm, dy=-12.76 mm, dz=11.48 mm
+  XZ平面での平均方向 (yaw 的): -75.42 [deg]
+  YZ平面での平均方向 (pitch 的): -48.03 [deg]
+  --- 3D座標の幅（target側座標） ---
+    X 幅: 37.44 [mm] (min=-56.77 @ landmark 146, max=-19.33 @ landmark 291)
+    Y 幅: 38.22 [mm] (min=-24.98 @ landmark 37, max=13.24 @ landmark 84)
+    Z 幅: 16.00 [mm] (min=507.00 @ landmark 405, max=523.00 @ landmark 146)
+
+=== capture_id = 2 ===
+  共通ランドマーク数: 42
+  各ランドマーク移動距離の平均: 47.39 [mm]
+  各ランドマーク移動距離の標準偏差: 3.88 [mm]
+  平均変位ベクトル: dx=41.79 mm, dy=-16.82 mm, dz=13.33 mm
+  XZ平面での平均方向 (yaw 的): 72.31 [deg]
+  YZ平面での平均方向 (pitch 的): -51.60 [deg]
+  --- 3D座標の幅（target側座標） ---
+    X 幅: 39.22 [mm] (min=24.03 @ landmark 61, max=63.25 @ landmark 270)
+    Y 幅: 38.74 [mm] (min=-29.57 @ landmark 37, max=9.16 @ landmark 17)
+    Z 幅: 25.00 [mm] (min=506.00 @ landmark 39, max=531.00 @ landmark 269)
+
+=== capture_id = 3 ===
+  共通ランドマーク数: 42
+  各ランドマーク移動距離の平均: 32.24 [mm]
+  各ランドマーク移動距離の標準偏差: 1.86 [mm]
+  平均変位ベクトル: dx=-0.59 mm, dy=-31.48 mm, dz=5.69 mm
+  XZ平面での平均方向 (yaw 的): -5.89 [deg]
+  YZ平面での平均方向 (pitch 的): -79.75 [deg]
+  --- 3D座標の幅（target側座標） ---
+    X 幅: 28.36 [mm] (min=-10.98 @ landmark 185, max=17.38 @ landmark 270)
+    Y 幅: 39.29 [mm] (min=-45.31 @ landmark 0, max=-6.03 @ landmark 84)
+    Z 幅: 10.00 [mm] (min=502.00 @ landmark 181, max=512.00 @ landmark 269)
+
+=== capture_id = 4 ===
+  共通ランドマーク数: 42
+  各ランドマーク移動距離の平均: 28.49 [mm]
+  各ランドマーク移動距離の標準偏差: 1.87 [mm]
+  平均変位ベクトル: dx=7.33 mm, dy=27.31 mm, dz=-0.50 mm
+  XZ平面での平均方向 (yaw 的): 93.90 [deg]
+  YZ平面での平均方向 (pitch 的): 91.05 [deg]
+  --- 3D座標の幅（target側座標） ---
+    X 幅: 36.61 [mm] (min=-7.58 @ landmark 61, max=29.03 @ landmark 375)
+    Y 幅: 34.01 [mm] (min=18.43 @ landmark 267, max=52.44 @ landmark 84)
+    Z 幅: 20.00 [mm] (min=490.00 @ landmark 0, max=510.00 @ landmark 405)
+

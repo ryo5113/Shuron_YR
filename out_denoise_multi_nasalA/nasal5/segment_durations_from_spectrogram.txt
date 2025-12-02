@@ -1,0 +1,10 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: out_denoise_multi_nasalA/nasal5/nasal5.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 3
+segment_1: start_time=1.765333s, end_time=2.010667s, duration=0.245333s
+segment_2: start_time=3.365333s, end_time=3.600000s, duration=0.234667s
+segment_3: start_time=4.896000s, end_time=5.130667s, duration=0.234667s
+mean_duration = 0.238222s
