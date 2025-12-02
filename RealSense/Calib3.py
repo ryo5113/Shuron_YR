@@ -1,6 +1,8 @@
 import pyrealsense2 as rs
 import numpy as np
 import open3d as o3d
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # プロジェクション指定用
 
 # ========== 1. 使用するカメラのシリアル番号（カメラ0, カメラ1） ==========
 SERIALS = [
@@ -97,7 +99,7 @@ def frames_to_pointcloud(color_frame, depth_frame, profile):
     # Open3Dの座標系補正（画像座標 → 通常の3D座標）
     pcd.transform([[1, 0, 0, 0],
                    [0, -1, 0, 0],
-                   [0, 0, -1, 0],
+                   [0, 0, 1, 0],
                    [0, 0, 0, 1]])
     return pcd
 
@@ -148,6 +150,35 @@ def main():
 
         # ===== 表示 =====
         o3d.visualization.draw_geometries([merged_pcd])
+
+        points = np.asarray(merged_pcd.points)
+        colors = np.asarray(merged_pcd.colors)
+
+        fig, axes = plt.subplots(3, 1, figsize=(6, 12))
+
+        # 1段目: XY 平面
+        axes[0].scatter(points[:, 0], points[:, 1], c=colors, s=0.5)
+        axes[0].set_xlabel('X [m]')
+        axes[0].set_ylabel('Y [m]')
+        axes[0].set_title('XY plane')
+        axes[0].grid(alpha=0.2)
+
+        # 2段目: XZ 平面
+        axes[1].scatter(points[:, 0], points[:, 2], c=colors, s=0.5)
+        axes[1].set_xlabel('X [m]')
+        axes[1].set_ylabel('Z [m]')
+        axes[1].set_title('XZ plane')
+        axes[1].grid(alpha=0.2)
+
+        # 3段目: YZ 平面
+        axes[2].scatter(points[:, 2], points[:, 1], c=colors, s=0.5)
+        axes[2].set_xlabel('Z [m]')
+        axes[2].set_ylabel('Y [m]')
+        axes[2].set_title('ZY plane')
+        axes[2].grid(alpha=0.2)
+
+        plt.tight_layout()
+        plt.show()
 
         # PLYとして保存
         o3d.io.write_point_cloud("face_3cams_geom_merged.ply", merged_pcd)
