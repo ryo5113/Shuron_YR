@@ -22,7 +22,7 @@ SERIALS = [
 # 実際の配置に合わせて baseline_x を修正してください。
 # （符号は、どちらを +X とみなすかで変わります）
 
-baseline_x = -0.23  # カメラ間距離 [m]（例：0.15 m）
+baseline_x = -0.3  # カメラ間距離 [m]（例：0.15 m）
 
 # カメラ0 -> カメラ0
 T_0_to_0 = np.eye(4, dtype=np.float64)
@@ -44,24 +44,24 @@ def create_pipeline(serial):
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
     profile = pipeline.start(config)
     
-    # ここから追加：RGBカメラのホワイトバランス／露出を固定
-    dev = profile.get_device()
-    sensors = dev.query_sensors()
-    color_sensor = None
-    for s in sensors:
-        if s.get_info(rs.camera_info.name) == "RGB Camera":
-            color_sensor = s
-            break
+    # # ここから追加：RGBカメラのホワイトバランス／露出を固定
+    # dev = profile.get_device()
+    # sensors = dev.query_sensors()
+    # color_sensor = None
+    # for s in sensors:
+    #     if s.get_info(rs.camera_info.name) == "RGB Camera":
+    #         color_sensor = s
+    #         break
 
-    if color_sensor is not None:
-        # 自動を切って、3台とも同じ値にする
-        color_sensor.set_option(rs.option.enable_auto_white_balance, 0)
-        color_sensor.set_option(rs.option.enable_auto_exposure, 0)
+    # if color_sensor is not None:
+    #     # 自動を切って、3台とも同じ値にする
+    #     color_sensor.set_option(rs.option.enable_auto_white_balance, 0)
+    #     color_sensor.set_option(rs.option.enable_auto_exposure, 0)
 
-        # 例：ホワイトバランス 4600K、露出 100
-        # （照明によって適正値は変わるので、ここは調整してください）
-        color_sensor.set_option(rs.option.white_balance, 4000)
-        color_sensor.set_option(rs.option.exposure, 100)
+    #     # 例：ホワイトバランス 4600K、露出 100
+    #     # （照明によって適正値は変わるので、ここは調整してください）
+    #     color_sensor.set_option(rs.option.white_balance, 4000)
+    #     color_sensor.set_option(rs.option.exposure, 100)
 
     return pipeline, profile
 
