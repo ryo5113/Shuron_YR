@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # 読み込む PLY ファイル名
-PLY_PATH = "PLY/face_3cams_geom_merged_20251203_191142_60deg.ply"
+PLY_PATH = "PLY/face_3cams_geom_merged_20251203_190935_0deg.ply"
 
 
 def main():
@@ -19,8 +19,28 @@ def main():
     if points.size == 0:
         print("点群が空です。PLY の内容を確認してください。")
         return
+    
+    # ------------ ここを PLYごとに設定する ------------
+    # 0度撮影: angle_deg = 0.0
+    # 20度撮影: angle_deg = 20.0 
+    angle_deg = 0.0
+    # ---------------------------------------------------
 
-    fig, axes = plt.subplots(3, 1, figsize=(6, 12))
+    theta = np.deg2rad(angle_deg)
+    cos_t = np.cos(theta)
+    sin_t = np.sin(theta)
+
+    # Y軸まわりの回転行列（右手系）
+    R_y = np.array([
+        [ cos_t, 0.0, sin_t],
+        [ 0.0,  1.0, 0.0 ],
+        [-sin_t, 0.0, cos_t]
+    ], dtype=np.float64)
+
+    # 点群を回転
+    points = (R_y @ points.T).T
+
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
     plt.rcParams["font.size"] = 20
 
@@ -49,8 +69,8 @@ def main():
     axes[2].grid(alpha=0.2)
 
     plt.tight_layout()
+    plt.savefig("PLY/U_0deg_yoko_v2.png")
     plt.show()
-
 
 if __name__ == "__main__":
     main()
