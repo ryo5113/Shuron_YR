@@ -141,7 +141,7 @@ def stft_mag(y, n_fft=N_FFT_STFT, hop=HOP, window=WINDOW):
     return Z, M
 
 
-def estimate_segment_durations_from_spectrogram(M, fs, hop, energy_threshold_ratio=0.1, min_segment_frames=2):
+def estimate_segment_durations_from_spectrogram(M, fs, hop, energy_threshold_ratio=0.01, min_segment_frames=2):
     """スペクトログラムの振幅 M から、有音区間(連続した高エネルギーフレーム)の
     開始・終了時刻と継続時間を推定して返す。
     """
@@ -544,7 +544,7 @@ def main():
         n_files = len(series)
         fig, axes = plt.subplots(
             n_files, 1, sharex=True,
-            figsize=(8, 3 * n_files)
+            figsize=(15, 3 * n_files)
         )
         if n_files == 1:
             axes = [axes]
@@ -552,7 +552,7 @@ def main():
         for ax, (freq, binary, label) in zip(axes, series):
             ax.step(freq, binary, where="mid")
             ax.set_xlim(0, BAND_HIGH)
-            ax.tick_params(axis='x', labelsize=24)
+            ax.tick_params(axis='x', labelsize=30)
             ax.set_ylim(-0.2, 1.2)
             ax.set_yticks([0, 1])
             ax.set_ylabel(label, fontsize=20)

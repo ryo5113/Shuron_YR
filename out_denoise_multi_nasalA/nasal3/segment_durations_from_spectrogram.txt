@@ -3,8 +3,12 @@
 fs = 48000
 hop_length = 256
 frame_duration_sec = 0.005333
-num_segments = 3
-segment_1: start_time=2.048000s, end_time=2.261333s, duration=0.213333s
-segment_2: start_time=3.866667s, end_time=4.085333s, duration=0.218667s
-segment_3: start_time=5.621333s, end_time=5.888000s, duration=0.266667s
-mean_duration = 0.232889s
+num_segments = 7
+segment_1: start_time=0.384000s, end_time=0.416000s, duration=0.032000s
+segment_2: start_time=0.709333s, end_time=0.757333s, duration=0.048000s
+segment_3: start_time=1.125333s, end_time=1.141333s, duration=0.016000s
+segment_4: start_time=2.016000s, end_time=2.309333s, duration=0.293333s
+segment_5: start_time=3.850667s, end_time=4.122667s, duration=0.272000s
+segment_6: start_time=5.605333s, end_time=5.930667s, duration=0.325333s
+segment_7: start_time=6.826667s, end_time=6.858667s, duration=0.032000s
+mean_duration = 0.145524s
