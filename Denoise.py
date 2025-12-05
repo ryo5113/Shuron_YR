@@ -12,7 +12,7 @@ from pathlib import Path
 plt.close('all')
 
 # ========= 設定 =========
-INPUT_PATH  = "nosal4-2.wav"   # 入力音声ファイル
+INPUT_PATH  = "recordedSound_20251205_144227.wav"   # 入力音声ファイル
 OUTPUT_DIR  = "out_denoise_nasal4-2" # 出力フォルダ
 
 # 有音部の区間（秒）: 振動スペクトル用に切り出し
