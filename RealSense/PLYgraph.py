@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # 読み込む PLY ファイル名
-PLY_PATH = "PLY/face_3cams_geom_merged_20251203_191142_60deg.ply"
+PLY_PATH = "PLY/face_3cams_geom_merged_20251211_184421.ply"
 
 # カメラから顔中心までの距離 [m]（頭をその場回転させているという前提）
-PIVOT_Z = 0.5
+PIVOT_Z = 0.6
 
 def main():
     # PLY から点群を読み込み
@@ -22,34 +22,34 @@ def main():
         print("点群が空です。PLY の内容を確認してください。")
         return
     
-    # # ------------ ここを PLYごとに設定する ------------
-    # # 0度撮影: angle_deg = 0.0
-    # # 20度撮影: angle_deg = 20.0 
-    # angle_deg = 20.0
-    # # ---------------------------------------------------
+    # ------------ ここを PLYごとに設定する ------------
+    # 0度撮影: angle_deg = 0.0
+    # 20度撮影: angle_deg = 20.0 
+    angle_deg = 38.0
+    # ---------------------------------------------------
 
-    # theta = np.deg2rad(angle_deg)
-    # cos_t = np.cos(theta)
-    # sin_t = np.sin(theta)
+    theta = np.deg2rad(angle_deg)
+    cos_t = np.cos(theta)
+    sin_t = np.sin(theta)
 
-    # # Y軸まわりの回転行列（右手系）
-    # R_y = np.array([
-    #     [ cos_t, 0.0, sin_t],
-    #     [ 0.0,  1.0, 0.0 ],
-    #     [-sin_t, 0.0, cos_t]
-    # ], dtype=np.float64)
+    # Y軸まわりの回転行列（右手系）
+    R_y = np.array([
+        [ cos_t, 0.0, sin_t],
+        [ 0.0,  1.0, 0.0 ],
+        [-sin_t, 0.0, cos_t]
+    ], dtype=np.float64)
 
-    # # # 点群を回転(回転のみを考慮)
-    # # points = (R_y @ points.T).T
+    # # 点群を回転(回転のみを考慮)
+    # points = (R_y @ points.T).T
 
-    # # 回転中心（カメラから 0.5 m 前方にあると仮定）
-    # pivot = np.array([0.0, 0.0, PIVOT_Z], dtype=np.float64)
+    # 回転中心（カメラから 0.5 m 前方にあると仮定）
+    pivot = np.array([0.0, 0.0, PIVOT_Z], dtype=np.float64)
 
-    # # 「pivot を原点に移動 → 回転 → 元の位置に戻す」で
-    # # pivot を中心とした回転にする
-    # points_centered = points - pivot
-    # points_rot = (R_y @ points_centered.T).T
-    # points = points_rot + pivot
+    # 「pivot を原点に移動 → 回転 → 元の位置に戻す」で
+    # pivot を中心とした回転にする
+    points_centered = points - pivot
+    points_rot = (R_y @ points_centered.T).T
+    points = points_rot + pivot
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
@@ -80,7 +80,7 @@ def main():
     axes[2].grid(alpha=0.2)
 
     plt.tight_layout()
-    plt.savefig("PLY/U_60deg_yoko_no.png")
+    plt.savefig("PLY/U_45deg_3cam_v2.png")
     plt.show()
 
 if __name__ == "__main__":

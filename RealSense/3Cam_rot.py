@@ -13,7 +13,7 @@ SERIALS = [
 ]
 
 # 各カメラで取得するフレーム数（最後のフレームを使用）
-NUM_FRAMES = 1
+NUM_FRAMES = 100
 
 # ========== 2. 外部パラメータ（幾何学的に設定：ICPの初期値として使用） ==========
 # カメラ0座標系を基準とし、
@@ -25,7 +25,7 @@ def make_extrinsic(tx, ty, tz, angle_deg):
     T = np.eye(4, dtype=np.float64)
     angle = np.deg2rad(angle_deg)
 
-    # x軸周りの回転（ピッチ）
+    # y軸周りの回転（ピッチ）
     R = np.array(
         [
             [ np.cos(angle), 0.0, np.sin(angle)],
@@ -44,11 +44,11 @@ def make_extrinsic(tx, ty, tz, angle_deg):
 # カメラ0は原点・回転なし
 T_0_to_0 = np.eye(4, dtype=np.float64)
 
-# カメラ1設定
-T_1_to_0 = make_extrinsic(-0.25, 0.0, 0.15, 45.0)
+# カメラ1設定（左側に配置、内向き45度)
+T_1_to_0 = make_extrinsic(-0.26, 0.0, 0.15, 45.0)
 
-# カメラ2設定
-T_2_to_0 = make_extrinsic(0.25, 0.0, 0.15, -45.0)
+# カメラ2設定（右側に配置、内向き-45度）
+T_2_to_0 = make_extrinsic(0.23, 0.0, 0.15, -45.0)
 
 EXTRINSICS = [T_0_to_0, T_1_to_0, T_2_to_0]
 
@@ -265,7 +265,7 @@ def main():
 
         # PLYとして保存
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"RealSense/PLY/face_3cams_geom_merged_{timestamp}.ply"
+        filename = f"PLY/face_3cams_geom_merged_{timestamp}.ply"
         o3d.io.write_point_cloud(filename, merged_pcd)
         print(f"{filename} として保存しました。")
     
