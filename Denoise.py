@@ -12,15 +12,15 @@ from pathlib import Path
 plt.close('all')
 
 # ========= 設定 =========
-INPUT_PATH  = "recordedSound_20251205_144227.wav"   # 入力音声ファイル
-OUTPUT_DIR  = "out_denoise_nasal4-2" # 出力フォルダ
+INPUT_PATH  = "recordedSound_20251212_183527.wav"   # 入力音声ファイル
+OUTPUT_DIR  = "out_denoise_ae_v2" # 出力フォルダ
 
 # 有音部の区間（秒）: 振動スペクトル用に切り出し
-TONE_START  = 1.5
-TONE_END    = 2.5
+TONE_START  = 0.5
+TONE_END    = 10
 
 # FFT表示帯域（Hz）
-BAND_HIGH   = 2000
+BAND_HIGH   = 3000
 
 # STFTパラメータ
 SR          = None      # None=元サンプリングのまま / 例:16000 など
@@ -141,8 +141,11 @@ def main():
     print(f"Input: {Path(INPUT_PATH).resolve()}")
     print(f"Fs = {fs}, length = {len(y)} samples ({len(y)/fs:.2f} s)")
 
+    # 休み0.5秒をノイズ参照にする
+    y_noise = extract_interval(y, fs, 0.0, 0.5)
+
     # ---- ノイズ除去（旧 Denoise.py と同じ方式）----
-    y_deno = nr.reduce_noise(y=y, sr=fs, stationary=False)
+    y_deno = nr.reduce_noise(y=y, y_noise=y_noise, sr=fs, stationary=True)
 
     # ---- 波形（元＋ノイズ除去後）----
     t = np.arange(len(y)) / fs
