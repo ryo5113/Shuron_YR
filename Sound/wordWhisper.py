@@ -4,8 +4,8 @@ import unicodedata
 import whisper
 
 # ====== ここだけ編集してください（soundWhisper.pyと同じ） ======
-AUDIO_PATH  = "sakana.wav"          # 入力音声ファイル
-OUTPUT_PATH = "sakana.txt"          # 出力テキストファイル
+AUDIO_PATH  = "takana.wav"          # 入力音声ファイル
+OUTPUT_PATH = "takana.txt"          # 出力テキストファイル
 LANGUAGE    = "ja"                  # "ja" 推奨（Noneなら自動判定）
 MODEL_NAME  = "large-v3"            # 現状踏襲
 TEMPERATURE = 0.0                   # 現状踏襲

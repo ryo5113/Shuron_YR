@@ -12,56 +12,91 @@ plt.close('all')
 # tone_ranges に 3 区間分 [ (start1, end1), (start2, end2), (start3, end3) ]
 FILE_CONFIGS = [
     {
-        "path": "out_denoise_multi_nasalA/nasal1/nasal1.wav",
+        "path": "sa.wav",
         "tone_ranges": [
-            (1.5, 2.5),   # 1回目
-            (2.5, 3.5),   # 2回目
-            (4.0, 5.0),   # 3回目
+            (0.0, 1.0),   # 1回目
+            (1.5, 2.5),   # 2回目
+            (3.0, 4.0),   # 3回目
+            (4.5, 5.5),   # 4回目
+            (6.0, 7.0),   # 5回目
+            (7.5, 8.5),   # 6回目
+            (9.0, 10.0),  # 7回目
+            (10.5, 11.5),  # 8回目
+            (12.0, 13.0),  # 9回目
+            (13.5, 14.5),  # 10回目
         ],
-        "label": "nasal1",
+        "label": "sa",
     },
     {
-        "path": "out_denoise_multi_nasalA/nasal2/nasal2.wav",
+        "path": "sha.wav",
         "tone_ranges": [
-            (1.5, 2.5),
-            (3.0, 4.0),
-            (4.0, 5.0),
+            (0.0, 1.0),   # 1回目
+            (1.5, 2.5),   # 2回目
+            (3.0, 4.0),   # 3回目
+            (4.5, 5.5),   # 4回目
+            (6.0, 7.0),   # 5回目
+            (7.5, 8.5),   # 6回目
+            (9.0, 10.0),  # 7回目
+            (10.5, 11.5),  # 8回目
+            (12.0, 13.0),  # 9回目
+            (13.5, 14.5),  # 10回目
         ],
-        "label": "nasal2",
+        "label": "sha",
     },
     {
-        "path": "out_denoise_multi_nasalA/nasal3/nasal3.wav",
+        "path": "tha.wav",
         "tone_ranges": [
-            (1.5, 2.5),
-            (3.5, 4.5),
-            (5.0, 6.0),
+            (0.0, 1.0),   # 1回目
+            (1.5, 2.5),   # 2回目
+            (3.0, 4.0),   # 3回目
+            (4.5, 5.5),   # 4回目
+            (6.0, 7.0),   # 5回目
+            (7.5, 8.5),   # 6回目
+            (9.0, 10.0),  # 7回目
+            (10.5, 11.5),  # 8回目
+            (12.0, 13.0),  # 9回目
+            (13.5, 14.5),  # 10回目
         ],
-        "label": "nasal3",
+        "label": "tha",
     },
     {
-        "path": "out_denoise_multi_nasalA/nasal4/nasal4.wav",
+        "path": "tya.wav",
         "tone_ranges": [
-            (1.5, 2.5),
-            (3.0, 4.0),
-            (4.5, 5.5),
+            (0.0, 1.0),   # 1回目
+            (1.5, 2.5),   # 2回目
+            (3.0, 4.0),   # 3回目
+            (4.5, 5.5),   # 4回目
+            (6.0, 7.0),   # 5回目
+            (7.5, 8.5),   # 6回目
+            (9.0, 10.0),  # 7回目
+            (10.5, 11.5),  # 8回目
+            (12.0, 13.0),  # 9回目
+            (13.5, 14.5),  # 10回目
         ],
-        "label": "nasal4",
+        "label": "tya",
     },
     {
-        "path": "out_denoise_multi_nasalA/nasal5/nasal5.wav",
+        "path": "ta.wav",
         "tone_ranges": [
-            (1.5, 2.5),
-            (3.0, 4.0),
-            (4.5, 5.5),
+            (0.0, 1.0),   # 1回目
+            (1.5, 2.5),   # 2回目
+            (3.0, 4.0),   # 3回目
+            (4.5, 5.5),   # 4回目
+            (6.0, 7.0),   # 5回目
+            (7.5, 8.5),   # 6回目
+            (9.0, 10.0),  # 7回目
+            (10.5, 11.5),  # 8回目
+            (12.0, 13.0),  # 9回目
+            (13.5, 14.5),  # 10回目
         ],
-        "label": "nasal5",
+        "label": "ta",
     }
 ]
 
-OUTPUT_DIR  = "out_denoise_multi_nasalA"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "sa_ta"  # すべての結果をまとめるフォルダ
 
 # FFT表示帯域（Hz）
-BAND_HIGH   = 1500
+BAND_HIGH   = 3000
 
 # STFTパラメータ
 SR          = None      # None=元サンプリングのまま
@@ -343,6 +378,22 @@ def main():
         # ---- ノイズ除去 ----
         y_deno = nr.reduce_noise(y=y, sr=fs, stationary=False)
 
+         # ---- FFT点数（ファイル内で固定：10回分平均のため）----
+        if N_FFT_SPEC is None:
+            seg_lengths = []
+            for (t_start, t_end) in tone_ranges:
+                y_tmp = extract_interval(y_deno, fs, t_start, t_end)
+                seg_lengths.append(len(y_tmp))
+            N_fft_spec_file = int(max(seg_lengths)) if len(seg_lengths) > 0 else 0
+        else:
+            N_fft_spec_file = int(N_FFT_SPEC)
+        if N_fft_spec_file <= 0:
+            raise ValueError(f"N_fft_spec_file must be > 0, got {N_fft_spec_file} (label={label})")
+
+        # 10回分の平均FFTを作るためのバッファ
+        amp_deno_list = []
+        freq_common = None
+
         plt.rcParams["font.size"] = 18
 
         # ---- 波形（元＋ノイズ除去後）----
@@ -368,13 +419,15 @@ def main():
             y_tone_orig = extract_interval(y,     fs, t_start, t_end)
             y_tone_deno = extract_interval(y_deno, fs, t_start, t_end)
 
-            if N_FFT_SPEC is None:
-                N_fft_spec = max(len(y_tone_orig), len(y_tone_deno))
-            else:
-                N_fft_spec = int(N_FFT_SPEC)
+            N_fft_spec = N_fft_spec_file
 
             freq, amp_orig = compute_fft_fixed_N(y_tone_orig, fs, N_fft_spec)
             _,    amp_deno = compute_fft_fixed_N(y_tone_deno, fs, N_fft_spec)
+
+            # 平均用に蓄積（10区間分）
+            if freq_common is None:
+                freq_common = freq
+            amp_deno_list.append(amp_deno)
 
             # ファイル名／タイトル：1区間目は従来名、それ以外は番号付き
             if seg_num == 1:
@@ -416,6 +469,12 @@ def main():
 
             # ④ 縦並べ用に保存
             per_segment_binary.setdefault(seg_idx, []).append((freq, binary, label))
+
+        # ---- 10回(区間数)分のFFT平均（ノイズ除去後）----
+        if len(amp_deno_list) > 0 and freq_common is not None:
+            mean_amp = np.mean(np.stack(amp_deno_list, axis=0), axis=0)
+            mean_title = f"Amplitude Spectrum (Mean of {len(amp_deno_list)} segments) - {label}"
+            plot_and_save_spectrum(freq_common, mean_amp, mean_title, out_dir / "fft_tone_mean_denoised.png")
 
         # ① 各ファイルごとに「3区間FFT重ね描き」
         if file_segment_fft:

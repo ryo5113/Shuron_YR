@@ -1,0 +1,9 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: recordedSound_20251215_180229.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 2
+segment_1: start_time=0.512000s, end_time=0.570667s, duration=0.058667s
+segment_2: start_time=0.608000s, end_time=9.957333s, duration=9.349333s
+mean_duration = 4.704000s

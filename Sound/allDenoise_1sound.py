@@ -12,31 +12,45 @@ plt.close('all')
 # tone_ranges に 3 区間分 [ (start1, end1), (start2, end2), (start3, end3) ]
 FILE_CONFIGS = [
     {
-        "path": "sakana.wav",
+        "path": "recordedSound_20251215_180229.wav",
         "tone_ranges": [
-            (1.345, 1.365),   # 1回目
+            (0.5, 2.0),   # 1回目
         ],
-        "label": "sa",
+        "label": "first",
     },
     {
-        "path": "sakana.wav",
+        "path": "recordedSound_20251215_180229.wav",
         "tone_ranges": [
-            (1.566, 1.586),   # 2回目
+            (2.5, 4.0),   # 2回目
         ],
-        "label": "ka",
+        "label": "second",
     },
     {
-        "path": "sakana.wav",
+        "path": "recordedSound_20251215_180229.wav",
         "tone_ranges": [
-            (1.826, 1.846),   # 3回目
+            (4.5, 6.0),   # 3回目
         ],
-        "label": "na",
+        "label": "third",
+    },
+    {
+        "path": "recordedSound_20251215_180229.wav",
+        "tone_ranges": [
+            (6.5, 8.0),   # 4回目
+        ],
+        "label": "fourth",
+    },
+    {
+        "path": "recordedSound_20251215_180229.wav",
+        "tone_ranges": [
+            (8.5, 10.0),   # 5回目
+        ],
+        "label": "fifth",
     }
 ]
 
-OUTPUT_DIR  = "sakana"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "ae_v2"  # すべての結果をまとめるフォルダ
 
-NOISE_PATH = "recordedSound_20251212_203813.wav"  # ノイズ参照音声ファイル
+NOISE_PATH = "recordedSound_20251215_180213.wav"  # ノイズ参照音声ファイル
 
 # FFT表示帯域（Hz）
 BAND_HIGH   = 3000
@@ -104,7 +118,7 @@ def plot_and_save_spectrum(freq, amp, title, out_path):
     plt.xlabel("Frequency [Hz]")
     plt.xlim(0, BAND_HIGH)
     plt.ylabel("Amplitude")
-    plt.ylim(0, 0.1)  # 必要に応じて調整
+    plt.ylim(0, 0.05)  # 必要に応じて調整
     plt.title(title, fontsize=17)
     plt.grid(True)
     plt.tight_layout()
@@ -323,6 +337,8 @@ def main():
         print(f"Input: {Path(input_path).resolve()}")
         print(f"Fs = {fs}, length = {len(y)} samples ({len(y)/fs:.2f} s)")
 
+        #y_noise = extract_interval(y, fs, 0.0, 0.5)
+
         # ---- ノイズ除去 ----
         y_deno = nr.reduce_noise(y=y, y_noise=y_noise, sr=fs, stationary=True)
 
@@ -408,7 +424,7 @@ def main():
             plt.xlabel("Frequency [Hz]", fontsize=30)
             plt.xlim(0, BAND_HIGH)
             plt.ylabel("Amplitude", fontsize=30)
-            plt.ylim(0, 0.04)
+            plt.ylim(0, 0.05)
             plt.title(f"Amplitude Spectrum(All) - {label}")
             plt.grid(True)
             plt.tick_params(labelsize=24)

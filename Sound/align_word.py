@@ -9,9 +9,9 @@ from transformers import AutoProcessor, Wav2Vec2ForCTC
 # =========================
 # 設定
 # =========================
-AUDIO_PATH = "sakana.wav"          # 入力WAV
-TRANSCRIPT_HIRA = "さかな"         # ひらがな（Whisper結果）
-OUT_CSV = "mora_timestamps.csv"    # 出力CSV
+AUDIO_PATH = "takana.wav"          # 入力WAV
+TRANSCRIPT_HIRA = "たかな"         # ひらがな（Whisper結果）
+OUT_CSV = "mora_timestamps_t.csv"    # 出力CSV
 
 MODEL_NAME = "reazon-research/japanese-wav2vec2-base-rs35kh"
 MODEL_SR = 16000

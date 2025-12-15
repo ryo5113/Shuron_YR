@@ -12,29 +12,29 @@ plt.close('all')
 # tone_ranges に 3 区間分 [ (start1, end1), (start2, end2), (start3, end3) ]
 FILE_CONFIGS = [
     {
-        "path": "sakana.wav",
+        "path": "takana.wav",
         "tone_ranges": [
-            (1.430, 1.451),   # 1回目
+            (0.887, 0.907),   # 1回目
         ],
-        "label": "sa",
+        "label": "ta",
     },
     {
-        "path": "sakana.wav",
+        "path": "takana.wav",
         "tone_ranges": [
-            (1.632, 1.652),   # 2回目
+            (1.108, 1.128),   # 2回目
         ],
         "label": "ka",
     },
     {
-        "path": "sakana.wav",
+        "path": "takana.wav",
         "tone_ranges": [
-            (1.913, 1.933),   # 3回目
+            (1.349, 1.369),   # 3回目
         ],
         "label": "na",
     }
 ]
 
-OUTPUT_DIR  = "sakana"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "takana"  # すべての結果をまとめるフォルダ
 
 #NOISE_PATH = "recordedSound_20251212_202635.wav"  # ノイズ参照音声ファイル
 
@@ -104,7 +104,7 @@ def plot_and_save_spectrum(freq, amp, title, out_path):
     plt.xlabel("Frequency [Hz]")
     plt.xlim(0, BAND_HIGH)
     plt.ylabel("Amplitude")
-    plt.ylim(0, 0.1)  # 必要に応じて調整
+    plt.ylim(0, 0.04)  # 必要に応じて調整
     plt.title(title, fontsize=17)
     plt.grid(True)
     plt.tight_layout()
