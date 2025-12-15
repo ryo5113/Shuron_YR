@@ -12,29 +12,29 @@ plt.close('all')
 # tone_ranges に 3 区間分 [ (start1, end1), (start2, end2), (start3, end3) ]
 FILE_CONFIGS = [
     {
-        "path": "takana.wav",
+        "path": "sakana.wav",
         "tone_ranges": [
-            (0.887, 0.907),   # 1回目
+            (1.104, 1.345),   # 1回目
         ],
-        "label": "ta",
+        "label": "sa",
     },
     {
-        "path": "takana.wav",
+        "path": "sakana.wav",
         "tone_ranges": [
-            (1.108, 1.128),   # 2回目
+            (1.345, 1.545),   # 2回目
         ],
         "label": "ka",
     },
     {
-        "path": "takana.wav",
+        "path": "sakana.wav",
         "tone_ranges": [
-            (1.349, 1.369),   # 3回目
+            (1.545, 1.8),   # 3回目
         ],
         "label": "na",
     }
 ]
 
-OUTPUT_DIR  = "takana"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "sakana"  # すべての結果をまとめるフォルダ
 
 #NOISE_PATH = "recordedSound_20251212_202635.wav"  # ノイズ参照音声ファイル
 

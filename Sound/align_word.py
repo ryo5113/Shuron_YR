@@ -12,6 +12,7 @@ from transformers import AutoProcessor, Wav2Vec2ForCTC
 AUDIO_PATH = "takana.wav"          # 入力WAV
 TRANSCRIPT_HIRA = "たかな"         # ひらがな（Whisper結果）
 OUT_CSV = "mora_timestamps_t.csv"    # 出力CSV
+OUT_DIR = "mora_segments_takana" 
 
 MODEL_NAME = "reazon-research/japanese-wav2vec2-base-rs35kh"
 MODEL_SR = 16000
@@ -51,30 +52,34 @@ def path_to_spans_by_ids(path_1d: torch.Tensor, token_ids: list[int], blank_id: 
     blank_id: CTC blank
 
     戻り: [(start_frame, end_frame)] を len(token_ids) 個（endは含まない）
-    - blankは除外
-    - token_idsの順序で前から拾う（prev_end以降を対象）
+    - 「次のトークンの開始フレーム」までを、そのトークンの区間とする（途中のblankも含める）。
     """
-    spans = []
-    prev_end = 0
+    T = int(path_1d.numel())
+    starts = []
+    prev = 0
 
-    # blankだけのpathになっていないか簡易チェック
-    if (path_1d == blank_id).all():
+    # まず各トークンの「最初に出たフレーム」を見つける
+    for tid in token_ids:
+        idx_all = (path_1d == tid).nonzero(as_tuple=True)[0]
+        idx = idx_all[idx_all >= prev]
+        if idx.numel() == 0:
+            starts.append(None)
+        else:
+            s = int(idx.min().item())
+            starts.append(s)
+            prev = s + 1
+
+    # start が取れないトークンがあるなら、以降の区間化ができないので None を返す
+    if any(s is None for s in starts):
         return [(None, None) for _ in token_ids]
 
-    for tid in token_ids:
-        # 直前以降で tid に一致する部分を拾う
-        idx_all = (path_1d == tid).nonzero(as_tuple=True)[0]
-        idx = idx_all[idx_all >= prev_end]
-        if idx.numel() == 0:
-            spans.append((None, None))
-            continue
-        s = int(idx.min().item())
-        e = int(idx.max().item()) + 1
+    # 次トークン開始までを end にする（最後はTまで）
+    spans = []
+    for i in range(len(token_ids)):
+        s = starts[i]
+        e = starts[i + 1] if i + 1 < len(token_ids) else T
         spans.append((s, e))
-        prev_end = e
-
     return spans
-
 
 def frames_to_seconds(spans_frames, num_audio_samples: int, num_emission_frames: int, sr: int, pad_sec: float):
     """
@@ -101,15 +106,14 @@ def main():
     processor = AutoProcessor.from_pretrained(MODEL_NAME)
     model = Wav2Vec2ForCTC.from_pretrained(MODEL_NAME).to(DEVICE).eval()
 
-    # blank_id を決める（重要）
-    # tokenizerのpad_token_idが最も安全（CTC blankに使われる前提）
-    blank_id = processor.tokenizer.pad_token_id
-    if blank_id is None:
-        raise RuntimeError("pad_token_id が取得できませんでした。")
+    # ★あなたの環境では forced_align が blank_id 引数を受け取れないため、
+    #   blank を 0 として扱う前提に揃える（ここを先に実行）
+    processor.tokenizer.pad_token_id = 0
+    model.config.pad_token_id = 0
+    blank_id = 0
 
     # 音声読み込み（mono/16k）
     wav, sr = load_audio_mono_16k(AUDIO_PATH, MODEL_SR)  # wav: [1, N]
-    n_samples_original = wav.size(1)
 
     # PAD_SEC だけ前後にゼロパディングしてからモデルに入れる
     pad = int(PAD_SEC * sr)
@@ -133,14 +137,13 @@ def main():
     print("blank_id:", blank_id)
 
     # forced_align：返り値は tuple(Tensor path, Tensor scores) :contentReference[oaicite:2]{index=2}
-    processor.tokenizer.pad_token_id = 0
-    model.config.pad_token_id = 0
     path, scores = F.forced_align(log_probs, targets)
     print("path type:", type(path))
     print("path shape:", path.shape)
 
     # path: [B, T] から tokenごとの(start,end)フレームを作る
     path_1d = path[0]  # [T]
+    
     spans_frames = path_to_spans_by_ids(path_1d, token_ids, blank_id)
 
     # 秒へ変換（※wav_paddedを入れてるのでサンプル数はwav_padded基準、最後にPAD_SECを引く）
@@ -168,6 +171,27 @@ def main():
         w.writerow(["mora", "token_id", "start_sec", "end_sec"])
         for mora, tid, (s, e) in zip(moras, token_ids, spans_sec):
             w.writerow([mora, tid, s, e])
+
+    # ===== 各モーラ区間で音声を切り出して保存 =====
+    os.makedirs(OUT_DIR, exist_ok=True)
+
+    for i, (mora, (s, e)) in enumerate(zip(moras, spans_sec), start=1):
+        # 秒→サンプル index（wav は PAD していない元の音声）
+        start_sample = int(round(s * sr))
+        end_sample   = int(round(e * sr))
+
+        # 範囲チェック（念のため）
+        start_sample = max(0, min(start_sample, wav.size(1)))
+        end_sample   = max(0, min(end_sample, wav.size(1)))
+        if end_sample <= start_sample:
+            print(f"[warn] skip {mora}: invalid range {s:.3f}-{e:.3f}")
+            continue
+
+        seg = wav[:, start_sample:end_sample]  # [1, segment_len]
+
+        out_path = os.path.join(OUT_DIR, f"{i:02d}_{mora}_{s:.3f}-{e:.3f}.wav")
+        torchaudio.save(out_path, seg.cpu(), sr)
+        print(f"[i] saved: {out_path}")
 
     print(f"OK: wrote {OUT_CSV}")
     for mora, tid, (s, e) in zip(moras, token_ids, spans_sec):

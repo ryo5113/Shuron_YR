@@ -96,7 +96,7 @@ FILE_CONFIGS = [
 OUTPUT_DIR  = "sa_ta"  # すべての結果をまとめるフォルダ
 
 # FFT表示帯域（Hz）
-BAND_HIGH   = 3000
+BAND_HIGH   = 5000
 
 # STFTパラメータ
 SR          = None      # None=元サンプリングのまま
@@ -248,7 +248,7 @@ def plot_spectrogram_rel(M, fs, hop, n_fft, title, out_path, fmax=None):
     eps = np.finfo(float).eps
     M_ref = M.max()
     S_db = 20.0 * np.log10(np.maximum(M / (M_ref + eps), eps))
-    DB_FLOOR = -60.0
+    DB_FLOOR = -50.0
     S_db = np.maximum(S_db, DB_FLOOR)
 
     plt.figure()
@@ -267,7 +267,7 @@ def plot_spectrogram_rel(M, fs, hop, n_fft, title, out_path, fmax=None):
     cbar = plt.colorbar(img, format="%.0f dB")
     cbar.set_label("Relative Intensity(dB)")
     plt.xlabel("Time [s]")
-    plt.ylabel("Amplitude")
+    plt.ylabel("Frequency[Hz]")
     plt.title(title)
     plt.tight_layout()
     plt.savefig(out_path, dpi=200)
@@ -293,7 +293,7 @@ def plot_spectrogram_rel_segment(M, fs, hop, t_start, t_end, title, out_path, fm
     eps = np.finfo(float).eps
     M_ref = M_seg.max()
     S_db = 20.0 * np.log10(np.maximum(M_seg / (M_ref + eps), eps))
-    DB_FLOOR = -60.0
+    DB_FLOOR = -50.0
     S_db = np.maximum(S_db, DB_FLOOR)
 
     plt.figure(figsize=(20,3))
@@ -312,7 +312,7 @@ def plot_spectrogram_rel_segment(M, fs, hop, t_start, t_end, title, out_path, fm
     cbar = plt.colorbar(img, format="%.0f dB")
     cbar.set_label("Relative Intensity(dB)", fontsize=17)
     plt.xlabel("Time [s]", fontsize=22)
-    plt.ylabel("Amplitude", fontsize=22)
+    plt.ylabel("Frequency[Hz]", fontsize=22)
     plt.tick_params(axis="x", labelsize=20)
     plt.tick_params(axis="y", labelsize=17)
     plt.title(title)
@@ -355,6 +355,7 @@ def main():
     overlay_data = []
     per_segment_overlay = {}   # 既存: 各segごとに全ファイルのFFT
     per_segment_binary  = {}   # ④用: 各segごとに全ファイルのbinary FFT
+    mean_overlay_data = [] 
 
     for cfg in FILE_CONFIGS:
         input_path = cfg["path"]
@@ -473,8 +474,9 @@ def main():
         # ---- 10回(区間数)分のFFT平均（ノイズ除去後）----
         if len(amp_deno_list) > 0 and freq_common is not None:
             mean_amp = np.mean(np.stack(amp_deno_list, axis=0), axis=0)
-            mean_title = f"Amplitude Spectrum (Mean of {len(amp_deno_list)} segments) - {label}"
+            mean_title = f"Amplitude Spectrum (Mean) - {label}"
             plot_and_save_spectrum(freq_common, mean_amp, mean_title, out_dir / "fft_tone_mean_denoised.png")
+            mean_overlay_data.append((freq_common, mean_amp, label))
 
         # ① 各ファイルごとに「3区間FFT重ね描き」
         if file_segment_fft:
@@ -594,6 +596,21 @@ def main():
         out_name = f"fft_tone_denoised_overlay_seg{seg_num}_allFiles.png"
         plt.savefig(base_out_dir / out_name, dpi=200)
         plt.close()
+
+    if mean_overlay_data:
+        plt.figure()
+        for freq, amp, label in mean_overlay_data:
+            plt.plot(freq, amp, label=label)
+        plt.xlabel("Frequency [Hz]")
+        plt.xlim(0, BAND_HIGH)
+        plt.ylabel("Amplitude")
+        plt.ylim(0, 0.01)
+        plt.title("Amplitude Spectrum (mean) - all")
+        plt.grid(True)
+        plt.legend(fontsize=20)
+        plt.tight_layout()
+        plt.savefig(base_out_dir / "fft_tone_mean_denoised_overlay_allFiles.png", dpi=200)
+        plt.close()        
 
     # ④ 各segごとに「バイナリFFTを縦に並べた図」
     for seg_idx, series in per_segment_binary.items():
