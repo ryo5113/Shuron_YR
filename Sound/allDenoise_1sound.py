@@ -12,45 +12,31 @@ plt.close('all')
 # tone_ranges に 3 区間分 [ (start1, end1), (start2, end2), (start3, end3) ]
 FILE_CONFIGS = [
     {
-        "path": "recordedSound_20251212_202652.wav",
+        "path": "sakana.wav",
         "tone_ranges": [
-            (0.5, 2.0),   # 1回目
+            (1.345, 1.365),   # 1回目
         ],
-        "label": "first",
+        "label": "sa",
     },
     {
-        "path": "recordedSound_20251212_202652.wav",
+        "path": "sakana.wav",
         "tone_ranges": [
-            (2.5, 4.0),
+            (1.566, 1.586),   # 2回目
         ],
-        "label": "second",
+        "label": "ka",
     },
     {
-        "path": "recordedSound_20251212_202652.wav",
+        "path": "sakana.wav",
         "tone_ranges": [
-            (4.5, 6.0),
+            (1.826, 1.846),   # 3回目
         ],
-        "label": "third",
-    },
-    {
-        "path": "recordedSound_20251212_202652.wav",
-        "tone_ranges": [
-            (6.5, 8.0),
-        ],
-        "label": "fourth",
-    },
-    {
-        "path": "recordedSound_20251212_202652.wav",
-        "tone_ranges": [
-            (8.5, 10.0),
-        ],
-        "label": "fifth",
+        "label": "na",
     }
 ]
 
-OUTPUT_DIR  = "ae_v3"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "sakana"  # すべての結果をまとめるフォルダ
 
-#NOISE_PATH = "recordedSound_20251212_202635.wav"  # ノイズ参照音声ファイル
+NOISE_PATH = "recordedSound_20251212_203813.wav"  # ノイズ参照音声ファイル
 
 # FFT表示帯域（Hz）
 BAND_HIGH   = 3000
@@ -327,17 +313,15 @@ def main():
 
         # ---- 音声読み込み ----
         y, fs = librosa.load(input_path, sr=SR, mono=True)
-        #y_noise, _ = librosa.load(NOISE_PATH, sr=SR, mono=True)
+        y_noise, _ = librosa.load(NOISE_PATH, sr=SR, mono=True)
         y = y.astype(np.float32)
-        #y_noise = y_noise.astype(np.float32)
+        y_noise = y_noise.astype(np.float32)
         if ZERO_MEAN:
             y = y - np.mean(y)
-            #y_noise = y_noise - np.mean(y_noise)
+            y_noise = y_noise - np.mean(y_noise)
 
         print(f"Input: {Path(input_path).resolve()}")
         print(f"Fs = {fs}, length = {len(y)} samples ({len(y)/fs:.2f} s)")
-
-        y_noise = extract_interval(y, fs, 0.0, 0.5)
 
         # ---- ノイズ除去 ----
         y_deno = nr.reduce_noise(y=y, y_noise=y_noise, sr=fs, stationary=True)
