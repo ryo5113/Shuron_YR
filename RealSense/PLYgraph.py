@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # 読み込む PLY ファイル名
-PLY_PATH = "PLY/face_3cams_geom_merged_20251211_184421.ply"
+PLY_PATH = "PLY/ply/face_3cams_geom_merged_-40deg_20251216_193929.ply"
 
 # カメラから顔中心までの距離 [m]（頭をその場回転させているという前提）
 PIVOT_Z = 0.6
@@ -25,7 +25,7 @@ def main():
     # ------------ ここを PLYごとに設定する ------------
     # 0度撮影: angle_deg = 0.0
     # 20度撮影: angle_deg = 20.0 
-    angle_deg = 38.0
+    angle_deg = -40.0
     # ---------------------------------------------------
 
     theta = np.deg2rad(angle_deg)
@@ -57,6 +57,8 @@ def main():
 
     # 1段目: XY 平面
     axes[0].scatter(-points[:, 0], points[:, 1], c=colors, s=0.5)
+    axes[0].set_xlim([-0.2, 0.2])
+    axes[0].set_ylim([-0.2, 0.2])
     axes[0].set_xlabel('X [m]', fontsize=20)
     axes[0].set_ylabel('Y [m]', fontsize=20)
     axes[0].set_title('mouth shape(XY)')
@@ -65,6 +67,8 @@ def main():
 
     # 2段目: XZ 平面
     axes[1].scatter(-points[:, 0], points[:, 2], c=colors, s=0.5)
+    axes[1].set_xlim([-0.2, 0.2])
+    axes[1].set_ylim([0.3, 0.7])
     axes[1].set_xlabel('X [m]', fontsize=20)
     axes[1].set_ylabel('Z [m]', fontsize=20)
     axes[1].set_title('mouth shape(XZ)')
@@ -73,6 +77,8 @@ def main():
 
     # 3段目: ZY 平面
     axes[2].scatter(points[:, 2], points[:, 1], c=colors, s=0.5)
+    axes[2].set_xlim([0.3, 0.7])
+    axes[2].set_ylim([-0.2, 0.2])
     axes[2].set_xlabel('Z [m]', fontsize=20)
     axes[2].set_ylabel('Y [m]', fontsize=20)
     axes[2].set_title('mouth shape(ZY)')
@@ -80,7 +86,7 @@ def main():
     axes[2].grid(alpha=0.2)
 
     plt.tight_layout()
-    plt.savefig("PLY/U_45deg_3cam_v2.png")
+    plt.savefig("PLY/image/U_-40deg_3cam_ARv2.png")
     plt.show()
 
 if __name__ == "__main__":

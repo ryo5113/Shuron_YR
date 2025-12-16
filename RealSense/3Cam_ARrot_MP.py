@@ -1,0 +1,541 @@
+import pyrealsense2 as rs
+import numpy as np
+import open3d as o3d
+from datetime import datetime
+import cv2
+import math
+from pupil_apriltags import Detector
+import os
+from concurrent.futures import ThreadPoolExecutor
+
+# === 追加: MediaPipe ===
+import mediapipe as mp
+
+# =========================================================
+# 3Cam_rot.py 側（既存設定）
+# =========================================================
+SERIALS = [
+    "047322070108",  # カメラ0（基準）
+    "913522070157",  # カメラ1
+    "108322073166",  # カメラ2
+]
+NUM_FRAMES = 50  # 最後のフレームを使用
+
+def make_extrinsic(tx, ty, tz, angle_deg):
+    T = np.eye(4, dtype=np.float64)
+    angle = np.deg2rad(angle_deg)
+    # y軸周りの回転
+    R = np.array([
+        [ np.cos(angle), 0.0, np.sin(angle)],
+        [ 0.0,           1.0, 0.0          ],
+        [-np.sin(angle), 0.0, np.cos(angle)],
+    ], dtype=np.float64)
+    T[:3, :3] = R
+    T[0, 3] = tx
+    T[1, 3] = ty
+    T[2, 3] = tz
+    return T
+
+T_0_to_0 = np.eye(4, dtype=np.float64)
+T_1_to_0 = make_extrinsic(-0.25, 0.0, 0.15,  45.0)
+T_2_to_0 = make_extrinsic( 0.24, 0.0, 0.15, -45.0)
+
+# 点群で使っている座標系補正（Y反転）を 3D特徴点にも合わせるために共有
+T_FLIP = np.array([
+    [1,  0, 0, 0],
+    [0, -1, 0, 0],
+    [0,  0, 1, 0],
+    [0,  0, 0, 1],
+], dtype=np.float64)
+
+def create_pipeline(serial):
+    pipeline = rs.pipeline()
+    config = rs.config()
+    config.enable_device(serial)
+    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+    profile = pipeline.start(config)
+    return pipeline, profile
+
+def frames_to_pointcloud(color_frame, depth_frame, profile):
+    depth_intrinsics = depth_frame.profile.as_video_stream_profile().get_intrinsics()
+    width, height = depth_intrinsics.width, depth_intrinsics.height
+
+    depth_image = np.asanyarray(depth_frame.get_data())
+    color_image = np.asanyarray(color_frame.get_data())
+
+    depth_sensor = profile.get_device().first_depth_sensor()
+    depth_scale_rs = depth_sensor.get_depth_scale()
+
+    depth_o3d = o3d.geometry.Image(depth_image.astype(np.float32))
+    color_image_rgb = color_image[:, :, ::-1].copy()  # BGR->RGB
+    color_o3d = o3d.geometry.Image(color_image_rgb)
+
+    intr = o3d.camera.PinholeCameraIntrinsic(
+        width, height,
+        depth_intrinsics.fx, depth_intrinsics.fy,
+        depth_intrinsics.ppx, depth_intrinsics.ppy,
+    )
+
+    rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(
+        color_o3d,
+        depth_o3d,
+        depth_scale=1.0 / depth_scale_rs,
+        depth_trunc=1.0,
+        convert_rgb_to_intensity=False,
+    )
+
+    pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, intr)
+
+    # 座標系補正（Y反転）
+    pcd.transform(T_FLIP)
+
+    return pcd
+
+def icp_to_cam0(source_pcd, target_pcd, init_trans, voxel_size=0.005):
+    radius = voxel_size * 2.0
+
+    source_pcd.estimate_normals(
+        o3d.geometry.KDTreeSearchParamHybrid(radius=radius, max_nn=30)
+    )
+    target_pcd.estimate_normals(
+        o3d.geometry.KDTreeSearchParamHybrid(radius=radius, max_nn=30)
+    )
+
+    max_correspondence_distance_coarse = voxel_size * 10.0
+    max_correspondence_distance_fine = voxel_size * 1.0
+
+    icp_coarse = o3d.pipelines.registration.registration_icp(
+        source_pcd, target_pcd,
+        max_correspondence_distance_coarse, init_trans,
+        o3d.pipelines.registration.TransformationEstimationPointToPlane()
+    )
+
+    icp_fine = o3d.pipelines.registration.registration_icp(
+        source_pcd, target_pcd,
+        max_correspondence_distance_fine, icp_coarse.transformation,
+        o3d.pipelines.registration.TransformationEstimationPointToPlane()
+    )
+
+    print("ICP fitness:", icp_fine.fitness, "rmse:", icp_fine.inlier_rmse)
+    return icp_fine.transformation
+
+# =========================================================
+# RS_ARMarkerRead.py 側（既存仕様）
+# =========================================================
+TAG_SIZE_M = 0.021
+TARGET_PITCH_DEG = [-60.0, -40.0, -20.0, 0.0, 20.0, 40.0, 60.0]
+PITCH_TOL_DEG = 1.0
+HOLD_FRAMES = 15
+
+def create_detector():
+    return Detector(
+        families="tag36h11",
+        nthreads=4,
+        quad_decimate=1.0,
+        quad_sigma=0.0,
+        refine_edges=True,
+        decode_sharpening=0.25,
+        debug=False
+    )
+
+def rotation_matrix_to_euler(R):
+    # ZYX順 (R = Rz(yaw) * Ry(pitch) * Rx(roll)) 想定
+    sy = math.sqrt(R[0, 0] ** 2 + R[1, 0] ** 2)
+    singular = sy < 1e-6
+    if not singular:
+        yaw   = math.atan2(R[1, 0], R[0, 0])
+        pitch = math.atan2(-R[2, 0], sy)
+        roll  = math.atan2(R[2, 1], R[2, 2])
+    else:
+        yaw   = math.atan2(-R[0, 1], R[1, 1])
+        pitch = math.atan2(-R[2, 0], sy)
+        roll  = 0.0
+    return roll, pitch, yaw
+
+def match_pitch_targets(pitch_rad):
+    pitch_deg = math.degrees(pitch_rad)
+    nearest_20 = round(pitch_deg / 20.0) * 20.0  # 20度刻み
+    if abs(pitch_deg - nearest_20) <= PITCH_TOL_DEG and (-60.0 <= nearest_20 <= 60.0):
+        return True, pitch_deg, nearest_20
+    return False, pitch_deg, nearest_20
+
+def get_color_intrinsics_from_profile(profile):
+    color_stream = profile.get_stream(rs.stream.color).as_video_stream_profile()
+    intr = color_stream.get_intrinsics()
+    return (float(intr.fx), float(intr.fy), float(intr.ppx), float(intr.ppy))
+
+def get_color_intrinsics_struct(profile):
+    """MediaPipe→3D変換用に intrinsics 構造体そのものを取得"""
+    color_stream = profile.get_stream(rs.stream.color).as_video_stream_profile()
+    return color_stream.get_intrinsics()
+
+# =========================================================
+# MediaPipe 用設定（唇4点）
+# =========================================================
+
+# Face Mesh を1回だけ作成
+mp_face_mesh = mp.solutions.face_mesh
+FACE_MESH = mp_face_mesh.FaceMesh(
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5,
+)
+
+# 唇ランドマークID（Face Mesh 468点版）
+LIP_UPPER_ID = 0   # 上唇中央付近
+LIP_LOWER_ID = 17   # 下唇中央付近
+LIP_LEFT_ID  = 61   # 口角（片側）
+LIP_RIGHT_ID = 291  # 口角（反対側）
+
+from mediapipe import solutions as mp_solutions
+mp_drawing = mp_solutions.drawing_utils
+mp_drawing_styles = mp_solutions.drawing_styles
+
+def detect_lip_3d_for_camera(color_frame, depth_frame, profile, T_cam_to_cam0, cam_index):
+    """
+    1台のカメラについて:
+    - RGB画像にMediaPipe Face Meshを適用して唇4点の2D座標を取得
+    - depthから3D座標(そのカメラ座標系)を求める
+    - 点群と同じ座標系になるようYを反転
+    - T_cam_to_cam0でカメラ0座標系へ変換
+    戻り値:
+      { "ok": bool,
+        "camera_index": int,
+        "points_cam0": {"upper": np.array(3), "lower": ..., "left": ..., "right": ...}
+      }
+    """
+    color_image = np.asanyarray(color_frame.get_data())  # BGR
+    h, w, _ = color_image.shape
+    rgb_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
+
+    results = FACE_MESH.process(rgb_image)
+    if not results.multi_face_landmarks:
+        return {"ok": False, "camera_index": cam_index}
+
+    face_landmarks = results.multi_face_landmarks[0]
+
+    # ★ここで描画用画像を作る（BGRでOK）
+    annotated_image = color_image.copy()
+    mp_drawing.draw_landmarks(
+        image=annotated_image,
+        landmark_list=face_landmarks,
+        connections=mp_face_mesh.FACEMESH_LIPS,  # 唇周りだけ描画
+        landmark_drawing_spec=None,
+        connection_drawing_spec=mp_drawing_styles
+            .get_default_face_mesh_contours_style()
+    )
+
+    # 4点分のピクセル座標を取得
+    def lm_to_pixel(lm_id):
+        lm = face_landmarks.landmark[lm_id]
+        u = int(round(lm.x * w))
+        v = int(round(lm.y * h))
+        if u < 0 or u >= w or v < 0 or v >= h:
+            return None
+        return (u, v)
+
+    pix_upper = lm_to_pixel(LIP_UPPER_ID)
+    pix_lower = lm_to_pixel(LIP_LOWER_ID)
+    pix_left  = lm_to_pixel(LIP_LEFT_ID)
+    pix_right = lm_to_pixel(LIP_RIGHT_ID)
+
+    if any(p is None for p in [pix_upper, pix_lower, pix_left, pix_right]):
+        return {"ok": False, "camera_index": cam_index}
+
+    intr = get_color_intrinsics_struct(profile)
+
+    def pixel_to_cam0(pix):
+        u, v = pix
+        # depth [m]
+        z_m = depth_frame.get_distance(u, v)
+        if z_m <= 0:
+            return None
+        # RealSenseカメラ座標系での3D点 (X, Y, Z)
+        X, Y, Z = rs.rs2_deproject_pixel_to_point(intr, [u, v], z_m)
+        # 点群と同じ座標系に合わせるため Y反転
+        p_cam = np.array([X, -Y, Z, 1.0], dtype=np.float64)
+        # カメラ0座標系に変換
+        p0 = T_cam_to_cam0 @ p_cam
+        return p0[:3]
+
+    p_upper = pixel_to_cam0(pix_upper)
+    p_lower = pixel_to_cam0(pix_lower)
+    p_left  = pixel_to_cam0(pix_left)
+    p_right = pixel_to_cam0(pix_right)
+
+    if any(p is None for p in [p_upper, p_lower, p_left, p_right]):
+        return {"ok": False, "camera_index": cam_index}
+
+    points_cam0 = {
+        "upper": p_upper,
+        "lower": p_lower,
+        "left":  p_left,
+        "right": p_right,
+    }
+
+    return {
+        "ok": True,
+        "camera_index": cam_index,
+        "points_cam0": points_cam0,
+        "annotated_image": annotated_image,
+    }
+
+def compute_lip_metrics(points_cam0):
+    """
+    points_cam0: {"upper": np.array(3), "lower":..., "left":..., "right":...} （すべてカメラ0座標系）
+    要望どおり:
+      幅   = 左右口角のX座標の差（絶対値）
+      高さ = 上下唇のY座標の差（絶対値）
+      奥行 = (上下唇のZ座標のうち大きい値) - (左右口角のZ座標のうち小さい値)
+    を計算して返す。
+    """
+    up = points_cam0["upper"]
+    lo = points_cam0["lower"]
+    le = points_cam0["left"]
+    ri = points_cam0["right"]
+
+    width = abs(ri[0] - le[0])
+    height = abs(up[1] - lo[1])
+
+    z_ul_max = max(up[2], lo[2])
+    z_lr_min = min(le[2], ri[2])
+    depth =  z_lr_min - z_ul_max
+
+    return {
+        "width":  float(width),
+        "height": float(height),
+        "depth":  float(depth),
+    }
+
+# =========================================================
+# 実行オプション
+# =========================================================
+SAVE_ONLY_PLY = True      # True: PLY保存のみ（Open3D表示/Matplotlib投影なし）
+SHOW_CAM0_WINDOW = True   # カメラ0の検出状況を表示したい場合 True
+
+def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
+    color_frames = [None] * len(pipelines)
+    depth_frames = [None] * len(pipelines)
+
+    aligns = [rs.align(rs.stream.color) for _ in pipelines]
+
+    def grab_one(i):
+        return pipelines[i].wait_for_frames()
+
+    # NUM_FRAMES 回まわして「最後のフレーム」を採用
+    with ThreadPoolExecutor(max_workers=len(pipelines)) as ex:
+        for _ in range(NUM_FRAMES):
+            futures = [ex.submit(grab_one, i) for i in range(len(pipelines))]
+            framesets = [f.result() for f in futures]
+
+            for i, fs in enumerate(framesets):
+                aligned = aligns[i].process(fs)
+                depth = aligned.get_depth_frame()
+                color = aligned.get_color_frame()
+                if not depth or not color:
+                    raise RuntimeError("フレーム取得に失敗しました")
+                depth_frames[i] = depth
+                color_frames[i] = color
+
+    # 点群生成
+    pcds = []
+    for i in range(len(SERIALS)):
+        pcds.append(frames_to_pointcloud(color_frames[i], depth_frames[i], profiles[i]))
+
+    # ICPでcam1/cam2をcam0へ
+    base_pcd = pcds[0]
+    T_1_to_0_icp = icp_to_cam0(pcds[1], base_pcd, T_1_to_0)
+    T_2_to_0_icp = icp_to_cam0(pcds[2], base_pcd, T_2_to_0)
+
+    # マージ
+    pcd0_aligned = base_pcd
+    pcd1_aligned = pcds[1].transform(T_1_to_0_icp)
+    pcd2_aligned = pcds[2].transform(T_2_to_0_icp)
+
+    merged_pcd = o3d.geometry.PointCloud()
+    merged_pcd += pcd0_aligned
+    merged_pcd += pcd1_aligned
+    merged_pcd += pcd2_aligned
+
+    # PLY保存（角度ラベル入り）
+    os.makedirs("PLY/ply", exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"PLY/ply/face_3cams_geom_merged_{int(pitch_label_deg)}deg_{timestamp}.ply"
+    o3d.io.write_point_cloud(filename, merged_pcd)
+    print(f"[SAVE] {filename}")
+
+    # ==== 追加: MediaPipe による唇4点3D＋幅/高さ/奥行のテキスト出力 ====
+
+    lip_results = []
+
+    for cam_idx in range(len(SERIALS)):
+        if cam_idx == 0:
+            T_cam_to_0 = np.eye(4, dtype=np.float64)
+        elif cam_idx == 1:
+            T_cam_to_0 = T_1_to_0_icp
+        else:
+            T_cam_to_0 = T_2_to_0_icp
+
+        res = detect_lip_3d_for_camera(
+            color_frames[cam_idx],
+            depth_frames[cam_idx],
+            profiles[cam_idx],
+            T_cam_to_0,
+            cam_index=cam_idx
+        )
+        lip_results.append(res)
+
+    # 優先順位: カメラ0 → カメラ1 → カメラ2
+    selected = None
+    for idx in [0, 1, 2]:
+        if idx < len(lip_results) and lip_results[idx].get("ok"):
+            selected = lip_results[idx]
+            break
+
+    if selected is None or not selected.get("ok"):
+        print("[LIP] MediaPipeによる唇4点検出に失敗しました。")
+    else:
+        pts = selected["points_cam0"]
+        metrics = compute_lip_metrics(pts)
+
+        print(f"[LIP] 使用カメラ: Cam{selected['camera_index']} (カメラ0座標系に変換済み)")
+        print("[LIP] 3D座標 (カメラ0座標系, 単位[m])")
+        print(f"  upper: {pts['upper']}")
+        print(f"  lower: {pts['lower']}")
+        print(f"  left : {pts['left']}")
+        print(f"  right: {pts['right']}")
+
+        print("[LIP METRICS] 唇形状指標 (カメラ0座標系)")
+        print(f"  幅   (左右口角X差)       : {metrics['width']:.6f} [m]")
+        print(f"  高さ (上下唇Y差)         : {metrics['height']:.6f} [m]")
+        print(f"  奥行 ( min(Z_left, Z_right) - max(Z_upper, Z_lower)): {metrics['depth']:.6f} [m]")
+
+        os.makedirs("PLY/lip_metrics", exist_ok=True)
+        txt_path = f"PLY/lip_metrics/lip_metrics_{int(pitch_label_deg)}deg_{timestamp}.txt"
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(f"pitch_label_deg: {pitch_label_deg}\n")
+            f.write(f"camera_index: {selected['camera_index']}\n")
+            f.write("points_cam0 (X,Y,Z in meters)\n")
+            f.write(f"  upper: {pts['upper']}\n")
+            f.write(f"  lower: {pts['lower']}\n")
+            f.write(f"  left : {pts['left']}\n")
+            f.write(f"  right: {pts['right']}\n")
+            f.write("\n[LIP METRICS]\n")
+            f.write(f"width : {metrics['width']:.6f}  # 左右口角X差 [m]\n")
+            f.write(f"height: {metrics['height']:.6f}  # 上下唇Y差 [m]\n")
+            f.write(f"depth : {metrics['depth']:.6f}  # max(Z_upper, Z_lower) - min(Z_left, Z_right) [m]\n")
+
+        print(f"[LIP] 唇形状指標をテキスト保存しました: {txt_path}")
+
+        # ★ここから画像保存
+        annotated = selected.get("annotated_image", None)
+        if annotated is not None:
+            os.makedirs("PLY/mediapipe_img", exist_ok=True)
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            img_path = f"PLY/mediapipe_img/lip_cam{selected['camera_index']}_{ts}.png"
+            cv2.imwrite(img_path, annotated)
+            print(f"[LIP] MediaPipe描画画像を保存しました: {img_path}")
+
+    # ===============================================
+
+    if not SAVE_ONLY_PLY:
+        o3d.visualization.draw_geometries([merged_pcd])
+
+def main():
+    pipelines = []
+    profiles = []
+    detector = create_detector()
+
+    hold_count = 0
+    hold_target = None
+
+    try:
+        # 3台起動
+        for serial in SERIALS:
+            pipeline, profile = create_pipeline(serial)
+            pipelines.append(pipeline)
+            profiles.append(profile)
+
+        # cam0 intrinsics を AprilTag 姿勢推定に使う
+        camera_params = get_color_intrinsics_from_profile(profiles[0])
+
+        print("[INFO] Running...  Stop with Ctrl+C (KeyboardInterrupt).")
+
+        while True:
+            # cam0で AprilTag 姿勢推定
+            frames0 = pipelines[0].wait_for_frames()
+            color0 = frames0.get_color_frame()
+            if not color0:
+                continue
+
+            color_image0 = np.asanyarray(color0.get_data())
+            gray0 = cv2.cvtColor(color_image0, cv2.COLOR_BGR2GRAY)
+
+            results = detector.detect(
+                gray0,
+                estimate_tag_pose=True,
+                camera_params=camera_params,
+                tag_size=TAG_SIZE_M
+            )
+
+            matched_any = False
+            matched_target = None
+            frame_vis = color_image0.copy()
+
+            for r in results:
+                R = r.pose_R
+                roll, pitch, yaw = rotation_matrix_to_euler(R)
+                ok, pitch_deg, nearest_20 = match_pitch_targets(pitch)
+
+                if ok:
+                    matched_any = True
+                    matched_target = nearest_20
+
+                if SHOW_CAM0_WINDOW:
+                    cv2.putText(frame_vis, f"pitch={math.degrees(pitch):.1f}",
+                                (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                break  # 1タグで十分
+
+            if matched_any:
+                if hold_target == matched_target:
+                    hold_count += 1
+                else:
+                    hold_target = matched_target
+                    hold_count = 1
+            else:
+                hold_target = None
+                hold_count = 0
+
+            if SHOW_CAM0_WINDOW:
+                if hold_target is not None:
+                    cv2.putText(frame_vis, f"HOLD {hold_target:.0f}deg {hold_count}/{HOLD_FRAMES}",
+                                (30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                cv2.imshow("Cam0 AprilTag Pose (Trigger)", frame_vis)
+
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+
+            if hold_target is not None and hold_count >= HOLD_FRAMES:
+                print(f"[TRIGGER] pitch={hold_target:.0f} deg held {HOLD_FRAMES} frames -> capture")
+                capture_and_process_3cams(pipelines, profiles, pitch_label_deg=hold_target)
+                hold_target = None
+                hold_count = 0
+
+    except KeyboardInterrupt:
+        print("\n[INFO] Stopped by Ctrl+C (KeyboardInterrupt).")
+
+    finally:
+        for p in pipelines:
+            try:
+                p.stop()
+            except Exception:
+                pass
+        try:
+            cv2.destroyAllWindows()
+        except Exception:
+            pass
+
+if __name__ == "__main__":
+    main()

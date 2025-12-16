@@ -11,7 +11,7 @@ from pupil_apriltags import Detector
 # 使用するRealSenseのシリアル番号
 REALSense_SERIAL = "047322070108"  # カメラ0（基準）用に変更
 
-TAG_SIZE_M = 0.105  # タグのサイズ(m) 
+TAG_SIZE_M = 0.021  # タグのサイズ(m) 
 
 # カラー画像の解像度・FPS
 COLOR_WIDTH = 640
