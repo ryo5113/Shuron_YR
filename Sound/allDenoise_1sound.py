@@ -367,6 +367,9 @@ def main():
             y_tone_orig = extract_interval(y,     fs, t_start, t_end)
             y_tone_deno = extract_interval(y_deno, fs, t_start, t_end)
 
+            out_wav = out_dir / f"{label}_seg{seg_num}_{t_start:.3f}-{t_end:.3f}s_denoised.wav"
+            sf.write(out_wav, y_tone_deno, int(fs))
+
             if N_FFT_SPEC is None:
                 N_fft_spec = max(len(y_tone_orig), len(y_tone_deno))
             else:
