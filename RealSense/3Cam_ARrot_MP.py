@@ -7,6 +7,7 @@ import math
 from pupil_apriltags import Detector
 import os
 from concurrent.futures import ThreadPoolExecutor
+import time
 
 # === 追加: MediaPipe ===
 import mediapipe as mp
@@ -37,8 +38,8 @@ def make_extrinsic(tx, ty, tz, angle_deg):
     return T
 
 T_0_to_0 = np.eye(4, dtype=np.float64)
-T_1_to_0 = make_extrinsic(-0.25, 0.0, 0.15,  45.0)
-T_2_to_0 = make_extrinsic( 0.24, 0.0, 0.15, -45.0)
+T_1_to_0 = make_extrinsic(-0.29, 0.0, 0.20,  45.0)
+T_2_to_0 = make_extrinsic( 0.285, 0.0, 0.20, -45.0)
 
 # 点群で使っている座標系補正（Y反転）を 3D特徴点にも合わせるために共有
 T_FLIP = np.array([
@@ -48,6 +49,38 @@ T_FLIP = np.array([
     [0,  0, 0, 1],
 ], dtype=np.float64)
 
+def apply_manual_color_settings(profile, exposure=None, gain=None, white_balance=None):
+    """
+    profile: pipeline.start(config) の戻り値
+    exposure: int/float (例: 8000)
+    gain: int/float (例: 16)
+    white_balance: int/float (例: 4500)
+    """
+    dev = profile.get_device()
+
+    # RGBセンサーを探す（環境によりインデックス固定は危険なので総当たり）
+    for s in dev.query_sensors():
+        name = s.get_info(rs.camera_info.name)
+        if "RGB" not in name and "Color" not in name:
+            continue
+
+        # 自動露出OFF → 露出/ゲイン固定
+        if exposure is not None and s.supports(rs.option.enable_auto_exposure):
+            s.set_option(rs.option.enable_auto_exposure, 0)  # 0=False
+        if exposure is not None and s.supports(rs.option.exposure):
+            s.set_option(rs.option.exposure, float(exposure))
+        if gain is not None and s.supports(rs.option.gain):
+            s.set_option(rs.option.gain, float(gain))
+
+        # 自動WB OFF → WB固定
+        if white_balance is not None and s.supports(rs.option.enable_auto_white_balance):
+            s.set_option(rs.option.enable_auto_white_balance, 0)  # 0=False
+        if white_balance is not None and s.supports(rs.option.white_balance):
+            s.set_option(rs.option.white_balance, float(white_balance))
+
+        # RGBセンサーに適用したら終了
+        break
+
 def create_pipeline(serial):
     pipeline = rs.pipeline()
     config = rs.config()
@@ -55,6 +88,13 @@ def create_pipeline(serial):
     config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
     profile = pipeline.start(config)
+    # ★追加：RGBの明度を手動で揃える（全台同じ値にする）
+    apply_manual_color_settings(
+        profile,
+        exposure=625,        # ←ここはあなたが揃えたい値
+        gain=16,              # ←必要なら
+        white_balance=4500    # ←必要なら
+    )
     return pipeline, profile
 
 def frames_to_pointcloud(color_frame, depth_frame, profile):
@@ -93,7 +133,10 @@ def frames_to_pointcloud(color_frame, depth_frame, profile):
     return pcd
 
 def icp_to_cam0(source_pcd, target_pcd, init_trans, voxel_size=0.005):
+    #source_ds = source_pcd.voxel_down_sample(voxel_size) # ダウンサンプリング
+    #target_ds = target_pcd.voxel_down_sample(voxel_size)
     radius = voxel_size * 2.0
+    # ダウンサンプリングなしの場合はpcdを直接使う
 
     source_pcd.estimate_normals(
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius, max_nn=30)
@@ -123,10 +166,10 @@ def icp_to_cam0(source_pcd, target_pcd, init_trans, voxel_size=0.005):
 # =========================================================
 # RS_ARMarkerRead.py 側（既存仕様）
 # =========================================================
-TAG_SIZE_M = 0.021
+TAG_SIZE_M = 0.041
 TARGET_PITCH_DEG = [-60.0, -40.0, -20.0, 0.0, 20.0, 40.0, 60.0]
 PITCH_TOL_DEG = 1.0
-HOLD_FRAMES = 15
+HOLD_FRAMES = 30
 
 def create_detector():
     return Detector(
@@ -299,9 +342,9 @@ def compute_lip_metrics(points_cam0):
     width = abs(ri[0] - le[0])
     height = abs(up[1] - lo[1])
 
-    z_ul_max = max(up[2], lo[2])
-    z_lr_min = min(le[2], ri[2])
-    depth =  z_lr_min - z_ul_max
+    z_ul_min = min(up[2], lo[2])
+    z_lr_max = max(le[2], ri[2])
+    depth =  z_lr_max - z_ul_min
 
     return {
         "width":  float(width),
@@ -360,9 +403,9 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
     merged_pcd += pcd2_aligned
 
     # PLY保存（角度ラベル入り）
-    os.makedirs("PLY/ply", exist_ok=True)
+    os.makedirs("PLY/ply5", exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"PLY/ply/face_3cams_geom_merged_{int(pitch_label_deg)}deg_{timestamp}.ply"
+    filename = f"PLY/ply5/face_3cams_geom_merged_{int(pitch_label_deg)}deg_{timestamp}.ply"
     o3d.io.write_point_cloud(filename, merged_pcd)
     print(f"[SAVE] {filename}")
 
@@ -387,15 +430,48 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
         )
         lip_results.append(res)
 
+    # 0度・±20度 → カメラ0を最優先
+    # ±40度以上 → 角度の符号に応じて 1 or 2 を最優先
+    if 0 <= pitch_label_deg <= 21.0:
+        # 正面〜20度まではカメラ0優先
+        camera_priority = [0, 2]
+    elif pitch_label_deg > 21.0:
+        # 20度〜60度まではカメラ1優先
+        camera_priority = [2, 0]
+    if -21.0 <= pitch_label_deg < 0:
+        # -20度〜正面まではカメラ0優先
+        camera_priority = [0, 1]
+    elif pitch_label_deg < -21.0:
+        # -60度〜-20度まではカメラ2優先
+        camera_priority = [1, 0]
+
     # 優先順位: カメラ0 → カメラ1 → カメラ2
     selected = None
-    for idx in [0, 1, 2]:
+    for idx in camera_priority:
         if idx < len(lip_results) and lip_results[idx].get("ok"):
             selected = lip_results[idx]
             break
 
     if selected is None or not selected.get("ok"):
         print("[LIP] MediaPipeによる唇4点検出に失敗しました。")
+        # 映像にも「失敗」を表示（例：カメラ0のカラー画像を使う）
+        try:
+            debug_img = np.asanyarray(color_frames[0].get_data()).copy()  # Cam0の画像
+            cv2.putText(debug_img,
+                        "LIP NG: MediaPipe failed",
+                        (30, 110),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.8,
+                        (0, 0, 255),
+                        2)
+            # 約3秒間(10回×100ms)表示し続ける
+            for _ in range(10):
+                cv2.imshow("Cam0 AprilTag Pose (Trigger)", debug_img)
+                # 'q' が押されたら中断
+                if cv2.waitKey(100) & 0xFF == ord('q'):
+                    break
+        except Exception as e:
+            print(f"[LIP] show error failed: {e}")
     else:
         pts = selected["points_cam0"]
         metrics = compute_lip_metrics(pts)
@@ -410,10 +486,10 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
         print("[LIP METRICS] 唇形状指標 (カメラ0座標系)")
         print(f"  幅   (左右口角X差)       : {metrics['width']:.6f} [m]")
         print(f"  高さ (上下唇Y差)         : {metrics['height']:.6f} [m]")
-        print(f"  奥行 ( min(Z_left, Z_right) - max(Z_upper, Z_lower)): {metrics['depth']:.6f} [m]")
+        print(f"  奥行 ( max(Z_left, Z_right) - min(Z_upper, Z_lower)): {metrics['depth']:.6f} [m]")
 
-        os.makedirs("PLY/lip_metrics", exist_ok=True)
-        txt_path = f"PLY/lip_metrics/lip_metrics_{int(pitch_label_deg)}deg_{timestamp}.txt"
+        os.makedirs("PLY/ply5/lip_metrics", exist_ok=True)
+        txt_path = f"PLY/ply5/lip_metrics/lip_metrics_{int(pitch_label_deg)}deg_{timestamp}.txt"
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(f"pitch_label_deg: {pitch_label_deg}\n")
             f.write(f"camera_index: {selected['camera_index']}\n")
@@ -425,16 +501,16 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
             f.write("\n[LIP METRICS]\n")
             f.write(f"width : {metrics['width']:.6f}  # 左右口角X差 [m]\n")
             f.write(f"height: {metrics['height']:.6f}  # 上下唇Y差 [m]\n")
-            f.write(f"depth : {metrics['depth']:.6f}  # max(Z_upper, Z_lower) - min(Z_left, Z_right) [m]\n")
+            f.write(f"depth : {metrics['depth']:.6f}  # max(Z_left, Z_right) - min(Z_upper, Z_lower) [m]\n")
 
         print(f"[LIP] 唇形状指標をテキスト保存しました: {txt_path}")
 
         # ★ここから画像保存
         annotated = selected.get("annotated_image", None)
         if annotated is not None:
-            os.makedirs("PLY/mediapipe_img", exist_ok=True)
+            os.makedirs("PLY/ply5/mediapipe_img", exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            img_path = f"PLY/mediapipe_img/lip_cam{selected['camera_index']}_{ts}.png"
+            img_path = f"PLY/ply5/mediapipe_img/lip_cam{selected['camera_index']}_{ts}.png"
             cv2.imwrite(img_path, annotated)
             print(f"[LIP] MediaPipe描画画像を保存しました: {img_path}")
 
@@ -487,6 +563,7 @@ def main():
             for r in results:
                 R = r.pose_R
                 roll, pitch, yaw = rotation_matrix_to_euler(R)
+                pitch = -pitch  # 頭の回転方向に合わせて符号反転
                 ok, pitch_deg, nearest_20 = match_pitch_targets(pitch)
 
                 if ok:
@@ -496,7 +573,7 @@ def main():
                 if SHOW_CAM0_WINDOW:
                     cv2.putText(frame_vis, f"pitch={math.degrees(pitch):.1f}",
                                 (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-                break  # 1タグで十分
+                break
 
             if matched_any:
                 if hold_target == matched_target:

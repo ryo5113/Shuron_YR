@@ -12,8 +12,8 @@ from pathlib import Path
 plt.close('all')
 
 # ========= 設定 =========
-INPUT_PATH  = "sakana.wav"   # 入力音声ファイル
-OUTPUT_DIR  = "sakana" # 出力フォルダ
+INPUT_PATH  = "ae/recordedSound_20251215_180229.wav"   # 入力音声ファイル
+OUTPUT_DIR  = "ae/result" # 出力フォルダ
 
 # 有音部の区間（秒）: 振動スペクトル用に切り出し
 TONE_START  = 0.5

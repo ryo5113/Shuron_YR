@@ -118,7 +118,7 @@ def plot_and_save_spectrum(freq, amp, title, out_path):
     plt.xlabel("Frequency [Hz]")
     plt.xlim(0, BAND_HIGH)
     plt.ylabel("Amplitude")
-    plt.ylim(0, 0.05)  # 必要に応じて調整
+    plt.ylim(0, 0.02)  # 必要に応じて調整
     plt.title(title, fontsize=17)
     plt.grid(True)
     plt.tight_layout()
@@ -424,7 +424,7 @@ def main():
             plt.xlabel("Frequency [Hz]", fontsize=30)
             plt.xlim(0, BAND_HIGH)
             plt.ylabel("Amplitude", fontsize=30)
-            plt.ylim(0, 0.05)
+            plt.ylim(0, 0.02)
             plt.title(f"Amplitude Spectrum(All) - {label}")
             plt.grid(True)
             plt.tick_params(labelsize=24)
@@ -505,16 +505,16 @@ def main():
 
     # ---- 振動スペクトル（ノイズ除去後）の重ね描き（1区間目のみ）----
     if overlay_data:
-        plt.figure()
+        plt.figure(figsize=(20,3))
         for freq, amp, label in overlay_data:
             plt.plot(freq, amp, label=label)
         plt.xlabel("Frequency [Hz]")
         plt.xlim(0, BAND_HIGH)
         plt.ylabel("Amplitude")
-        plt.ylim(0, 0.04)  # 必要に応じて変更
+        plt.ylim(0, 0.02)  # 必要に応じて変更
         plt.title("Amplitude Spectrum (all) - seg1")
         plt.grid(True)
-        plt.legend(fontsize=20)
+        #plt.legend(fontsize=20)
         plt.tight_layout()
         plt.savefig(base_out_dir / "fft_tone_denoised_overlay.png", dpi=200)
         plt.close()
@@ -523,19 +523,19 @@ def main():
     for seg_idx, series in per_segment_overlay.items():
         if not series:
             continue
-        plt.figure()
+        plt.figure(figsize=(20,3))
         for freq, amp, label in series:
             plt.plot(freq, amp, label=label)
         plt.xlabel("Frequency [Hz]")
         plt.xlim(0, BAND_HIGH)
         plt.ylabel("Amplitude")
-        plt.ylim(0, 0.04)
+        plt.ylim(0, 0.02)
         seg_num = seg_idx + 1
         plt.title(f"Amplitude Spectrum (all) - seg{seg_num}")
         plt.grid(True)
-        plt.legend(fontsize=20)
+        #plt.legend(fontsize=20)
         plt.tight_layout()
-        out_name = f"fft_tone_denoised_overlay_seg{seg_num}_allFiles.png"
+        out_name = f"fft_tone_denoised_overlay_seg{seg_num}_allFiles2.png"
         plt.savefig(base_out_dir / out_name, dpi=200)
         plt.close()
 

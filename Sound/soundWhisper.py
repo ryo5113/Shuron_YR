@@ -4,8 +4,8 @@ import torch
 import whisper
 
 # ====== ここだけ編集してください ======
-AUDIO_PATH  = "sa_ta/ta/cleaned_audio.wav"          # 入力音声ファイル
-OUTPUT_PATH = "sa_ta/ta/ta.txt"         # 出力テキストファイル
+AUDIO_PATH  = "mora_segments_sakana/na.wav"          # 入力音声ファイル
+OUTPUT_PATH = "mora_segments_sakana/na.txt"         # 出力テキストファイル
 LANGUAGE    = "ja"                  # 例: "ja" / "en"。Noneなら自動判定
 MODEL_NAME  = "large-v3"            # large固定（推奨: large-v3）
 TEMPERATURE = 0.0                   # 安定寄り
