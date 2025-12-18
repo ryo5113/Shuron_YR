@@ -113,7 +113,7 @@ def compute_fft_fixed_N(y, fs, N_fft):
 
 def plot_and_save_spectrum(freq, amp, title, out_path):
     """振幅スペクトルを png で保存"""
-    plt.figure()
+    plt.figure(figsize=(20,3))
     plt.plot(freq, amp)
     plt.xlabel("Frequency [Hz]")
     plt.xlim(0, BAND_HIGH)
@@ -367,7 +367,7 @@ def main():
             y_tone_orig = extract_interval(y,     fs, t_start, t_end)
             y_tone_deno = extract_interval(y_deno, fs, t_start, t_end)
 
-            out_wav = out_dir / f"{label}_seg{seg_num}_{t_start:.3f}-{t_end:.3f}s_denoised.wav"
+            out_wav = out_dir / f"{label}_denoised.wav"
             sf.write(out_wav, y_tone_deno, int(fs))
 
             if N_FFT_SPEC is None:
@@ -428,10 +428,10 @@ def main():
             plt.xlim(0, BAND_HIGH)
             plt.ylabel("Amplitude", fontsize=30)
             plt.ylim(0, 0.02)
-            plt.title(f"Amplitude Spectrum(All) - {label}")
+            plt.title(f"Amplitude Spectrum -{label}")
             plt.grid(True)
             plt.tick_params(labelsize=24)
-            plt.legend()
+            #plt.legend()
             plt.tight_layout()
             plt.savefig(out_dir / "fft_tone_denoised_allSegments.png", dpi=200)
             plt.close()
@@ -515,7 +515,7 @@ def main():
         plt.xlim(0, BAND_HIGH)
         plt.ylabel("Amplitude")
         plt.ylim(0, 0.02)  # 必要に応じて変更
-        plt.title("Amplitude Spectrum (all) - seg1")
+        plt.title("Amplitude Spectrum (all)")
         plt.grid(True)
         #plt.legend(fontsize=20)
         plt.tight_layout()

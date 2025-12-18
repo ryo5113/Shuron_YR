@@ -14,32 +14,25 @@ FILE_CONFIGS = [
     {
         "path": "sakana.wav",
         "tone_ranges": [
-            (1.104, 1.345),   # 1回目
+            (1.104, 1.344),   # 1回目
         ],
         "label": "sa",
     },
     {
-        "path": "sakana.wav",
+        "path": "takana.wav",
         "tone_ranges": [
-            (1.345, 1.545),   # 2回目
+            (0.887, 1.108),   # 2回目
         ],
-        "label": "ka",
-    },
-    {
-        "path": "sakana.wav",
-        "tone_ranges": [
-            (1.545, 1.8),   # 3回目
-        ],
-        "label": "na",
+        "label": "ta",
     }
 ]
 
-OUTPUT_DIR  = "sakana"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "saVSta_1word"  # すべての結果をまとめるフォルダ
 
 #NOISE_PATH = "recordedSound_20251212_202635.wav"  # ノイズ参照音声ファイル
 
 # FFT表示帯域（Hz）
-BAND_HIGH   = 2000
+BAND_HIGH   = 3000
 
 # STFTパラメータ
 SR          = None      # None=元サンプリングのまま
@@ -99,12 +92,12 @@ def compute_fft_fixed_N(y, fs, N_fft):
 
 def plot_and_save_spectrum(freq, amp, title, out_path):
     """振幅スペクトルを png で保存"""
-    plt.figure()
+    plt.figure(figsize=(20,3))
     plt.plot(freq, amp)
     plt.xlabel("Frequency [Hz]")
     plt.xlim(0, BAND_HIGH)
     plt.ylabel("Amplitude")
-    plt.ylim(0, 0.04)  # 必要に応じて調整
+    plt.ylim(0, 0.05)  # 必要に応じて調整
     plt.title(title, fontsize=17)
     plt.grid(True)
     plt.tight_layout()
@@ -349,6 +342,9 @@ def main():
 
             y_tone_orig = extract_interval(y,     fs, t_start, t_end)
             y_tone_deno = extract_interval(y_deno, fs, t_start, t_end)
+
+            out_wav = out_dir / f"{label}_denoised.wav"
+            sf.write(out_wav, y_tone_deno, int(fs))
 
             if N_FFT_SPEC is None:
                 N_fft_spec = max(len(y_tone_orig), len(y_tone_deno))

@@ -8,6 +8,7 @@ from pupil_apriltags import Detector
 import os
 from concurrent.futures import ThreadPoolExecutor
 import time
+from collections import deque
 
 # === 追加: MediaPipe ===
 import mediapipe as mp
@@ -91,7 +92,7 @@ def create_pipeline(serial):
     # ★追加：RGBの明度を手動で揃える（全台同じ値にする）
     apply_manual_color_settings(
         profile,
-        exposure=625,        # ←ここはあなたが揃えたい値
+        exposure=300,        # ←ここはあなたが揃えたい値
         gain=16,              # ←必要なら
         white_balance=4500    # ←必要なら
     )
@@ -132,7 +133,7 @@ def frames_to_pointcloud(color_frame, depth_frame, profile):
 
     return pcd
 
-def icp_to_cam0(source_pcd, target_pcd, init_trans, voxel_size=0.005):
+def icp_to_cam0(source_pcd, target_pcd, init_trans, source_cam_index, voxel_size=0.005):
     #source_ds = source_pcd.voxel_down_sample(voxel_size) # ダウンサンプリング
     #target_ds = target_pcd.voxel_down_sample(voxel_size)
     radius = voxel_size * 2.0
@@ -160,7 +161,7 @@ def icp_to_cam0(source_pcd, target_pcd, init_trans, voxel_size=0.005):
         o3d.pipelines.registration.TransformationEstimationPointToPlane()
     )
 
-    print("ICP fitness:", icp_fine.fitness, "rmse:", icp_fine.inlier_rmse)
+    print(f"[ICP] Cam{source_cam_index} -> Cam0 | fitness: {icp_fine.fitness:.6f}  rmse: {icp_fine.inlier_rmse:.6f}")
     return icp_fine.transformation
 
 # =========================================================
@@ -284,6 +285,19 @@ def detect_lip_3d_for_camera(color_frame, depth_frame, profile, T_cam_to_cam0, c
     pix_left  = lm_to_pixel(LIP_LEFT_ID)
     pix_right = lm_to_pixel(LIP_RIGHT_ID)
 
+    # ===== 追加: 指定IDのプロット描画 =====
+    def draw_id_point(img, pix, color, r=4):
+        if pix is None:
+            return
+        u, v = pix
+        cv2.circle(img, (u, v), r, color, -1)
+
+    draw_id_point(annotated_image, pix_upper,  (0, 255, 255))  # BGR
+    draw_id_point(annotated_image, pix_lower,  (255, 255, 0))
+    draw_id_point(annotated_image, pix_left,   (0, 255, 0))
+    draw_id_point(annotated_image, pix_right,  (0, 0, 255))
+    # =====================================
+
     if any(p is None for p in [pix_upper, pix_lower, pix_left, pix_right]):
         return {"ok": False, "camera_index": cam_index}
 
@@ -389,8 +403,8 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
 
     # ICPでcam1/cam2をcam0へ
     base_pcd = pcds[0]
-    T_1_to_0_icp = icp_to_cam0(pcds[1], base_pcd, T_1_to_0)
-    T_2_to_0_icp = icp_to_cam0(pcds[2], base_pcd, T_2_to_0)
+    T_1_to_0_icp = icp_to_cam0(pcds[1], base_pcd, T_1_to_0, source_cam_index=1)
+    T_2_to_0_icp = icp_to_cam0(pcds[2], base_pcd, T_2_to_0, source_cam_index=2)
 
     # マージ
     pcd0_aligned = base_pcd
@@ -403,9 +417,9 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
     merged_pcd += pcd2_aligned
 
     # PLY保存（角度ラベル入り）
-    os.makedirs("PLY/ply5", exist_ok=True)
+    os.makedirs("PLY/ply7", exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"PLY/ply5/face_3cams_geom_merged_{int(pitch_label_deg)}deg_{timestamp}.ply"
+    filename = f"PLY/ply7/face_3cams_geom_merged_{int(pitch_label_deg)}deg_{timestamp}.ply"
     o3d.io.write_point_cloud(filename, merged_pcd)
     print(f"[SAVE] {filename}")
 
@@ -488,8 +502,8 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
         print(f"  高さ (上下唇Y差)         : {metrics['height']:.6f} [m]")
         print(f"  奥行 ( max(Z_left, Z_right) - min(Z_upper, Z_lower)): {metrics['depth']:.6f} [m]")
 
-        os.makedirs("PLY/ply5/lip_metrics", exist_ok=True)
-        txt_path = f"PLY/ply5/lip_metrics/lip_metrics_{int(pitch_label_deg)}deg_{timestamp}.txt"
+        os.makedirs("PLY/ply7/lip_metrics", exist_ok=True)
+        txt_path = f"PLY/ply7/lip_metrics/lip_metrics_{int(pitch_label_deg)}deg_{timestamp}.txt"
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(f"pitch_label_deg: {pitch_label_deg}\n")
             f.write(f"camera_index: {selected['camera_index']}\n")
@@ -508,9 +522,9 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
         # ★ここから画像保存
         annotated = selected.get("annotated_image", None)
         if annotated is not None:
-            os.makedirs("PLY/ply5/mediapipe_img", exist_ok=True)
+            os.makedirs("PLY/ply7/mediapipe_img", exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            img_path = f"PLY/ply5/mediapipe_img/lip_cam{selected['camera_index']}_{ts}.png"
+            img_path = f"PLY/ply7/mediapipe_img/lip_cam{selected['camera_index']}_{ts}.png"
             cv2.imwrite(img_path, annotated)
             print(f"[LIP] MediaPipe描画画像を保存しました: {img_path}")
 
@@ -523,6 +537,7 @@ def main():
     pipelines = []
     profiles = []
     detector = create_detector()
+    pitch_hist = deque(maxlen=10)  # 直近10フレームのpitch[deg]
 
     hold_count = 0
     hold_target = None
@@ -564,14 +579,18 @@ def main():
                 R = r.pose_R
                 roll, pitch, yaw = rotation_matrix_to_euler(R)
                 pitch = -pitch  # 頭の回転方向に合わせて符号反転
-                ok, pitch_deg, nearest_20 = match_pitch_targets(pitch)
+                pitch_deg = math.degrees(pitch)
+                pitch_hist.append(pitch_deg)
+                # 直近10フレームの移動平均（初期は要素数が10未満でも平均）
+                pitch_deg_smooth = sum(pitch_hist) / len(pitch_hist)
+                ok, pitch_deg_raw, nearest_20 = match_pitch_targets(math.radians(pitch_deg_smooth))
 
                 if ok:
                     matched_any = True
                     matched_target = nearest_20
 
                 if SHOW_CAM0_WINDOW:
-                    cv2.putText(frame_vis, f"pitch={math.degrees(pitch):.1f}",
+                    cv2.putText(frame_vis, f"pitch_angle={pitch_deg_smooth:.2f}",
                                 (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
                 break
 
