@@ -11,23 +11,38 @@ plt.close('all')
 # 解析したいファイルと有音区間（秒）をここに列挙
 # tone_ranges に 3 区間分 [ (start1, end1), (start2, end2), (start3, end3) ]
 FILE_CONFIGS = [
+    # {
+    #     "path": "sakana.wav",
+    #     "tone_ranges": [
+    #         (1.104, 1.344),   # 1回目
+    #     ],
+    #     "label": "sa",
+    # },
     {
-        "path": "sakana.wav",
+        "path": "sa_ta/sa/cleaned_audio.wav",
         "tone_ranges": [
-            (1.104, 1.344),   # 1回目
+            (0.0, 1.0),   # 1回目
         ],
         "label": "sa",
     },
     {
-        "path": "takana.wav",
+    
+        "path": "sa_ta/ta/cleaned_audio.wav",
         "tone_ranges": [
-            (0.887, 1.108),   # 2回目
+            (0.0, 1.0),   # 1回目
         ],
         "label": "ta",
     }
+    # {
+    #     "path": "takana.wav",
+    #     "tone_ranges": [
+    #         (0.887, 1.108),   # 2回目
+    #     ],
+    #     "label": "ta",
+    # }
 ]
 
-OUTPUT_DIR  = "saVSta_1word"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "saVSta(1sound)"  # すべての結果をまとめるフォルダ
 
 #NOISE_PATH = "recordedSound_20251212_202635.wav"  # ノイズ参照音声ファイル
 
@@ -97,7 +112,7 @@ def plot_and_save_spectrum(freq, amp, title, out_path):
     plt.xlabel("Frequency [Hz]")
     plt.xlim(0, BAND_HIGH)
     plt.ylabel("Amplitude")
-    plt.ylim(0, 0.05)  # 必要に応じて調整
+    plt.ylim(0, 0.025)  # 必要に応じて調整
     plt.title(title, fontsize=17)
     plt.grid(True)
     plt.tight_layout()
@@ -359,7 +374,7 @@ def main():
                 orig_name = "fft_tone_original.png"
                 deno_name = "fft_tone_denoised.png"
                 orig_title = f"Amplitude Spectrum ({label} - seg1 Original)"
-                deno_title = f"Amplitude Spectrum ({label} - analysis{seg_num})"
+                deno_title = f"Amplitude Spectrum ({label})"
             else:
                 orig_name = f"fft_tone{seg_num}_original.png"
                 deno_name = f"fft_tone{seg_num}_denoised.png"
@@ -484,14 +499,14 @@ def main():
 
     # ---- 振動スペクトル（ノイズ除去後）の重ね描き（1区間目のみ）----
     if overlay_data:
-        plt.figure()
+        plt.figure(figsize=(20,3))
         for freq, amp, label in overlay_data:
             plt.plot(freq, amp, label=label)
         plt.xlabel("Frequency [Hz]")
         plt.xlim(0, BAND_HIGH)
         plt.ylabel("Amplitude")
-        plt.ylim(0, 0.04)  # 必要に応じて変更
-        plt.title("Amplitude Spectrum (all) - seg1")
+        plt.ylim(0, 0.03)  # 必要に応じて変更
+        plt.title("Amplitude Spectrum (sound)")
         plt.grid(True)
         plt.legend(fontsize=20)
         plt.tight_layout()

@@ -1,0 +1,20 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: sa_ta/sa/cleaned_audio.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 13
+segment_1: start_time=0.405333s, end_time=0.778667s, duration=0.373333s
+segment_2: start_time=1.472000s, end_time=1.488000s, duration=0.016000s
+segment_3: start_time=1.941333s, end_time=2.144000s, duration=0.202667s
+segment_4: start_time=3.349333s, end_time=3.514667s, duration=0.165333s
+segment_5: start_time=4.832000s, end_time=5.008000s, duration=0.176000s
+segment_6: start_time=6.373333s, end_time=6.570667s, duration=0.197333s
+segment_7: start_time=7.941333s, end_time=8.149333s, duration=0.208000s
+segment_8: start_time=9.397333s, end_time=9.573333s, duration=0.176000s
+segment_9: start_time=10.234667s, end_time=10.288000s, duration=0.053333s
+segment_10: start_time=10.885333s, end_time=11.066667s, duration=0.181333s
+segment_11: start_time=12.325333s, end_time=12.485333s, duration=0.160000s
+segment_12: start_time=13.744000s, end_time=13.973333s, duration=0.229333s
+segment_13: start_time=14.949333s, end_time=15.493333s, duration=0.544000s
+mean_duration = 0.206359s

@@ -465,8 +465,8 @@ def main():
         # ② 各 tone_range ごとにスペクトログラムを切り出して保存
         for seg_idx, (t_start, t_end) in enumerate(tone_ranges):
             seg_num = seg_idx + 1
-            seg_title = f"Spectrogram ({label} - seg{seg_num})"
-            seg_path  = out_dir / f"spectrogram_denoised_seg{seg_num}.png"
+            seg_title = f"Spectrogram ({label})"
+            seg_path  = out_dir / f"spectrogram_denoised.png"
             plot_spectrogram_rel_segment(
                 M_deno, fs=fs, hop=HOP,
                 t_start=t_start, t_end=t_end,

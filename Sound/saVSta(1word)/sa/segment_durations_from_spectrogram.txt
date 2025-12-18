@@ -1,0 +1,9 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: sakana.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 2
+segment_1: start_time=0.362667s, end_time=1.770667s, duration=1.408000s
+segment_2: start_time=2.106667s, end_time=2.970667s, duration=0.864000s
+mean_duration = 1.136000s

@@ -27,6 +27,54 @@ FILE_CONFIGS = [
         ],
         "label": "sa",
     },
+    # {
+    #     "path": "sha.wav",
+    #     "tone_ranges": [
+    #         (0.0, 1.0),   # 1回目
+    #         (1.5, 2.5),   # 2回目
+    #         (3.0, 4.0),   # 3回目
+    #         (4.5, 5.5),   # 4回目
+    #         (6.0, 7.0),   # 5回目
+    #         (7.5, 8.5),   # 6回目
+    #         (9.0, 10.0),  # 7回目
+    #         (10.5, 11.5),  # 8回目
+    #         (12.0, 13.0),  # 9回目
+    #         (13.5, 14.5),  # 10回目
+    #     ],
+    #     "label": "sha",
+    # },
+    # {
+    #     "path": "tha.wav",
+    #     "tone_ranges": [
+    #         (0.0, 1.0),   # 1回目
+    #         (1.5, 2.5),   # 2回目
+    #         (3.0, 4.0),   # 3回目
+    #         (4.5, 5.5),   # 4回目
+    #         (6.0, 7.0),   # 5回目
+    #         (7.5, 8.5),   # 6回目
+    #         (9.0, 10.0),  # 7回目
+    #         (10.5, 11.5),  # 8回目
+    #         (12.0, 13.0),  # 9回目
+    #         (13.5, 14.5),  # 10回目
+    #     ],
+    #     "label": "tha",
+    # },
+    # {
+    #     "path": "tya.wav",
+    #     "tone_ranges": [
+    #         (0.0, 1.0),   # 1回目
+    #         (1.5, 2.5),   # 2回目
+    #         (3.0, 4.0),   # 3回目
+    #         (4.5, 5.5),   # 4回目
+    #         (6.0, 7.0),   # 5回目
+    #         (7.5, 8.5),   # 6回目
+    #         (9.0, 10.0),  # 7回目
+    #         (10.5, 11.5),  # 8回目
+    #         (12.0, 13.0),  # 9回目
+    #         (13.5, 14.5),  # 10回目
+    #     ],
+    #     "label": "tya",
+    # },
     {
         "path": "ta.wav",
         "tone_ranges": [
@@ -45,7 +93,7 @@ FILE_CONFIGS = [
     }
 ]
 
-OUTPUT_DIR  = "saVSta_1sound"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "sa_ta(sata)"  # すべての結果をまとめるフォルダ
 
 # FFT表示帯域（Hz）
 BAND_HIGH   = 3000
@@ -63,7 +111,7 @@ N_FFT_SPEC  = None
 ZERO_MEAN   = True
 
 # 振幅の閾値(>= この値を 1 とする)
-THRESH_AMP = 0.01
+THRESH_AMP = 0.1
 # ========================
 
 
@@ -108,13 +156,13 @@ def compute_fft_fixed_N(y, fs, N_fft):
 
 def plot_and_save_spectrum(freq, amp, title, out_path):
     """振幅スペクトルを png で保存"""
-    plt.figure()
+    plt.figure(figsize=(20,3))
     plt.plot(freq, amp)
-    plt.xlabel("Frequency [Hz]")
+    plt.xlabel("Frequency [Hz]", fontsize=20)
     plt.xlim(0, BAND_HIGH)
-    plt.ylabel("Amplitude")
-    plt.ylim(0, 0.04)  # 必要に応じて調整
-    plt.title(title, fontsize=17)
+    plt.ylabel("Amplitude", fontsize=20)
+    plt.ylim(0, 0.01)  # 必要に応じて調整
+    plt.title(title, fontsize=20)
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(out_path, dpi=200)
@@ -550,13 +598,13 @@ def main():
         plt.close()
 
     if mean_overlay_data:
-        plt.figure()
+        plt.figure(figsize=(20,3))
         for freq, amp, label in mean_overlay_data:
             plt.plot(freq, amp, label=label)
         plt.xlabel("Frequency [Hz]")
         plt.xlim(0, BAND_HIGH)
         plt.ylabel("Amplitude")
-        plt.ylim(0, 0.01)
+        plt.ylim(0, 0.03)
         plt.title("Amplitude Spectrum (mean) - all")
         plt.grid(True)
         plt.legend(fontsize=20)
