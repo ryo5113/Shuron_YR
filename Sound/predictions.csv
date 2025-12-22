@@ -1,0 +1,2 @@
+path,pred_label,proba_sa,proba_sha,proba_ta,proba_tha,proba_tya
+_predict_images\tya_test_seg01.png,tha,0.024353278450061605,1.0482121965957577e-05,4.846518181722539e-06,0.9756247347522407,6.6581575500740735e-06

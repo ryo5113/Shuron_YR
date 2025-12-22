@@ -519,6 +519,32 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
 
         print(f"[LIP] 唇形状指標をテキスト保存しました: {txt_path}")
 
+                # ==== 追加: 口周辺点群の切り出し（AABB crop） ====
+        # 4点からAABBを作り、少しマージンを付けて口周辺のみ抽出
+        pts4 = np.stack([pts["upper"], pts["lower"], pts["left"], pts["right"]], axis=0)
+
+        min_xyz = pts4.min(axis=0)
+        max_xyz = pts4.max(axis=0)
+
+        # マージン（メートル）：データに合わせて調整する前提
+        # まずは「幅・高さ」を基準に可変マージンにする（距離変動に比較的強くする）
+        mx = max(metrics["width"]  * 1.0, 0.01)   # 例: 幅の1.0倍（最低1cm）
+        my = max(metrics["height"] * 2.0, 0.01)   # 例: 高さの2.0倍（最低1cm）
+        mz = max(metrics["width"]  * 1.0, 0.01)   # 例: 幅の1.0倍（最低1cm）
+
+        min_xyz = min_xyz - np.array([mx, my, mz], dtype=np.float64)
+        max_xyz = max_xyz + np.array([mx, my, mz], dtype=np.float64)
+
+        bbox = o3d.geometry.AxisAlignedBoundingBox(min_xyz, max_xyz)
+
+        mouth_pcd = merged_pcd.crop(bbox)  # Open3D公式のcrop API
+
+        os.makedirs("PLY/ply7/mouth", exist_ok=True)
+        mouth_filename = f"PLY/ply7/mouth/mouth_{int(pitch_label_deg)}deg_{timestamp}.ply"
+        o3d.io.write_point_cloud(mouth_filename, mouth_pcd)
+        print(f"[SAVE] mouth pcd: {mouth_filename}")
+        # ===============================================
+
         # ★ここから画像保存
         annotated = selected.get("annotated_image", None)
         if annotated is not None:

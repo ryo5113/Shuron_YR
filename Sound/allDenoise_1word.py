@@ -19,20 +19,20 @@ FILE_CONFIGS = [
     #     "label": "sa",
     # },
     {
-        "path": "sa_ta/sa/cleaned_audio.wav",
+        "path": "tya_test.wav",
         "tone_ranges": [
-            (0.0, 1.0),   # 1回目
+            (0.5, 1.5),   # 1回目
         ],
-        "label": "sa",
-    },
-    {
-    
-        "path": "sa_ta/ta/cleaned_audio.wav",
-        "tone_ranges": [
-            (0.0, 1.0),   # 1回目
-        ],
-        "label": "ta",
+        "label": "tya",
     }
+    # {
+    
+    #     "path": "sa_ta/ta/cleaned_audio.wav",
+    #     "tone_ranges": [
+    #         (0.0, 1.0),   # 1回目
+    #     ],
+    #     "label": "ta",
+    # }
     # {
     #     "path": "takana.wav",
     #     "tone_ranges": [
@@ -42,7 +42,7 @@ FILE_CONFIGS = [
     # }
 ]
 
-OUTPUT_DIR  = "saVSta(1sound)"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "test"  # すべての結果をまとめるフォルダ
 
 #NOISE_PATH = "recordedSound_20251212_202635.wav"  # ノイズ参照音声ファイル
 

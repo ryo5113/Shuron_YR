@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # 読み込む PLY ファイル名
-PLY_PATH = "PLY/ply7/face_3cams_geom_merged_0deg_20251218_182521.ply"
+PLY_PATH = "PLY/ply7/mouth/mouth_-20deg_20251222_195628.ply"
 
 # カメラから顔中心までの距離 [m]（頭をその場回転させているという前提）
 PIVOT_Z = 0.6
@@ -24,7 +24,7 @@ def main():
     
     # ------------ ここを PLYごとに設定する ------------
     # パス内の角度を指定
-    angle_deg = 0.0
+    angle_deg = -20.0
     # ---------------------------------------------------
 
     theta = np.deg2rad(angle_deg)
