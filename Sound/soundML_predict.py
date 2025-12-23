@@ -71,7 +71,19 @@ def main():
 
     pred = model.predict(X)
     proba = model.predict_proba(X) if hasattr(model, "predict_proba") else None
-    classes = list(model.classes_) if hasattr(model, "classes_") else []
+    classes = list(model.classes_) if hasattr(model, "classes_") else [] # softmax用
+
+    # classes = list(model.classes_) if hasattr(model, "classes_") else [] # 1vs1用
+
+    # # OvOでも出せる「クラス別スコア」
+    # scores = model.decision_function(X) if hasattr(model, "decision_function") else None
+
+    # # 安全のため2次元化（多クラスは通常 (n_samples, n_classes)）
+    # if scores is not None:
+    #     scores = np.asarray(scores)
+    #     if scores.ndim == 1:
+    #         # 2クラスの場合など（今回は5クラス想定なので基本ここには来ません）
+    #         scores = scores.reshape(-1, 1)
 
     out_csv = Path(args.out_csv)
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
@@ -83,13 +95,21 @@ def main():
             row = [str(p), str(pred[i])]
             if proba is not None and classes:
                 row += [float(x) for x in proba[i]]
-            writer.writerow(row)
+            writer.writerow(row) # softmax用
 
-    print("=== PREDICT DONE ===")
-    print("out_csv:", out_csv.resolve())
-    for p, yhat in zip(inputs, pred):
-        print(p.name, "->", yhat)
+        # header = ["path", "pred_label"] + [f"score_{c}" for c in classes]
+        # writer.writerow(header)
 
+        # for i, p in enumerate(inputs):
+        #     row = [str(p), str(pred[i])]
+        #     if scores is not None and classes:
+        #         row += [float(x) for x in scores[i]]
+        #     writer.writerow(row) # 1vs1の場合
+
+            print("=== PREDICT DONE ===")
+            print("out_csv:", out_csv.resolve())
+            for p, yhat in zip(inputs, pred):
+                print(p.name, "->", yhat) # 1vs1の場合
 
 if __name__ == "__main__":
     main()

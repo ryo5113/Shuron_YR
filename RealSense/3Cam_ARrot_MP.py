@@ -528,9 +528,9 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
 
         # マージン（メートル）：データに合わせて調整する前提
         # まずは「幅・高さ」を基準に可変マージンにする（距離変動に比較的強くする）
-        mx = max(metrics["width"]  * 1.0, 0.01)   # 例: 幅の1.0倍（最低1cm）
-        my = max(metrics["height"] * 2.0, 0.01)   # 例: 高さの2.0倍（最低1cm）
-        mz = max(metrics["width"]  * 1.0, 0.01)   # 例: 幅の1.0倍（最低1cm）
+        mx = max(metrics["width"]  * 0.8, 0.01)   # 例: 幅の1.0倍（最低1cm）
+        my = max(metrics["height"] * 0.8, 0.01)   # 例: 高さの2.0倍（最低1cm）
+        mz = max(metrics["width"]  * 0.8, 0.01)   # 例: 幅の1.0倍（最低1cm）
 
         min_xyz = min_xyz - np.array([mx, my, mz], dtype=np.float64)
         max_xyz = max_xyz + np.array([mx, my, mz], dtype=np.float64)

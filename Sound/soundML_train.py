@@ -20,6 +20,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.multiclass import OneVsOneClassifier
 import joblib
 
 
@@ -29,7 +30,7 @@ IMG_H = 64
 IMG_W = 256
 GRAYSCALE = True
 RANDOM_STATE = 42
-TEST_SIZE = 0.1  # 教師9：評価1 固定
+TEST_SIZE = 0.3  # 教師9：評価1 固定
 MAX_ITER = 2000
 # =========================================
 
@@ -99,8 +100,13 @@ def build_model() -> Pipeline:
             max_iter=MAX_ITER,
             multi_class="auto"
         ))
-    ])
+    ]) # 多クラス分類（ソフトマックス）
 
+    # base_lr = LogisticRegression(max_iter=MAX_ITER)  # 2クラス用LRがペアごとに学習される
+    # return Pipeline(steps=[
+    #     ("scaler", StandardScaler()),
+    #     ("clf", OneVsOneClassifier(base_lr))
+    # ]) # 多クラス分類（OneVsOne）
 
 def train_and_eval(X: np.ndarray, y: np.ndarray) -> tuple[Pipeline, dict]:
     """

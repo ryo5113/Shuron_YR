@@ -12,8 +12,8 @@ from PIL import Image, ImageChops
 # ======================
 # 設定（ここだけ変えればOK）
 # ======================
-input_path = r"./tya_test.wav"
-output_wav_path = r"./tya_denoised.wav"
+input_path = r"takana/ta/cleaned_audio.wav"
+output_wav_path = r"takana/ta/ta_denoised2.wav"
 
 # ★追加：推論用スペクトログラム画像の出力先
 output_img_dir = r"./_predict_images"
@@ -34,7 +34,7 @@ ML_CMAP     = "coolwarm"
 
 # ★追加：1秒まるごと画像化するならこのまま
 # （必要なら 0.55～0.85 のように変更してください）
-tone_ranges = [(1.3, 2.3)]  # (開始秒, 終了秒) のリスト
+tone_ranges = [(0.608, 1.108)]  # (開始秒, 終了秒) のリスト
 # ======================
 
 

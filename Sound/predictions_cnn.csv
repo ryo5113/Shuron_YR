@@ -1,0 +1,2 @@
+path,pred_label,proba_sa,proba_sha,proba_ta,proba_tha,proba_tya
+_predict_images\cleaned_audio_ta.png,sha,3.125741310748553e-14,0.9999996423721313,2.546628706523446e-11,3.161951056540602e-08,3.159040886657749e-07

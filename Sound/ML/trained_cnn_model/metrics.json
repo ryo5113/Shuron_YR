@@ -1,0 +1,60 @@
+{
+  "accuracy": 0.6571428571428571,
+  "labels": [
+    "sa",
+    "sha",
+    "ta",
+    "tha",
+    "tya"
+  ],
+  "confusion_matrix": [
+    [
+      14,
+      0,
+      5,
+      2,
+      0
+    ],
+    [
+      0,
+      14,
+      1,
+      0,
+      6
+    ],
+    [
+      2,
+      1,
+      8,
+      10,
+      0
+    ],
+    [
+      2,
+      0,
+      1,
+      18,
+      0
+    ],
+    [
+      0,
+      2,
+      3,
+      1,
+      15
+    ]
+  ],
+  "classification_report": "              precision    recall  f1-score   support\n\n          sa       0.78      0.67      0.72        21\n         sha       0.82      0.67      0.74        21\n          ta       0.44      0.38      0.41        21\n         tha       0.58      0.86      0.69        21\n         tya       0.71      0.71      0.71        21\n\n    accuracy                           0.66       105\n   macro avg       0.67      0.66      0.65       105\nweighted avg       0.67      0.66      0.65       105\n",
+  "n_samples": 350,
+  "n_train": 245,
+  "n_test": 105,
+  "img_h": 64,
+  "img_w": 256,
+  "grayscale": true,
+  "test_size": 0.3,
+  "random_state": 42,
+  "epochs": 50,
+  "batch_size": 32,
+  "lr": 0.001,
+  "device": "cpu"
+}

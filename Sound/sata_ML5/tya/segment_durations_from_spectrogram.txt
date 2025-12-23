@@ -1,0 +1,26 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: tya.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 19
+segment_1: start_time=0.357333s, end_time=1.530667s, duration=1.173333s
+segment_2: start_time=1.904000s, end_time=1.984000s, duration=0.080000s
+segment_3: start_time=2.314667s, end_time=2.528000s, duration=0.213333s
+segment_4: start_time=2.896000s, end_time=2.906667s, duration=0.010667s
+segment_5: start_time=3.141333s, end_time=3.162667s, duration=0.021333s
+segment_6: start_time=3.296000s, end_time=3.488000s, duration=0.192000s
+segment_7: start_time=4.288000s, end_time=4.501333s, duration=0.213333s
+segment_8: start_time=5.237333s, end_time=5.440000s, duration=0.202667s
+segment_9: start_time=6.245333s, end_time=6.469333s, duration=0.224000s
+segment_10: start_time=7.018667s, end_time=7.093333s, duration=0.074667s
+segment_11: start_time=7.285333s, end_time=7.504000s, duration=0.218667s
+segment_12: start_time=8.026667s, end_time=8.042667s, duration=0.016000s
+segment_13: start_time=8.298667s, end_time=8.517333s, duration=0.218667s
+segment_14: start_time=9.296000s, end_time=9.306667s, duration=0.010667s
+segment_15: start_time=9.354667s, end_time=9.589333s, duration=0.234667s
+segment_16: start_time=10.357333s, end_time=10.581333s, duration=0.224000s
+segment_17: start_time=11.237333s, end_time=11.338667s, duration=0.101333s
+segment_18: start_time=11.392000s, end_time=11.488000s, duration=0.096000s
+segment_19: start_time=11.520000s, end_time=11.541333s, duration=0.021333s
+mean_duration = 0.186667s

@@ -1,0 +1,37 @@
+{
+  "task": "binary_u_vs_not_u",
+  "positive_dir_names": [
+    "U",
+    "u",
+    "う"
+  ],
+  "data_root": "PLY\\ml\\mouth_voxel64_rgb",
+  "input_shape": [
+    3,
+    64,
+    64,
+    64
+  ],
+  "split": {
+    "train": 11,
+    "val": 2
+  },
+  "config": {
+    "DATA_ROOT": "PLY/ml/mouth_voxel64_rgb",
+    "POSITIVE_DIR_NAMES": [
+      "U",
+      "u",
+      "う"
+    ],
+    "OUT_DIR": "PLY/ML3D",
+    "EPOCHS": 50,
+    "BATCH_SIZE": 8,
+    "LEARNING_RATE": 0.001,
+    "WEIGHT_DECAY": 0.0001,
+    "VAL_RATIO": 0.2,
+    "SEED": 42,
+    "DEVICE": "cpu",
+    "NUM_WORKERS": 0,
+    "PIN_MEMORY": true
+  }
+}
