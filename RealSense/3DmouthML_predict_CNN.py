@@ -16,13 +16,13 @@ CONFIG = {
     "checkpoint_path": "PLY/ML3D/2type/best_model.pth",
 
     # A single .npz file path OR a directory that contains .npz files
-    "input_path": "PLY/ml/mouth_voxel64_rgb/notU.npz",
+    "input_path": "PLY/ml/mouth_voxel64_rgb/NotU.npz",
 
     # If input_path is a directory, whether to search recursively
     "recursive": True,
 
     # Threshold on sigmoid(logit) to decide 'u'
-    "threshold": 0.5,
+    "threshold": 0.7,
 
     # Device: "cuda" or "cpu" ("cuda" will be used if available)
     "device": "cuda",

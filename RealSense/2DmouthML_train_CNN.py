@@ -31,14 +31,14 @@ CONFIG = {
     # 例:
     #   ML2D/2type/U/*.png
     #   ML2D/2type/NotU/*.png
-    "DATASET_ROOT": "ML2D/2type",
+    "DATASET_ROOT": "PLY/ML2D/2type",
 
     # 「う」とみなすフォルダ名（親フォルダ名）
     "POSITIVE_DIR_NAMES": {"U", "u", "う"},
 
     # 学習に使うビュー（ファイル名末尾が "__XY.png" のようになっている想定）
     # None なら全pngを使用
-    "USE_VIEWS": ["XY", "ZY"],   # 例: ["XY","ZY"] / ["XY","ZY","XZ"] / None
+    "USE_VIEWS": ["XY","ZY","XZ"],   # 例: ["XY","ZY"] / ["XY","ZY","XZ"] / None
 
     # 入力サイズ
     "IMG_H": 224,
@@ -52,7 +52,7 @@ CONFIG = {
     "RANDOM_STATE": 42,
     "TEST_SIZE": 0.2,
     "BATCH_SIZE": 32,
-    "EPOCHS": 60,
+    "EPOCHS": 30,
     "LR": 1e-3,
 
     # 保存先
@@ -163,9 +163,9 @@ class SimpleCNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
 
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
+            # nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            # nn.ReLU(inplace=True),
+            # nn.MaxPool2d(2),
         )
 
         with torch.no_grad():

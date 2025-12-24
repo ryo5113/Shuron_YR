@@ -59,9 +59,9 @@ class SimpleCNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
 
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
+            # nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            # nn.ReLU(inplace=True),
+            # nn.MaxPool2d(2),
         )
 
         with torch.no_grad():
@@ -71,10 +71,10 @@ class SimpleCNN(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(feat_dim, 256),
+            nn.Linear(feat_dim, 64),
             nn.ReLU(inplace=True),
             nn.Dropout(p=0.3),
-            nn.Linear(256, n_classes),
+            nn.Linear(64, n_classes),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

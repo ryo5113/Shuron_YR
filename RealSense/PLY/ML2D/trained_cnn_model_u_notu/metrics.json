@@ -1,0 +1,40 @@
+{
+  "accuracy": 0.8666666666666667,
+  "labels": [
+    "NotU",
+    "U"
+  ],
+  "confusion_matrix": [
+    [
+      6,
+      2
+    ],
+    [
+      0,
+      7
+    ]
+  ],
+  "classification_report": "              precision    recall  f1-score   support\n\n        NotU       1.00      0.75      0.86         8\n           U       0.78      1.00      0.88         7\n\n    accuracy                           0.87        15\n   macro avg       0.89      0.88      0.87        15\nweighted avg       0.90      0.87      0.87        15\n",
+  "n_samples": 74,
+  "n_train": 59,
+  "n_test": 15,
+  "img_h": 224,
+  "img_w": 224,
+  "grayscale": false,
+  "test_size": 0.2,
+  "random_state": 42,
+  "epochs": 30,
+  "batch_size": 32,
+  "lr": 0.001,
+  "device": "cpu",
+  "use_views": [
+    "XY",
+    "ZY",
+    "XZ"
+  ],
+  "positive_dir_names": [
+    "U",
+    "u",
+    "う"
+  ]
+}

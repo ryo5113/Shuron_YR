@@ -3,7 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # 読み込む PLY ファイル名
-PLY_PATH = "PLY/ply7/mouth/mouth_20deg_20251223_174021.ply"
+#PLY_PATH = "PLY/ml/face_3cams_geom_merged_camcolor_0deg_20251224_172740.ply" # 元の顔全体点群（3台カメラ合成・色付き）
+#PLY_PATH = "PLY/ml/raw_face/face_cam1_raw_0deg_20251224_172740.ply" # 元の顔全体点群（カメラ1台分・色付き）
+PLY_PATH = "PLY/ml/mouth/NotU/mouth_-20deg_20251224_204522.ply" # 元の口元点群（カメラ1台分・色付き）
+#PLY_PATH = "PLY/ml/mouth/mouth_camcolor_0deg_20251224_174343.ply" # 元の口元点群（カメラ1台分・色付き）
 
 # カメラから顔中心までの距離 [m]（頭をその場回転させているという前提）
 PIVOT_Z = 0.6
@@ -24,7 +27,7 @@ def main():
     
     # ------------ ここを PLYごとに設定する ------------
     # パス内の角度を指定
-    angle_deg = 20.0
+    angle_deg = -20.0
     # ---------------------------------------------------
 
     theta = np.deg2rad(angle_deg)
@@ -56,7 +59,7 @@ def main():
 
     # 1段目: XY 平面
     axes[0].scatter(-points[:, 0], points[:, 1], c=colors, s=0.5)
-    axes[0].set_xlim([-0.08, 0.07])
+    axes[0].set_xlim([-0.07, 0.08])
     axes[0].set_ylim([-0.15, 0.0])
     axes[0].set_xlabel('X [m]', fontsize=20)
     axes[0].set_ylabel('Y [m]', fontsize=20)
@@ -66,7 +69,7 @@ def main():
 
     # 2段目: XZ 平面
     axes[1].scatter(-points[:, 0], points[:, 2], c=colors, s=0.5)
-    axes[1].set_xlim([-0.08, 0.07])
+    axes[1].set_xlim([-0.07, 0.08])
     axes[1].set_ylim([0.45, 0.6])
     axes[1].set_xlabel('X [m]', fontsize=20)
     axes[1].set_ylabel('Z [m]', fontsize=20)
@@ -77,7 +80,7 @@ def main():
     # 3段目: ZY 平面
     axes[2].scatter(points[:, 2], points[:, 1], c=colors, s=0.5)
     axes[2].set_xlim([0.45, 0.6])
-    axes[2].set_ylim([-0.1, 0.0])
+    axes[2].set_ylim([-0.15, 0.0])
     axes[2].set_xlabel('Z [m]', fontsize=20)
     axes[2].set_ylabel('Y [m]', fontsize=20)
     axes[2].set_title('mouth shape(ZY)')
@@ -85,8 +88,8 @@ def main():
     axes[2].grid(alpha=0.2)
 
     plt.tight_layout()
-    plt.savefig("PLY/ply7/U_20deg_3cam_mouth.png")
-    #plt.show()
+    #plt.savefig("PLY/ply7/U_20deg_3cam_mouth.png")
+    plt.show()
 
 if __name__ == "__main__":
     main()

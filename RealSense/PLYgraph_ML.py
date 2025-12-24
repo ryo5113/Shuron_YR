@@ -6,10 +6,10 @@ from pathlib import Path
 # =========================
 # 手動設定（ここだけ編集）
 # =========================
-PLY_PATH = "PLY/ml/mouth/mouth_-20deg_20251223_200401.ply"
+PLY_PATH = "PLY/ml/mouth/mouth_-20deg_20251224_195851.ply"
 
 # PLYごとの角度（あなたの元スクリプト踏襲）
-ANGLE_DEG = -20.0
+ANGLE_DEG = 20.0
 
 # 回転中心（カメラから顔中心までの距離 [m]）
 PIVOT_Z = 0.6
@@ -17,19 +17,19 @@ PIVOT_Z = 0.6
 # 学習データ保存先（ラベルフォルダの“親”）
 # 例: ML2D/2type/U, ML2D/2type/NotU を作りたい → OUTPUT_DATASET_ROOT="ML2D/2type"
 OUTPUT_DATASET_ROOT = "PLY/ML2D/2type"
-LABEL_NAME = "U"   # "U" or "NotU"
+LABEL_NAME = "NotU"   # "U" or "NotU"
 
 # 画像保存の見た目（元 PLYgraph.py を踏襲）
 POINT_SIZE = 0.5
 DPI = 200
 
 # 軸範囲（あなたの PLYgraph.py の設定を踏襲して必要なら調整）
-XY_XLIM = (-0.08, 0.07)
+XY_XLIM = (-0.07, 0.08)
 XY_YLIM = (-0.15, 0.0)
-XZ_XLIM = (-0.08, 0.07)
+XZ_XLIM = (-0.07, 0.08)
 XZ_YLIM = (0.45, 0.6)
 ZY_XLIM = (0.45, 0.6)
-ZY_YLIM = (-0.1, 0.0)
+ZY_YLIM = (-0.15, 0.0)
 # =========================
 
 
@@ -53,21 +53,25 @@ def rotate_points_about_pivot_y(points: np.ndarray, angle_deg: float, pivot_z: f
     return points_rot + pivot
 
 
-def save_view_scatter(x, y, colors, xlim, ylim, title, out_path: Path):
+def save_view_scatter(x, y, colors, xlim, ylim, out_path: Path):
     fig = plt.figure(figsize=(6, 6), dpi=DPI)
-    ax = fig.add_subplot(111)
 
+    # 余白ゼロでAxesを全面に敷く
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_axis_off()  # 軸・目盛り・ラベルを全部消す
+
+    # 点群のみ描画
     ax.scatter(x, y, c=colors, s=POINT_SIZE)
+
+    # （推奨）スケール統一のためxlim/ylimは残す
     ax.set_xlim(list(xlim))
     ax.set_ylim(list(ylim))
-    ax.set_title(title)
-    ax.grid(alpha=0.2)
 
-    plt.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(str(out_path), dpi=DPI)
-    plt.close(fig)
 
+    # bbox_inches="tight" と pad_inches=0 で余白除去
+    fig.savefig(str(out_path), dpi=DPI, bbox_inches="tight", pad_inches=0)
+    plt.close(fig)
 
 def main():
     ply_path = Path(PLY_PATH)
@@ -98,7 +102,6 @@ def main():
         colors=colors,
         xlim=XY_XLIM,
         ylim=XY_YLIM,
-        title="mouth shape(XY)",
         out_path=out_xy
     )
 
@@ -110,7 +113,6 @@ def main():
         colors=colors,
         xlim=XZ_XLIM,
         ylim=XZ_YLIM,
-        title="mouth shape(XZ)",
         out_path=out_xz
     )
 
@@ -122,7 +124,6 @@ def main():
         colors=colors,
         xlim=ZY_XLIM,
         ylim=ZY_YLIM,
-        title="mouth shape(ZY)",
         out_path=out_zy
     )
 

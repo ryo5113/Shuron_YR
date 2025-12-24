@@ -75,7 +75,7 @@ SERIALS = [
     "913522070157",  # カメラ1
     "108322073166",  # カメラ2
 ]
-NUM_FRAMES = 50  # 最後のフレームを使用
+NUM_FRAMES = 30  # 最後のフレームを使用
 
 def make_extrinsic(tx, ty, tz, angle_deg):
     T = np.eye(4, dtype=np.float64)
@@ -582,9 +582,9 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
 
         # マージン（メートル）：データに合わせて調整する前提
         # 「幅・高さ」を基準に可変マージン（最低1cm）
-        mx = max(metrics["width"]  * 0.8, 0.01)
-        my = max(metrics["height"] * 0.8, 0.01)
-        mz = max(metrics["width"]  * 0.8, 0.01)
+        mx = max(metrics["width"]  * 0.5, 0.01)
+        my = max(metrics["height"] * 0.5, 0.01)
+        mz = max(metrics["width"]  * 0.5, 0.01)
 
         min_xyz = min_xyz - np.array([mx, my, mz], dtype=np.float64)
         max_xyz = max_xyz + np.array([mx, my, mz], dtype=np.float64)

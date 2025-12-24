@@ -33,7 +33,7 @@ GRAYSCALE = True
 RANDOM_STATE = 42
 TEST_SIZE = 0.3          # 7:3 など（あなたの運用に合わせる）
 BATCH_SIZE = 32
-EPOCHS = 50
+EPOCHS = 100
 LR = 1e-3
 # =========================================
 
@@ -119,7 +119,7 @@ class SimpleCNN(nn.Module):
     def __init__(self, in_ch: int, n_classes: int):
         super().__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(in_ch, 16, kernel_size=3, padding=1),
+            nn.Conv2d(in_ch, 16, kernel_size=3, padding=1), # 引数は以下の通り（in_ch=1 or 3, out_ch=16）
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2),  # 32x128
 
@@ -127,10 +127,10 @@ class SimpleCNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2),  # 16x64
 
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),  # 8x32
-        )
+            # nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            # nn.ReLU(inplace=True),
+            # nn.MaxPool2d(2),  # 8x32
+        ) # 畳み込み2層
 
         # flatten次元を動的に確定
         with torch.no_grad():
@@ -140,11 +140,11 @@ class SimpleCNN(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(feat_dim, 256),
+            nn.Linear(feat_dim, 64),
             nn.ReLU(inplace=True),
             nn.Dropout(p=0.3),
-            nn.Linear(256, n_classes),
-        )
+            nn.Linear(64, n_classes),
+        ) # 学習可能は合計５層（全結合２層＋畳み込み３層）
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)
@@ -215,7 +215,7 @@ def plot_learning_curve(epochs, train_acc, val_acc, out_path: Path) -> None:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_root", type=str, default="ML/_ml_dataset",
+    parser.add_argument("--dataset_root", type=str, default="ML/ML_dataset_globalref",
                         help="教師データフォルダ（label/*.png 構造）")
     parser.add_argument("--model_dir", type=str, default="ML/trained_cnn_model",
                         help="学習済みモデルの保存先フォルダ")
@@ -229,7 +229,7 @@ def main():
 
     samples, label_names = list_samples(dataset_root)
     n_classes = len(label_names)
-    in_ch = 1 if GRAYSCALE else 3
+    in_ch = 1 if GRAYSCALE else 3 # 入力チャネル数（デフォルトはグレースケール）
 
     # train/test split（ファイル単位で分割）
     y_all = np.array([s.label_idx for s in samples], dtype=int)

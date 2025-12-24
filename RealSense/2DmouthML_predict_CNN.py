@@ -75,9 +75,9 @@ class SimpleCNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
 
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
+            # nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            # nn.ReLU(inplace=True),
+            # nn.MaxPool2d(2),
         )
 
         with torch.no_grad():
@@ -101,11 +101,11 @@ class SimpleCNN(nn.Module):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_dir", type=str, default="ML2D/trained_cnn_model_u_notu",
+    parser.add_argument("--model_dir", type=str, default="PLY/ML2D/trained_cnn_model_u_notu",
                         help="trainで保存した model.pt / meta.json のあるフォルダ")
     parser.add_argument("--input", type=str, required=True,
-                        help="分類したいpng（1枚） or pngフォルダ")
-    parser.add_argument("--out_csv", type=str, default="predictions_mouth2d_u_notu.csv",
+                        help="分類したいpng（1枚） or pngフォルダ") # __(ダブルアンダースコア)付きファイル名
+    parser.add_argument("--out_csv", type=str, default="PLY/ML2D/predictions_mouth2d_u_notu.csv",
                         help="推論結果CSV")
     args = parser.parse_args()
 

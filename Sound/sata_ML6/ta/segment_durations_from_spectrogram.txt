@@ -1,5 +1,5 @@
 # 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
-# file: sa_ta/ta.wav
+# file: sata_ML6/ta.wav
 fs = 48000
 hop_length = 256
 frame_duration_sec = 0.005333

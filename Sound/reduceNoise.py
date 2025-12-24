@@ -12,8 +12,8 @@ from PIL import Image, ImageChops
 # ======================
 # 設定（ここだけ変えればOK）
 # ======================
-input_path = r"takana/ta/cleaned_audio.wav"
-output_wav_path = r"takana/ta/ta_denoised2.wav"
+input_path = r"sakana/sa/cleaned_audio.wav"
+output_wav_path = r"sakana/sa/sa_denoised2.wav"
 
 # ★追加：推論用スペクトログラム画像の出力先
 output_img_dir = r"./_predict_images"
@@ -22,19 +22,19 @@ SR = None       # 元のサンプリング周波数を保持するなら None。
 ZERO_MEAN = True
 
 # ★追加：教師データ生成と同じSTFT/画像パラメータ（allDenoise_ML.py準拠）
-BAND_HIGH   = 3000
+BAND_HIGH   = 5000
 N_FFT_STFT  = 2048
 HOP         = 256
 WINDOW      = "hann"
 
 ML_IMG_DPI  = 200
 ML_FIGSIZE  = (20, 3)
-ML_DB_FLOOR = -50.0
+ML_DB_FLOOR = -80.0
 ML_CMAP     = "coolwarm"
 
 # ★追加：1秒まるごと画像化するならこのまま
 # （必要なら 0.55～0.85 のように変更してください）
-tone_ranges = [(0.608, 1.108)]  # (開始秒, 終了秒) のリスト
+tone_ranges = [(0.844, 1.344)]  # (開始秒, 終了秒) のリスト
 # ======================
 
 

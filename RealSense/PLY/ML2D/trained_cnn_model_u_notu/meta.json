@@ -1,0 +1,19 @@
+{
+  "label_names": [
+    "NotU",
+    "U"
+  ],
+  "img_h": 224,
+  "img_w": 224,
+  "grayscale": false,
+  "use_views": [
+    "XY",
+    "ZY",
+    "XZ"
+  ],
+  "positive_dir_names": [
+    "U",
+    "u",
+    "う"
+  ]
+}

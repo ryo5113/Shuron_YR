@@ -1,5 +1,5 @@
 {
-  "accuracy": 0.6571428571428571,
+  "accuracy": 0.75,
   "labels": [
     "sa",
     "sha",
@@ -9,51 +9,51 @@
   ],
   "confusion_matrix": [
     [
-      14,
-      0,
-      5,
-      2,
-      0
-    ],
-    [
-      0,
-      14,
-      1,
-      0,
-      6
-    ],
-    [
-      2,
-      1,
-      8,
-      10,
-      0
-    ],
-    [
-      2,
+      17,
       0,
       1,
-      18,
-      0
+      2,
+      4
     ],
     [
       0,
-      2,
+      22,
+      0,
+      1,
+      1
+    ],
+    [
+      1,
+      0,
+      15,
+      7,
+      1
+    ],
+    [
+      1,
+      0,
       3,
+      20,
+      0
+    ],
+    [
+      2,
+      5,
+      0,
       1,
-      15
+      16
     ]
   ],
-  "classification_report": "              precision    recall  f1-score   support\n\n          sa       0.78      0.67      0.72        21\n         sha       0.82      0.67      0.74        21\n          ta       0.44      0.38      0.41        21\n         tha       0.58      0.86      0.69        21\n         tya       0.71      0.71      0.71        21\n\n    accuracy                           0.66       105\n   macro avg       0.67      0.66      0.65       105\nweighted avg       0.67      0.66      0.65       105\n",
-  "n_samples": 350,
-  "n_train": 245,
-  "n_test": 105,
+  "classification_report": "              precision    recall  f1-score   support\n\n          sa       0.81      0.71      0.76        24\n         sha       0.81      0.92      0.86        24\n          ta       0.79      0.62      0.70        24\n         tha       0.65      0.83      0.73        24\n         tya       0.73      0.67      0.70        24\n\n    accuracy                           0.75       120\n   macro avg       0.76      0.75      0.75       120\nweighted avg       0.76      0.75      0.75       120\n",
+  "n_samples": 400,
+  "n_train": 280,
+  "n_test": 120,
   "img_h": 64,
   "img_w": 256,
   "grayscale": true,
   "test_size": 0.3,
   "random_state": 42,
-  "epochs": 50,
+  "epochs": 100,
   "batch_size": 32,
   "lr": 0.001,
   "device": "cpu"

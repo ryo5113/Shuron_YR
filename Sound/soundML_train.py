@@ -30,7 +30,7 @@ IMG_H = 64
 IMG_W = 256
 GRAYSCALE = True
 RANDOM_STATE = 42
-TEST_SIZE = 0.3  # 教師9：評価1 固定
+TEST_SIZE = 0.2  # 教師9：評価1 固定
 MAX_ITER = 2000
 # =========================================
 

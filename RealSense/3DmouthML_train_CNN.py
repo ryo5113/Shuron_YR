@@ -35,11 +35,11 @@ CONFIG = {
     "OUT_DIR": "PLY/ML3D",
 
     # Training
-    "EPOCHS": 50,
+    "EPOCHS": 30,
     "BATCH_SIZE": 8,
     "LEARNING_RATE": 1e-3,
     "WEIGHT_DECAY": 1e-4,
-    "VAL_RATIO": 0.2,
+    "VAL_RATIO": 0.3,
     "SEED": 42,
 
     # Hardware
