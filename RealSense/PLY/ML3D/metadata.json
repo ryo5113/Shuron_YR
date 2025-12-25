@@ -24,7 +24,7 @@
       "う"
     ],
     "OUT_DIR": "PLY/ML3D",
-    "EPOCHS": 30,
+    "EPOCHS": 50,
     "BATCH_SIZE": 8,
     "LEARNING_RATE": 0.001,
     "WEIGHT_DECAY": 0.0001,

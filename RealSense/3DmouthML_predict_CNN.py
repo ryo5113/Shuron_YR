@@ -16,7 +16,7 @@ CONFIG = {
     "checkpoint_path": "PLY/ML3D/2type/best_model.pth",
 
     # A single .npz file path OR a directory that contains .npz files
-    "input_path": "PLY/ml/mouth_voxel64_rgb/NotU.npz",
+    "input_path": "PLY/ml/mouth_voxel64_rgb/U.npz",
 
     # If input_path is a directory, whether to search recursively
     "recursive": True,
@@ -50,12 +50,12 @@ class Small3DCNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.MaxPool3d(2),
 
-            nn.Conv3d(64, 128, kernel_size=3, padding=1),
-            nn.BatchNorm3d(128),
-            nn.ReLU(inplace=True),
+            # nn.Conv3d(64, 128, kernel_size=3, padding=1),
+            # nn.BatchNorm3d(128),
+            # nn.ReLU(inplace=True),
             nn.AdaptiveAvgPool3d((1, 1, 1)),
         )
-        self.classifier = nn.Linear(128, 1)
+        self.classifier = nn.Linear(64, 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)

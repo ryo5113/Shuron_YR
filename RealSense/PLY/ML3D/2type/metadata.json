@@ -13,8 +13,8 @@
     64
   ],
   "split": {
-    "train": 11,
-    "val": 2
+    "train": 20,
+    "val": 9
   },
   "config": {
     "DATA_ROOT": "PLY/ml/mouth_voxel64_rgb",
@@ -28,7 +28,7 @@
     "BATCH_SIZE": 8,
     "LEARNING_RATE": 0.001,
     "WEIGHT_DECAY": 0.0001,
-    "VAL_RATIO": 0.2,
+    "VAL_RATIO": 0.3,
     "SEED": 42,
     "DEVICE": "cpu",
     "NUM_WORKERS": 0,

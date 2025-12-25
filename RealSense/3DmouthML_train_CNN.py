@@ -35,7 +35,7 @@ CONFIG = {
     "OUT_DIR": "PLY/ML3D",
 
     # Training
-    "EPOCHS": 30,
+    "EPOCHS": 50,
     "BATCH_SIZE": 8,
     "LEARNING_RATE": 1e-3,
     "WEIGHT_DECAY": 1e-4,
@@ -155,12 +155,12 @@ class Small3DCNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.MaxPool3d(2),  # 8
 
-            nn.Conv3d(64, 128, kernel_size=3, padding=1),
-            nn.BatchNorm3d(128),
-            nn.ReLU(inplace=True),
+            # nn.Conv3d(64, 128, kernel_size=3, padding=1),
+            # nn.BatchNorm3d(128),
+            # nn.ReLU(inplace=True),
             nn.AdaptiveAvgPool3d((1, 1, 1)),
         )
-        self.classifier = nn.Linear(128, 1)
+        self.classifier = nn.Linear(64, 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (N,3,64,64,64)
