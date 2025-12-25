@@ -1,11 +1,4 @@
-# soundML_predict_SVM.py
-# -----------------------------------------
-# 機能:
-#  1) model.joblib / meta.json を読み込む
-#  2) 入力wav（1本 or フォルダ）をFFT特徴量に変換（学習時と同じ設定）
-#  3) 予測ラベル + クラス別確率（predict_proba）をCSV出力
-# -----------------------------------------
-
+# soundML_predict_SVM.py（wav入力・学習metaに合わせてFFT→推論）
 from __future__ import annotations
 
 import argparse
@@ -40,11 +33,14 @@ def read_wav_mono(path: Path) -> Tuple[np.ndarray, int]:
     return x, sr
 
 
-def crop_or_pad(x: np.ndarray, n: int) -> np.ndarray:
-    if len(x) >= n:
-        return x[:n]
+def pad_to_len(x: np.ndarray, n: int) -> np.ndarray:
+    if len(x) > n:
+        raise ValueError(
+            f"Input wav is longer than trained n_fft, so it cannot keep feature_dim while using full duration. "
+            f"len(x)={len(x)} > n_fft={n} (file={wav_path})"
+        )
     y = np.zeros(n, dtype=np.float32)
-    y[:len(x)] = x
+    y[:len(x)] = x.astype(np.float32, copy=False)
     return y
 
 
@@ -57,21 +53,27 @@ def make_window(n: int, kind: str) -> np.ndarray:
 
 
 def wav_to_fft_feature(wav_path: Path, meta: dict) -> np.ndarray:
-    """
-    [機能] 推論用: 学習時metaと同じパラメータでFFT特徴量を作る
-    """
     x, sr = read_wav_mono(wav_path)
+    x = x.astype(np.float32)
 
-    duration_sec = float(meta["duration_sec"])
+    # 学習側条件に合わせる
+    expected_sr = int(meta["sr"])
+    if int(sr) != expected_sr:
+        raise ValueError(f"SR mismatch: wav={sr}, expected={expected_sr} (file={wav_path})")
+
     n_fft = int(meta["n_fft"])
     fmax = float(meta["fmax"])
-    use_log = bool(meta["use_log"])
+    use_log1p = bool(meta["use_log1p"])
     window = str(meta.get("window", "hann"))
+    feature_dim = int(meta["feature_dim"])
 
-    n_samples = int(duration_sec * sr)
-    x = crop_or_pad(x, n_samples)
+    if bool(meta.get("zero_mean", False)):
+        x = x - float(np.mean(x))
 
-    w = make_window(len(x), window)
+    # N_FFTサンプルに固定してFFT（duration_secは使わない）
+    x = pad_to_len(x, n_fft)
+
+    w = make_window(n_fft, window)
     X = np.fft.rfft(x * w, n=n_fft)
     mag = np.abs(X).astype(np.float32)
 
@@ -79,8 +81,11 @@ def wav_to_fft_feature(wav_path: Path, meta: dict) -> np.ndarray:
     mask = freqs <= fmax
 
     feat = mag[mask]
-    if use_log:
+    if use_log1p:
         feat = np.log1p(feat)
+
+    if feat.shape[0] != feature_dim:
+        raise ValueError(f"feature_dim mismatch: got={feat.shape[0]}, expected={feature_dim} (file={wav_path})")
 
     return feat
 
@@ -96,10 +101,10 @@ def collect_wavs(p: Path) -> list[Path]:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_dir", type=str, default="ML/trained_svm_fft_model",
-                        help="train側で保存した model.joblib / meta.json のあるフォルダ")
+                        help="model.joblib / meta.json のあるフォルダ")
     parser.add_argument("--input", type=str, required=True,
                         help="分類したいwav（1本） or wavフォルダ")
-    parser.add_argument("--out_csv", type=str, default="ML_fft_dataset/predictions_svm_fft.csv",
+    parser.add_argument("--out_csv", type=str, default="predictions_svm_fft.csv",
                         help="推論結果CSV")
     args = parser.parse_args()
 
@@ -120,11 +125,8 @@ def main():
     if not wavs:
         raise ValueError("No wav files found in input.")
 
-    # 特徴量
     X = np.stack([wav_to_fft_feature(w, meta) for w in wavs], axis=0)
 
-    # クラス別スコア（確率）
-    # SVCは probability=True のとき predict_proba が有効 :contentReference[oaicite:8]{index=8}
     proba = clf.predict_proba(X)
     pred_idx = np.argmax(proba, axis=1)
     pred_label = [label_names[i] for i in pred_idx]
@@ -138,7 +140,7 @@ def main():
             row = [str(w), pred_label[i]] + [float(x) for x in proba[i]]
             writer.writerow(row)
 
-    print("=== PREDICT DONE (SVM + FFT) ===")
+    print("=== PREDICT DONE (SVM + FFT from WAV) ===")
     print("out_csv:", out_csv.resolve())
     for w, yhat in zip(wavs, pred_label):
         print(w.name, "->", yhat)
