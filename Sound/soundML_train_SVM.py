@@ -34,12 +34,12 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 # ====== 設定（必要ならここだけ編集） ======
 RANDOM_STATE = 42
 
-TEST_SIZE = 0.2  # train:test = 8:2
+TEST_SIZE = 0.3  # train:test = 8:2
 
 # FFT設定
 TARGET_SR = 48000
 N_FFT = 4096
-FMAX = 3000.0
+FMAX = 2000.0
 USE_LOG1P = True
 WINDOW = "hann"
 
@@ -182,7 +182,8 @@ def build_clf() -> Pipeline:
     return Pipeline([
         ("scaler", StandardScaler()),
         ("svm", SVC(
-            kernel="rbf",
+            kernel="linear",
+            C=0.01,
             probability=True,          # ①のために必要
             class_weight="balanced",
             random_state=RANDOM_STATE,

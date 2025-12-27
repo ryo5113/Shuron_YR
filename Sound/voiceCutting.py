@@ -4,11 +4,11 @@ from pydub.silence import detect_nonsilent
 
 # ====== ここに処理したいファイルのパスを複数指定 ======
 INPUT_FILES = [
-    Path(r"sata_ML6/sa/cleaned_audio.wav"),
-    Path(r"sata_ML6/sha/cleaned_audio.wav"),
-    Path(r"sata_ML6/tha/cleaned_audio.wav"),
-    Path(r"sata_ML6/tya/cleaned_audio.wav"),
-    Path(r"sata_ML6/ta/cleaned_audio.wav"),
+    Path(r"sata_ML8/sa/cleaned_audio.wav"),
+    Path(r"sata_ML8/sha/cleaned_audio.wav"),
+    Path(r"sata_ML8/tha/cleaned_audio.wav"),
+    Path(r"sata_ML8/tya/cleaned_audio.wav"),
+    Path(r"sata_ML8/ta/cleaned_audio.wav"),
 ]
 # ==================================================
 
@@ -17,7 +17,7 @@ OUTPUT_ROOT = Path(r"voiced_chunks")
 
 # 無音判定パラメータ（閾値は変えない）
 MIN_SILENCE_LEN_MS = 300
-SILENCE_THRESH_DBFS = -60.0
+SILENCE_THRESH_DBFS = -70.0
 KEEP_SILENCE_MS = 0  # 前後に残す無音(ms)。不要なら0のままでOK :contentReference[oaicite:1]{index=1}
 
 

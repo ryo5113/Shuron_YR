@@ -9,7 +9,7 @@ import os
 import copy
 from concurrent.futures import ThreadPoolExecutor
 import time
-from collections import deque
+from collections import deque, defaultdict
 
 # === 追加: MediaPipe ===
 import mediapipe as mp
@@ -398,7 +398,159 @@ def detect_lip_3d_for_camera(color_frame, depth_frame, profile, T_cam_to_cam0, c
         "camera_index": cam_index,
         "points_cam0": points_cam0,
         "annotated_image": annotated_image,
+        "face_landmarks": face_landmarks,
     }
+
+def build_outer_lip_polygon(face_landmarks, w, h):
+    """
+    戻り値: np.ndarray shape=(N,2) int32 (外周ポリゴン)
+    """
+    edges = mp.solutions.face_mesh.FACEMESH_LIPS  # set of (i,j)
+
+    # 隣接リスト
+    adj = defaultdict(set)
+    for a, b in edges:
+        adj[a].add(b)
+        adj[b].add(a)
+
+    # 連結成分ごとに「ループの順序」を作る
+    visited = set()
+    polys = []
+
+    for start in adj.keys():
+        if start in visited:
+            continue
+
+        # BFSで連結成分を抽出
+        comp = []
+        q = deque([start])
+        visited.add(start)
+        while q:
+            n = q.popleft()
+            comp.append(n)
+            for nb in adj[n]:
+                if nb not in visited:
+                    visited.add(nb)
+                    q.append(nb)
+
+        # ループ順序化（基本: 各ノードの次数が2なら単純サイクル）
+        # comp 内の任意のノードから辿って順序を作る
+        s = comp[0]
+        nbs = list(adj[s])
+        if len(nbs) < 1:
+            continue
+
+        ordered = [s]
+        prev = None
+        cur = s
+        nxt = nbs[0]
+
+        # 最大長の安全策（無限ループ防止）
+        for _ in range(len(comp) + 5):
+            ordered.append(nxt)
+            prev, cur = cur, nxt
+            cand = [x for x in adj[cur] if x != prev]
+            if not cand:
+                break
+            nxt = cand[0]
+            if nxt == s:
+                break
+
+        # 終端が start に戻ったら閉路
+        if ordered[-1] == s:
+            ordered = ordered[:-1]
+
+        # ピクセル座標ポリゴンへ
+        poly = []
+        for idx in ordered:
+            lm = face_landmarks.landmark[idx]
+            u = int(round(lm.x * w))
+            v = int(round(lm.y * h))
+            poly.append([u, v])
+        poly = np.array(poly, dtype=np.int32)
+
+        # 面積がある程度あるものだけ
+        if len(poly) >= 3 and abs(cv2.contourArea(poly.reshape(-1, 1, 2))) > 1.0:
+            polys.append(poly)
+
+    if not polys:
+        return None
+
+    # 面積最大 = 外周とみなす
+    areas = [abs(cv2.contourArea(p.reshape(-1, 1, 2))) for p in polys]
+    outer = polys[int(np.argmax(areas))]
+    return outer
+
+def crop_pcd_by_lip_polygon_project(
+    merged_pcd,               # open3d.geometry.PointCloud (cam0座標系, Y反転済み)
+    lip_poly_px,              # (N,2) int32 (画像座標の唇外周ポリゴン)
+    color_intrinsics,         # rs.intrinsics (fx, fy, ppx, ppy, width, height)
+    T_cam_to_cam0,            # 4x4 (そのカメラ -> cam0)  ※Y反転座標系で求めたもの
+    mask_dilate_px=0,         # 外周を少し厚く含めたい場合（0でOK）
+    debug_bgr=None,           # デバッグ用に投影画像を返す場合のBGR画像（Noneで投影画像不要）
+    debug_save_path=None      # デバッグ用に投影画像を保存する場合のパス（Noneで保存不要）
+):
+    if lip_poly_px is None or len(lip_poly_px) < 3:
+        return None
+
+    w = color_intrinsics.width
+    h = color_intrinsics.height
+
+    # ポリゴンmask
+    mask = np.zeros((h, w), dtype=np.uint8)
+    cv2.fillPoly(mask, [lip_poly_px.reshape(-1, 1, 2)], 255)
+
+    if mask_dilate_px > 0:
+        k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2*mask_dilate_px+1, 2*mask_dilate_px+1))
+        mask = cv2.dilate(mask, k)
+
+    # cam0 -> cam へ（T_cam_to_cam0 の逆）
+    T_cam0_to_cam = np.linalg.inv(T_cam_to_cam0)
+
+    pts0 = np.asarray(merged_pcd.points)  # (N,3) cam0座標系(Y反転済)
+    if pts0.size == 0:
+        return None
+
+    pts0_h = np.hstack([pts0, np.ones((pts0.shape[0], 1), dtype=np.float64)])  # (N,4)
+    pts_cam = (T_cam0_to_cam @ pts0_h.T).T[:, :3]  # (N,3) cam座標系(Y反転済)
+
+    X = pts_cam[:, 0]
+    Y = pts_cam[:, 1]
+    Z = pts_cam[:, 2]
+
+    valid = Z > 1e-6
+    X = X[valid]; Y = Y[valid]; Z = Z[valid]
+    valid_idx = np.where(valid)[0]
+
+    fx, fy, cx, cy = color_intrinsics.fx, color_intrinsics.fy, color_intrinsics.ppx, color_intrinsics.ppy
+
+    # ★Y反転座標系なので v の式が「cy - fy*(Y/Z)」
+    u = (fx * (X / Z) + cx).astype(np.int32)
+    v = (cy - fy * (Y / Z)).astype(np.int32)
+
+    in_img = (u >= 0) & (u < w) & (v >= 0) & (v < h)
+    u = u[in_img]; v = v[in_img]
+    idx = valid_idx[in_img]
+
+    inside = mask[v, u] > 0
+    keep_idx = idx[inside].tolist()
+
+    # ★ここからデバッグ画像保存（任意）
+    if debug_bgr is not None and debug_save_path is not None:
+        vis = cv2.bitwise_and(debug_bgr, debug_bgr, mask=mask)
+
+        # 1) 唇外周ポリゴンを描く
+        cv2.polylines(vis, [lip_poly_px.reshape(-1, 1, 2)], isClosed=True, color=(0, 255, 255), thickness=2)
+
+        os.makedirs(os.path.dirname(debug_save_path), exist_ok=True)
+        cv2.imwrite(debug_save_path, vis)
+
+    if not keep_idx:
+        return None
+
+    # Open3Dで抽出
+    mouth_pcd = merged_pcd.select_by_index(keep_idx)
+    return mouth_pcd
 
 def compute_lip_metrics(points_cam0):
     """
@@ -531,8 +683,6 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
     o3d.io.write_point_cloud(filename_camcolor, merged_pcd_camcolor)
     print(f"[SAVE] {filename_camcolor}")
 
-
-
     # ==== 追加: MediaPipe による唇4点3D＋幅/高さ/奥行のテキスト出力 ====
 
     lip_results = []
@@ -629,55 +779,78 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg):
 
         print(f"[LIP] 唇形状指標をテキスト保存しました: {txt_path}")
 
-        # ==== 追加: 口周辺点群の切り出し（AABB crop） ====
-        # 4点からAABBを作り、少しマージンを付けて口周辺のみ抽出
-        pts4 = np.stack([pts["upper"], pts["lower"], pts["left"], pts["right"]], axis=0)
+        face_landmarks = selected["face_landmarks"]
+        cam_index = selected["camera_index"]
+        debug_bgr = np.asanyarray(color_frames[cam_index].get_data()).copy()  # BGR
 
-        min_xyz = pts4.min(axis=0)
-        max_xyz = pts4.max(axis=0)
+        # そのカメラの color intrinsics（aligned color frameのprofileから取る）
+        color_intr = color_frames[cam_index].profile.as_video_stream_profile().get_intrinsics()
 
-        # マージン（メートル）：データに合わせて調整する前提
-        # 「幅・高さ」を基準に可変マージン（最低1cm）
-        mx = max(metrics["width"]  * 0.5, 0.01)
-        my = max(metrics["height"] * 0.5, 0.01)
-        mz = max(metrics["width"]  * 0.5, 0.01)
+        # 唇外周ポリゴン（画像座標）
+        h, w, _ = np.asanyarray(color_frames[cam_index].get_data()).shape
+        lip_poly = build_outer_lip_polygon(face_landmarks, w, h)
 
-        min_xyz = min_xyz - np.array([mx, my, mz], dtype=np.float64)
-        max_xyz = max_xyz + np.array([mx, my, mz], dtype=np.float64)
+        # cam_index の T_cam_to_cam0 を用意（あなたの既存変数に合わせてください）
+        # cam0: np.eye(4), cam1: T_1_to_0_refined, cam2: T_2_to_0_refined のような形
+        if cam_index == 0:
+            T_cam_to_cam0 = np.eye(4, dtype=np.float64)
+        elif cam_index == 1:
+            T_cam_to_cam0 = T_1_to_0_icp
+        else:
+            T_cam_to_cam0 = T_2_to_0_icp
 
-        bbox = o3d.geometry.AxisAlignedBoundingBox(min_xyz, max_xyz)
+        dbg_dir = "PLY/ml/lip_mask_debug"
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        debug_path = f"{dbg_dir}/lipmask_cam{cam_index}_{int(pitch_label_deg)}deg_{ts}.png"
+        
+        mouth_pcd = crop_pcd_by_lip_polygon_project(
+            merged_pcd=merged_pcd,
+            lip_poly_px=lip_poly,
+            color_intrinsics=color_intr,
+            T_cam_to_cam0=T_cam_to_cam0,
+            mask_dilate_px=0,
+            debug_bgr=debug_bgr,
+            debug_save_path=debug_path
+        )
+        print(f"[LIP] 唇マスク投影デバッグ画像を保存しました: {debug_path}")
 
-        mouth_pcd = merged_pcd.crop(bbox)
-        mouth_pcd_camcolor = merged_pcd_camcolor.crop(bbox)
+        mouth_pcd_camcolor = crop_pcd_by_lip_polygon_project(
+            merged_pcd=merged_pcd_camcolor,
+            lip_poly_px=lip_poly,
+            color_intrinsics=color_intr,
+            T_cam_to_cam0=T_cam_to_cam0,
+            mask_dilate_px=0
+        )
 
-        os.makedirs("PLY/ml/mouth", exist_ok=True)
-        # 従来どおり（RGB保持）
-        mouth_filename = f"PLY/ml/mouth/mouth_{int(pitch_label_deg)}deg_{timestamp}.ply"
-        o3d.io.write_point_cloud(mouth_filename, mouth_pcd)
-        print(f"[SAVE] mouth pcd: {mouth_filename}")
+        if mouth_pcd is None or len(mouth_pcd.points) == 0:
+            print("[LIP] mouth_pcd is empty (polygon crop). skip save.")
+        else:
+            os.makedirs("PLY/ml/mouth", exist_ok=True)
 
-        # 追加（カメラ色付き）
-        mouth_filename_camcolor = f"PLY/ml/mouth/mouth_camcolor_{int(pitch_label_deg)}deg_{timestamp}.ply"
-        o3d.io.write_point_cloud(mouth_filename_camcolor, mouth_pcd_camcolor)
-        print(f"[SAVE] mouth pcd (camcolor): {mouth_filename_camcolor}")
+            mouth_filename = f"PLY/ml/mouth/mouth_{int(pitch_label_deg)}deg_{timestamp}.ply"
+            o3d.io.write_point_cloud(mouth_filename, mouth_pcd)
+            print(f"[SAVE] mouth pcd: {mouth_filename}")
 
-        # ==== 追加: 3D-CNN教師データ用 64^3 RGBボクセルの保存 ====
-        if SAVE_MOUTH_VOXEL:
-            voxel = voxelize_rgb_mean(mouth_pcd, min_xyz=min_xyz, max_xyz=max_xyz, grid=VOXEL_GRID_SIZE)
+            mouth_filename_camcolor = f"PLY/ml/mouth/mouth_camcolor_{int(pitch_label_deg)}deg_{timestamp}.ply"
+            o3d.io.write_point_cloud(mouth_filename_camcolor, mouth_pcd_camcolor)
+            print(f"[SAVE] mouth pcd (camcolor): {mouth_filename_camcolor}")
 
-            os.makedirs("PLY/ml/mouth_voxel64_rgb", exist_ok=True)
-            voxel_path = f"PLY/ml/mouth_voxel64_rgb/mouth_voxel64rgb_{int(pitch_label_deg)}deg_{timestamp}.npz"
-            np.savez_compressed(
-                voxel_path,
-                voxel=voxel,                 # (3,64,64,64) float32, RGB平均
-                bbox_min=min_xyz.astype(np.float32),
-                bbox_max=max_xyz.astype(np.float32),
-                pitch_label_deg=float(pitch_label_deg),
-                camera_index=int(selected["camera_index"]),
-            )
-            print(f"[SAVE] mouth voxel (64^3 RGB) : {voxel_path}")
-        # ===============================================
+        # # ==== 追加: 3D-CNN教師データ用 64^3 RGBボクセルの保存 ====
+        # if SAVE_MOUTH_VOXEL:
+        #     voxel = voxelize_rgb_mean(mouth_pcd, min_xyz=min_xyz, max_xyz=max_xyz, grid=VOXEL_GRID_SIZE)
 
+        #     os.makedirs("PLY/ml/mouth_voxel64_rgb", exist_ok=True)
+        #     voxel_path = f"PLY/ml/mouth_voxel64_rgb/mouth_voxel64rgb_{int(pitch_label_deg)}deg_{timestamp}.npz"
+        #     np.savez_compressed(
+        #         voxel_path,
+        #         voxel=voxel,                 # (3,64,64,64) float32, RGB平均
+        #         bbox_min=min_xyz.astype(np.float32),
+        #         bbox_max=max_xyz.astype(np.float32),
+        #         pitch_label_deg=float(pitch_label_deg),
+        #         camera_index=int(selected["camera_index"]),
+        #     )
+        #     print(f"[SAVE] mouth voxel (64^3 RGB) : {voxel_path}")
+        # # ===============================================
 
         # ★ここから画像保存
         annotated = selected.get("annotated_image", None)

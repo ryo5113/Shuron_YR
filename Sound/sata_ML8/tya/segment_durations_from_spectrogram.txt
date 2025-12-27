@@ -1,0 +1,19 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: tya.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 12
+segment_1: start_time=0.453333s, end_time=0.784000s, duration=0.330667s
+segment_2: start_time=0.810667s, end_time=0.826667s, duration=0.016000s
+segment_3: start_time=1.290667s, end_time=1.477333s, duration=0.186667s
+segment_4: start_time=2.346667s, end_time=2.538667s, duration=0.192000s
+segment_5: start_time=3.376000s, end_time=3.568000s, duration=0.192000s
+segment_6: start_time=4.426667s, end_time=4.613333s, duration=0.186667s
+segment_7: start_time=5.461333s, end_time=5.637333s, duration=0.176000s
+segment_8: start_time=6.506667s, end_time=6.688000s, duration=0.181333s
+segment_9: start_time=7.573333s, end_time=7.760000s, duration=0.186667s
+segment_10: start_time=8.629333s, end_time=8.832000s, duration=0.202667s
+segment_11: start_time=9.706667s, end_time=9.920000s, duration=0.213333s
+segment_12: start_time=10.762667s, end_time=10.960000s, duration=0.197333s
+mean_duration = 0.188444s
