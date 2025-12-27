@@ -93,7 +93,7 @@ FILE_CONFIGS = [
     }
 ]
 
-OUTPUT_DIR  = "sata_ML8"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "sata_ML12"  # すべての結果をまとめるフォルダ
 
 # FFT表示帯域（Hz）
 BAND_HIGH   = 3000

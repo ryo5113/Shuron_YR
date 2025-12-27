@@ -1,0 +1,21 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: tha.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 14
+segment_1: start_time=0.000000s, end_time=1.466667s, duration=1.466667s
+segment_2: start_time=2.085333s, end_time=2.106667s, duration=0.021333s
+segment_3: start_time=2.192000s, end_time=2.506667s, duration=0.314667s
+segment_4: start_time=3.253333s, end_time=3.568000s, duration=0.314667s
+segment_5: start_time=4.336000s, end_time=4.629333s, duration=0.293333s
+segment_6: start_time=5.402667s, end_time=5.712000s, duration=0.309333s
+segment_7: start_time=6.480000s, end_time=6.757333s, duration=0.277333s
+segment_8: start_time=7.520000s, end_time=7.824000s, duration=0.304000s
+segment_9: start_time=8.554667s, end_time=8.880000s, duration=0.325333s
+segment_10: start_time=9.600000s, end_time=9.941333s, duration=0.341333s
+segment_11: start_time=10.277333s, end_time=10.293333s, duration=0.016000s
+segment_12: start_time=10.661333s, end_time=11.008000s, duration=0.346667s
+segment_13: start_time=11.557333s, end_time=11.568000s, duration=0.010667s
+segment_14: start_time=11.861333s, end_time=12.032000s, duration=0.170667s
+mean_duration = 0.322286s

@@ -4,11 +4,11 @@ from pydub.silence import detect_nonsilent
 
 # ====== ここに処理したいファイルのパスを複数指定 ======
 INPUT_FILES = [
-    Path(r"sata_ML8/sa/cleaned_audio.wav"),
-    Path(r"sata_ML8/sha/cleaned_audio.wav"),
-    Path(r"sata_ML8/tha/cleaned_audio.wav"),
-    Path(r"sata_ML8/tya/cleaned_audio.wav"),
-    Path(r"sata_ML8/ta/cleaned_audio.wav"),
+    Path(r"sata_ML12/sa/cleaned_audio.wav"),
+    Path(r"sata_ML12/sha/cleaned_audio.wav"),
+    Path(r"sata_ML12/tha/cleaned_audio.wav"),
+    Path(r"sata_ML12/tya/cleaned_audio.wav"),
+    Path(r"sata_ML12/ta/cleaned_audio.wav"),
 ]
 # ==================================================
 

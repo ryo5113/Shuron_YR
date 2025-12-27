@@ -239,9 +239,11 @@ def build_clf() -> Pipeline:
     clf = Pipeline([
         ("scaler", StandardScaler()),
         ("svm", SVC(
-            kernel="linear", # 変更: linear カーネルに変更
+            kernel="poly", # 変更: linear カーネルに変更
             degree=3,
-            C=0.01,
+            C=35,# polyカーネルで良い感じだった値に変更(MAX 0.76)
+            #C=0.1,  # linearカーネルで使う初期値
+            #C=15, # rbfカーネルで使う初期値(MAX 0.78)
             probability=True,            # predict_probaを使うため（以前のSVM版でも採用）:contentReference[oaicite:5]{index=5}
             class_weight="balanced",
             random_state=RANDOM_STATE,

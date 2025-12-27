@@ -8,42 +8,42 @@
   ],
   "random_state": 42,
   "test_size": 0.3,
-  "accuracy": 0.7272727272727273,
+  "accuracy": 0.76,
   "confusion_matrix": [
     [
-      17,
+      26,
       1,
-      3,
-      0,
+      1,
+      1,
       1
     ],
     [
-      1,
-      12,
-      1,
+      2,
+      22,
       0,
-      7
+      1,
+      5
     ],
     [
-      4,
+      9,
+      1,
+      16,
       2,
-      15,
-      0,
       2
     ],
     [
       0,
       0,
-      1,
-      20,
-      1
+      0,
+      30,
+      0
     ],
     [
-      0,
+      1,
+      5,
       3,
-      3,
-      0,
-      16
+      1,
+      20
     ]
   ],
   "csv_path": "C:\\Users\\edu01\\Documents\\GitHub\\Shuron_YR\\Sound\\ML_SVM\\learning_fft_dataset.csv"
