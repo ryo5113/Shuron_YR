@@ -8,43 +8,51 @@
   ],
   "random_state": 42,
   "test_size": 0.3,
-  "accuracy": 0.76,
+  "accuracy": 0.7066666666666667,
   "confusion_matrix": [
     [
-      26,
-      1,
-      1,
-      1,
-      1
-    ],
-    [
-      2,
-      22,
+      20,
       0,
-      1,
-      5
+      6,
+      0,
+      4
     ],
     [
-      9,
+      3,
+      14,
       1,
-      16,
-      2,
+      0,
+      12
+    ],
+    [
+      5,
+      1,
+      19,
+      3,
       2
     ],
     [
       0,
       0,
-      0,
-      30,
-      0
+      2,
+      27,
+      1
     ],
     [
       1,
-      5,
-      3,
+      2,
+      0,
       1,
-      20
+      26
     ]
   ],
-  "csv_path": "C:\\Users\\edu01\\Documents\\GitHub\\Shuron_YR\\Sound\\ML_SVM\\learning_fft_dataset.csv"
+  "wav_root": "C:\\Users\\edu01\\Documents\\GitHub\\Shuron_YR\\Sound\\ML_wav_dataset_yolo",
+  "csv_path": "C:\\Users\\edu01\\Documents\\GitHub\\Shuron_YR\\Sound\\ML_SVM\\learning_fft_dataset.csv",
+  "sr": 48000,
+  "nfft": 32768,
+  "fmax": 2000.0,
+  "use_log1p": true,
+  "zero_mean": true,
+  "window": "hann",
+  "feature_dim": 1366
 }

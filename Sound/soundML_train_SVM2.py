@@ -16,6 +16,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Tuple, Dict
+import matplotlib.pyplot as plt
 
 import numpy as np
 from joblib import dump
@@ -24,7 +25,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, ConfusionMatrixDisplay
 
 
 # ===== 固定設定（必要ならここだけ変更）=====
@@ -239,11 +240,11 @@ def build_clf() -> Pipeline:
     clf = Pipeline([
         ("scaler", StandardScaler()),
         ("svm", SVC(
-            kernel="poly", # 変更: linear カーネルに変更
+            kernel="poly", 
             degree=3,
-            C=35,# polyカーネルで良い感じだった値に変更(MAX 0.76)
-            #C=0.1,  # linearカーネルで使う初期値
-            #C=15, # rbfカーネルで使う初期値(MAX 0.78)
+            C=20,# polyカーネルで良い感じだった値に変更(MAX 0.706)
+            #C=10,  # linearカーネルで使う初期値(MAX 0.667)
+            #C=15, # rbfカーネルで使う初期値(MAX 0.732)
             probability=True,            # predict_probaを使うため（以前のSVM版でも採用）:contentReference[oaicite:5]{index=5}
             class_weight="balanced",
             random_state=RANDOM_STATE,
@@ -255,7 +256,7 @@ def build_clf() -> Pipeline:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--wav_root", type=str, default="ML_wav_dataset",
+    parser.add_argument("--wav_root", type=str, default="ML_wav_dataset_yolo",
                         help="ラベル別にwavが入っているルートフォルダ（未完成ならここを指定）")
     parser.add_argument("--train_csv", type=str, default="ML_SVM/learning_fft_dataset.csv",
                         help="生成/利用する学習CSV")
@@ -272,7 +273,25 @@ def main():
     if not train_csv.exists():
         meta_build = build_fft_csv_from_wavs(wav_root=wav_root, out_csv=train_csv, fmax=FMAX)
     else:
-        meta_build = {"csv_path": str(train_csv.resolve())}
+        # CSVが既にある場合でも、推論用に sr/nfft/fmax 等は必ず保存する
+        samples = collect_labeled_wavs(wav_root)
+        nfft, sr = compute_global_nfft(samples)
+
+        # feature_dim はCSVから分かる（Xの列数）
+        X_tmp, _, _ = load_csv_dataset(train_csv)
+        feat_dim = int(X_tmp.shape[1])
+
+        meta_build = {
+            "wav_root": str(wav_root.resolve()),
+            "csv_path": str(train_csv.resolve()),
+            "sr": int(sr),
+            "nfft": int(nfft),
+            "fmax": float(FMAX),
+            "use_log1p": bool(USE_LOG1P),
+            "zero_mean": bool(ZERO_MEAN),
+            "window": str(WINDOW),
+            "feature_dim": int(feat_dim),
+        }
 
     # 学習
     X, y, label_names = load_csv_dataset(train_csv)
@@ -288,6 +307,12 @@ def main():
     acc = float(accuracy_score(y_te, y_pred))
     cm = confusion_matrix(y_te, y_pred)
     report = classification_report(y_te, y_pred, target_names=label_names, digits=4)
+    # --- confusion matrix を画像として保存 ---
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=label_names)
+    disp.plot(xticks_rotation=45)
+    plt.tight_layout()
+    plt.savefig(model_dir / "confusion_matrix.png", dpi=200)
+    plt.close()
 
     # 保存
     dump(clf, model_dir / "model.joblib")

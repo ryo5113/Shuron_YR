@@ -104,7 +104,7 @@ def main():
                         help="model.joblib / meta.json のあるフォルダ")
     parser.add_argument("--input", type=str, required=True,
                         help="分類したいwav（1本） or wavフォルダ")
-    parser.add_argument("--out_csv", type=str, default="predictions_svm_fft.csv",
+    parser.add_argument("--out_csv", type=str, default="predictions_svm_fft_sa.csv",
                         help="推論結果CSV")
     args = parser.parse_args()
 

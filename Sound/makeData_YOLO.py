@@ -10,8 +10,8 @@ from scipy.signal import stft, resample
 
 
 # ====== 出力画像サイズ（ピクセル） ======
-OUT_W = 1000
-OUT_H = 1000
+OUT_W = 1024
+OUT_H = 1024
 
 # ====== STFT設定 ======
 # nperseg は scipy.signal.stft のデフォルトが 256（=窓長256）です。:contentReference[oaicite:0]{index=0}

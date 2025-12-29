@@ -1,0 +1,21 @@
+{
+  "label_names": [
+    "sa",
+    "sha",
+    "ta",
+    "tha",
+    "tya"
+  ],
+  "random_state": 42,
+  "test_size": 0.3,
+  "dataset_root": "C:\\Users\\edu01\\Documents\\GitHub\\Shuron_YR\\Sound\\ML_wav_dataset_yolo",
+  "n_samples": 500,
+  "feature_dim": 851,
+  "sr": 48000,
+  "n_fft": 20400,
+  "fmax": 2000.0,
+  "use_log1p": true,
+  "window": "hann",
+  "zero_mean": true,
+  "apply_denoise": false
+}

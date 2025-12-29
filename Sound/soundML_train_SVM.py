@@ -34,7 +34,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 # ====== 設定（必要ならここだけ編集） ======
 RANDOM_STATE = 42
 
-TEST_SIZE = 0.2  # train:test = 8:2
+TEST_SIZE = 0.3  # train:test = 8:2
 
 # FFT設定
 TARGET_SR = 48000
@@ -183,7 +183,7 @@ def build_clf() -> Pipeline:
         ("scaler", StandardScaler()),
         ("svm", SVC(
             kernel="rbf",
-            C=10, # rbfカーネルで使う初期値(MAX 0.79)
+            C=100, # rbfカーネルで使う初期値(MAX 0.79)
             probability=True,          # ①のために必要
             class_weight="balanced",
             random_state=RANDOM_STATE,
@@ -307,9 +307,9 @@ def save_learning_curve(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_root", type=str, default="ML_wav_dataset",
+    parser.add_argument("--dataset_root", type=str, default="ML_wav_dataset_yolo",
                         help="教師データ（label/*.wav）。wavは切り出し済みを想定")
-    parser.add_argument("--model_dir", type=str, default="ML/trained_svm_fft_model",
+    parser.add_argument("--model_dir", type=str, default="ML/trained_svm_fft_modelv2",
                         help="保存先フォルダ")
     args = parser.parse_args()
 

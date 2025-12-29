@@ -1,0 +1,2 @@
+path,pred_label,proba_sa,proba_sha,proba_ta,proba_tha,proba_tya
+sakana\sa\sa_denoised.wav,sha,5.5960409191997305e-06,0.7066611165978378,1.0386581577287218e-07,7.035833854440374e-08,0.2933331131370886
