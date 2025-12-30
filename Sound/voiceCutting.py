@@ -5,16 +5,16 @@ import numpy as np
 
 # ====== 入力 ======
 INPUT_FILES = [
-    Path(r"sata_ML11/sa/cleaned_audio.wav"),
-    Path(r"sata_ML11/sha/cleaned_audio.wav"),
-    Path(r"sata_ML11/tha/cleaned_audio.wav"),
-    Path(r"sata_ML11/tya/cleaned_audio.wav"),
-    Path(r"sata_ML11/ta/cleaned_audio.wav"),
+    Path(r"word/10times_01/sa/cleaned_audio.wav"),
+    Path(r"word/10times_01/sha/cleaned_audio.wav"),
+    Path(r"word/10times_01/tha/cleaned_audio.wav"),
+    Path(r"word/10times_01/tya/cleaned_audio.wav"),
+    Path(r"word/10times_01/ta/cleaned_audio.wav"),
 ]
 # ===============
 
 # 無音判定パラメータ（ここは固定のまま）
-MIN_SILENCE_LEN_MS = 300
+MIN_SILENCE_LEN_MS = 250
 SILENCE_THRESH_DBFS = -70.0
 KEEP_SILENCE_MS = 0
 
@@ -22,7 +22,7 @@ KEEP_SILENCE_MS = 0
 TARGET_COUNT = 10          # 10回発音が前提
 FRAME_MS = 5               # エネルギー計算フレーム
 TRIM_REL_DB = 25.0         # 区間内ピークから -25dB までを「有音」とみなして前後を詰める
-MAX_CHUNK_MS = 450         # これより長いchunkは「2回分結合の疑い」で分割を試す
+MAX_CHUNK_MS = 1200         # これより長いchunkは「2回分結合の疑い」で分割を試す
 MIN_CHUNK_MS = 120         # これより短いchunkはノイズ疑い（今回は削除せずそのまま残す）
 VALLEY_DROP_DB = 20.0      # 分割点候補：ピークより -20dB 以下の谷を優先
 MIN_GAP_MS = 80            # 分割点の前後に最低これだけ余白がある谷を採用

@@ -1,0 +1,32 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: word/10times/tyakana.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 25
+segment_1: start_time=0.389333s, end_time=0.970667s, duration=0.581333s
+segment_2: start_time=0.997333s, end_time=1.402667s, duration=0.405333s
+segment_3: start_time=1.573333s, end_time=1.626667s, duration=0.053333s
+segment_4: start_time=1.946667s, end_time=1.968000s, duration=0.021333s
+segment_5: start_time=1.973333s, end_time=1.989333s, duration=0.016000s
+segment_6: start_time=2.032000s, end_time=2.229333s, duration=0.197333s
+segment_7: start_time=2.282667s, end_time=2.677333s, duration=0.394667s
+segment_8: start_time=3.365333s, end_time=3.557333s, duration=0.192000s
+segment_9: start_time=3.584000s, end_time=3.973333s, duration=0.389333s
+segment_10: start_time=4.634667s, end_time=4.800000s, duration=0.165333s
+segment_11: start_time=4.853333s, end_time=5.237333s, duration=0.384000s
+segment_12: start_time=5.712000s, end_time=5.776000s, duration=0.064000s
+segment_13: start_time=5.925333s, end_time=6.085333s, duration=0.160000s
+segment_14: start_time=6.133333s, end_time=6.533333s, duration=0.400000s
+segment_15: start_time=7.210667s, end_time=7.365333s, duration=0.154667s
+segment_16: start_time=7.434667s, end_time=7.818667s, duration=0.384000s
+segment_17: start_time=8.533333s, end_time=8.693333s, duration=0.160000s
+segment_18: start_time=8.746667s, end_time=9.141333s, duration=0.394667s
+segment_19: start_time=9.850667s, end_time=10.005333s, duration=0.154667s
+segment_20: start_time=10.069333s, end_time=10.426667s, duration=0.357333s
+segment_21: start_time=11.114667s, end_time=11.301333s, duration=0.186667s
+segment_22: start_time=11.354667s, end_time=11.722667s, duration=0.368000s
+segment_23: start_time=12.458667s, end_time=13.066667s, duration=0.608000s
+segment_24: start_time=13.306667s, end_time=13.328000s, duration=0.021333s
+segment_25: start_time=13.338667s, end_time=14.224000s, duration=0.885333s
+mean_duration = 0.283947s

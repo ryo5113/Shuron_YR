@@ -1,453 +1,409 @@
-# soundML_train_SVM.py（FFT_LENで全時間を反映 + ①〜③のCSV/曲線出力）
-# -----------------------------------------
-# 機能:
-#  1) dataset_root/label/*.wav を読み込む（wav=1サンプル）
-#  2) 全wavの最大長 FFT_LEN を求め、0埋めして「全時間を反映」したFFT特徴量を作る
-#  3) train/test split（固定）してSVM学習
-#  4) model.joblib と meta.json を保存
-#  5) diagnostics 出力
-#     ① eval_predictions.csv（評価データ：正解/予測/クラス別確率）
-#     ② validation_curve_C.(png/csv), validation_curve_gamma.(png/csv)
-#     ③ learning_curve.(png/csv)
-# -----------------------------------------
-
-from __future__ import annotations
-
+# soundML_train_SVM.py
+# ---------------------------------------------------------
+# [目的] ラベル別に wav を集めて、FFT特徴量CSVを作り、
+#       SVMを学習してモデルを保存
+# ---------------------------------------------------------
 import argparse
-import csv
 import json
+import math
+import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
-from joblib import dump
+import joblib
 
-from sklearn.model_selection import train_test_split, StratifiedKFold
-from sklearn.model_selection import learning_curve, validation_curve
-from sklearn.pipeline import Pipeline
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, ConfusionMatrixDisplay
 
 
-# ====== 設定（必要ならここだけ編集） ======
+# ===== 固定設定（必要ならここだけ変更）=====
 RANDOM_STATE = 42
-
-TEST_SIZE = 0.3  # train:test = 8:2
-
-# FFT設定
-TARGET_SR = 48000
-N_FFT = 4096
-FMAX = 2000.0
-USE_LOG1P = True
-WINDOW = "hann"
-
-# 前処理
-ZERO_MEAN = True
-APPLY_DENOISE = False  # ノイズ処理済みならFalseのままでOK
-
-# ①〜③ 診断出力
-DO_DIAGNOSTICS = True
-CV_FOLDS = 5  # データが少なく不安定なら 3 に下げても可（出力要件外なのでここは任意）
-
-# 検証曲線の探索範囲（SVMの代表パラメータ）
-C_RANGE = np.logspace(0, 2, 12)       # 0.01 ... 1000
-GAMMA_RANGE = np.logspace(-4, -2.7, 12)   # 1e-4 ... 10
-
-# 学習曲線の train_sizes（割合）
-TRAIN_SIZES = np.linspace(0.2, 1.0, 5)  # 20%,40%,60%,80%,100%
-# =========================================
+TEST_SIZE = 0.2          # 例: 0.2 = 8:2
+FMAX = 2000.0            # 例: 5000Hzまで使う
+FMIN = 0.0               # 0Hzから使う（等間隔バンド化の下限）
+BAND_HZ = 50.0           # 50Hzごとの等間隔バンド幅
+TARGET_SR = 48000        # wavのサンプリング周波数が全て同一である前提
+USE_LOG1P = True         # 振幅をlog1pにするか
+ZERO_MEAN = True         # 平均を引くか
+WINDOW = "hann"          # 窓関数
+# =====================
 
 
 @dataclass
 class Sample:
     path: Path
-    label_idx: int
+    label: str
 
 
-def read_wav_mono(path: Path) -> Tuple[np.ndarray, int]:
-    """PCM 16/32bit wav を想定して読み込み（モノラル化）"""
+def read_wav_mono_float32(wav_path: Path) -> Tuple[np.ndarray, int]:
+    """
+    [機能] wav読み込み（モノラル化・float32化）
+    ※ scipy を使わずに wave + numpy でやると面倒なので、np.frombuffer等を避け、
+      ここでは scipy が無い環境を想定して最小限にしています。
+    """
     import wave
-    with wave.open(str(path), "rb") as wf:
-        n_ch = wf.getnchannels()
-        sr = wf.getframerate()
+
+    with wave.open(str(wav_path), "rb") as wf:
+        n_channels = wf.getnchannels()
         sampwidth = wf.getsampwidth()
+        fr = wf.getframerate()
         n_frames = wf.getnframes()
         raw = wf.readframes(n_frames)
 
     if sampwidth == 2:
-        x = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+        x = np.frombuffer(raw, dtype=np.int16)
+        x = x.astype(np.float32) / 32768.0
     elif sampwidth == 4:
-        x = np.frombuffer(raw, dtype=np.int32).astype(np.float32) / 2147483648.0
+        x = np.frombuffer(raw, dtype=np.int32)
+        x = x.astype(np.float32) / 2147483648.0
     else:
-        raise ValueError(f"Unsupported sampwidth={sampwidth}. Use PCM 16-bit or 32-bit wav.")
+        raise ValueError(f"Unsupported sampwidth={sampwidth} (file={wav_path})")
 
-    if n_ch > 1:
-        x = x.reshape(-1, n_ch).mean(axis=1)
+    if n_channels > 1:
+        x = x.reshape(-1, n_channels).mean(axis=1)
 
-    return x, sr
-
-
-def pad_to_len(x: np.ndarray, n: int) -> np.ndarray:
-    """不足は0埋め。超過は許容しない（FFT_LEN=maxなので基本的に超過しない想定）"""
-    if len(x) > n:
-        raise ValueError(f"Input longer than pad length: len(x)={len(x)} > n={n}")
-    y = np.zeros(n, dtype=np.float32)
-    y[:len(x)] = x.astype(np.float32, copy=False)
-    return y
+    return x.astype(np.float32), int(fr)
 
 
-def make_window(n: int, kind: str) -> np.ndarray:
-    k = kind.lower()
-    if k == "hann":
+def make_window(n: int, name: str) -> np.ndarray:
+    if name == "hann":
         return np.hanning(n).astype(np.float32)
-    if k == "hamming":
+    if name == "hamming":
         return np.hamming(n).astype(np.float32)
-    return np.ones(n, dtype=np.float32)
+    if name == "rect":
+        return np.ones(n, dtype=np.float32)
+    raise ValueError(f"Unknown window: {name}")
 
 
-def wav_to_fft_feature(wav_path: Path, fft_len: int) -> Tuple[np.ndarray, dict]:
+def mag_to_equal_band_features(
+    mag: np.ndarray,
+    freqs: np.ndarray,
+    fmin: float,
+    fmax: float,
+    band_hz: float,
+) -> np.ndarray:
     """
-    wav -> FFT特徴量（|rfft|の f<=FMAX を1次元ベクトル化）
-    ※ fft_len=FFT_LEN まで0埋めして、切り出しwavの全時間を反映させる
+    [機能] FFT振幅スペクトル mag を、fmin〜fmax を band_hz 等間隔で区切って
+          各バンド内の「平均振幅」を特徴量（低次元化）として返す。
+          例: fmin=0, fmax=2000, band_hz=50 -> 40次元
     """
-    x, sr = read_wav_mono(wav_path)
+    edges = np.arange(float(fmin), float(fmax) + float(band_hz), float(band_hz), dtype=np.float32)
+    n_bands = int(len(edges) - 1)
+    feat = np.zeros(n_bands, dtype=np.float32)
 
-    if TARGET_SR is not None and int(sr) != int(TARGET_SR):
-        raise ValueError(f"SR mismatch: wav={sr}, expected={TARGET_SR} (file={wav_path})")
+    for i in range(n_bands):
+        lo = float(edges[i])
+        hi = float(edges[i + 1])
 
-    x = x.astype(np.float32)
+        # 最終バンドだけ上端(hi)を含める
+        if i == n_bands - 1:
+            sel = (freqs >= lo) & (freqs <= hi)
+        else:
+            sel = (freqs >= lo) & (freqs < hi)
+
+        if np.any(sel):
+            feat[i] = float(np.mean(mag[sel]))
+        else:
+            feat[i] = 0.0
+
+    return feat
+
+
+def next_pow2(n: int) -> int:
+    return 1 if n <= 1 else 2 ** int(math.ceil(math.log2(n)))
+
+
+def collect_labeled_wavs(wav_root: Path) -> List[Sample]:
+    """
+    [機能] wav_root/label/*.wav を収集（label=サブフォルダ名）
+    """
+    samples: List[Sample] = []
+    if not wav_root.exists():
+        raise FileNotFoundError(f"wav_root not found: {wav_root}")
+
+    for label_dir in sorted([p for p in wav_root.iterdir() if p.is_dir()]):
+        label = label_dir.name
+        for wav_path in sorted(label_dir.glob("*.wav")):
+            samples.append(Sample(path=wav_path, label=label))
+
+    if len(samples) == 0:
+        raise RuntimeError(f"No wav files found under: {wav_root}")
+
+    return samples
+
+
+def compute_global_nfft(samples: List[Sample]) -> Tuple[int, int]:
+    """
+    [機能] 全wavの最大長を見て、共通のnfftを決める（最大長以上の最小の2^k）
+    同時にサンプリング周波数もチェック（同一である前提）
+    """
+    max_len = 0
+    sr = None
+
+    for s in samples:
+        x, sr_read = read_wav_mono_float32(s.path)
+        if sr is None:
+            sr = sr_read
+        elif sr_read != sr:
+            raise ValueError(f"Sampling rate mismatch: {sr_read} vs {sr} (file={s.path})")
+        max_len = max(max_len, len(x))
+
+    if sr is None:
+        raise RuntimeError("Failed to read any wav files.")
+    if sr != TARGET_SR:
+        raise ValueError(f"TARGET_SR mismatch: wav sr={sr} but TARGET_SR={TARGET_SR}. Fix TARGET_SR.")
+
+    nfft = next_pow2(max_len)
+    return nfft, sr
+
+
+def wav_to_fft_feature(wav_path: Path, nfft: int, sr: int, fmax: float) -> np.ndarray:
+    """
+    [機能] wav全区間を使ってFFT特徴量を作る（全サンプルでnfft共通）
+      - 長さが短い: ゼロ埋め
+      - 長さが長い: そのまま（ただし max_len から決めたnfftより長いケースは想定外）
+    """
+    x, sr_read = read_wav_mono_float32(wav_path)
+    if sr_read != sr:
+        raise ValueError(f"sr mismatch: {sr_read} vs {sr} (file={wav_path})")
 
     if ZERO_MEAN:
         x = x - float(np.mean(x))
 
-    # ノイズ処理済み前提なら False のままでOK
-    if APPLY_DENOISE:
-        import noisereduce as nr
-        x = nr.reduce_noise(y=x, sr=sr, stationary=False).astype(np.float32)
+    if len(x) > nfft:
+        # 学習時に決めたnfft（=最大長基準）を超える入力は、特徴次元が崩れるのでエラーにします
+        raise ValueError(f"Input longer than NFFT. len={len(x)} > nfft={nfft} (file={wav_path})")
 
-    # ★切らない：FFT_LENまで0埋めのみ
-    x = pad_to_len(x, fft_len)
+    x_pad = np.zeros(nfft, dtype=np.float32)
+    x_pad[:len(x)] = x
 
-    w = make_window(fft_len, WINDOW)
-    X = np.fft.rfft(x * w, n=fft_len)
+    w = make_window(nfft, WINDOW)
+    X = np.fft.rfft(x_pad * w, n=nfft)
     mag = np.abs(X).astype(np.float32)
 
-    freqs = np.fft.rfftfreq(fft_len, d=1.0 / sr)
-    mask = freqs <= float(FMAX)
+    freqs = np.fft.rfftfreq(nfft, d=1.0 / sr).astype(np.float32)
 
-    feat = mag[mask]
+    # --- 等間隔バンド（0〜fmax を BAND_HZ ごと）に集約して低次元化 ---
+    feat = mag_to_equal_band_features(
+        mag=mag,
+        freqs=freqs,
+        fmin=FMIN,
+        fmax=float(fmax),
+        band_hz=BAND_HZ,
+    )
+
     if USE_LOG1P:
         feat = np.log1p(feat)
 
-    info = {
+    return feat.astype(np.float32)
+
+
+def build_fft_csv_from_wavs(
+    wav_root: Path,
+    out_csv: Path,
+    fmax: float,
+) -> Dict:
+    """
+    [機能] wav_root から FFT特徴量CSVを作成。
+    CSV列: feat_000, feat_001, ..., feat_N, label（最後列）
+    （ラベルが最後列という点は program09_01.py の作りに合わせています）
+    """
+    samples = collect_labeled_wavs(wav_root)
+    nfft, sr = compute_global_nfft(samples)
+
+    # 1本目で次元数を決める
+    feat0 = wav_to_fft_feature(samples[0].path, nfft=nfft, sr=sr, fmax=fmax)
+    feat_dim = int(len(feat0))
+
+    labels = sorted(list({s.label for s in samples}))
+
+    # CSVヘッダ
+    header = [f"feat_{i:03d}" for i in range(feat_dim)] + ["label"]
+
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+    with out_csv.open("w", encoding="utf-8") as f:
+        f.write(",".join(header) + "\n")
+
+        for s in samples:
+            feat = wav_to_fft_feature(s.path, nfft=nfft, sr=sr, fmax=fmax)
+            if len(feat) != feat_dim:
+                raise RuntimeError(f"Feature dim mismatch: {len(feat)} vs {feat_dim} (file={s.path})")
+
+            row = [f"{v:.10g}" for v in feat] + [s.label]
+            f.write(",".join(row) + "\n")
+
+    meta = {
+        "wav_root": str(wav_root.resolve()),
+        "csv_path": str(out_csv.resolve()),
+        "labels": labels,
         "sr": int(sr),
-        "n_fft": int(fft_len),
-        "fmax": float(FMAX),
+        "nfft": int(nfft),
+        "fmax": float(fmax),
+        "fmin": float(FMIN),
+        "band_hz": float(BAND_HZ),
+        "n_bands": int((float(fmax) - float(FMIN)) / float(BAND_HZ)),
         "use_log1p": bool(USE_LOG1P),
-        "window": str(WINDOW),
         "zero_mean": bool(ZERO_MEAN),
-        "apply_denoise": bool(APPLY_DENOISE),
-        "feature_dim": int(feat.shape[0]),
+        "window": str(WINDOW),
+        "n_samples": int(len(samples)),
+        "feature_dim": int(feat_dim),
     }
-    return feat, info
+    return meta
 
 
-def list_samples(dataset_root: Path) -> Tuple[List[Sample], List[str]]:
-    """dataset_root/label/*.wav を列挙（フォルダ名=ラベル名）"""
-    if not dataset_root.exists():
-        raise FileNotFoundError(f"dataset_root not found: {dataset_root}")
+def load_csv_dataset(csv_path: Path) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+    """
+    [機能] FFT特徴量CSV
+      - 最後列は label
+      - 他は float
+    """
+    if not csv_path.exists():
+        raise FileNotFoundError(csv_path)
 
-    label_dirs = sorted([p for p in dataset_root.iterdir() if p.is_dir()])
-    if not label_dirs:
-        raise ValueError(f"No label folders found under: {dataset_root}")
+    # 1行目はヘッダ
+    with csv_path.open("r", encoding="utf-8") as f:
+        header = f.readline().strip().split(",")
+        rows = []
+        for line in f:
+            cols = line.strip().split(",")
+            rows.append(cols)
 
-    labels = [d.name for d in label_dirs]
-    label_to_idx = {name: i for i, name in enumerate(labels)}
+    if len(rows) == 0:
+        raise RuntimeError(f"Empty CSV: {csv_path}")
 
-    samples: List[Sample] = []
-    for d in label_dirs:
-        wavs = sorted([x for x in d.glob("*.wav") if x.is_file()])
-        for w in wavs:
-            samples.append(Sample(path=w, label_idx=label_to_idx[d.name]))
+    feat_cols = header[:-1]
+    label_col = header[-1]
+    if label_col != "label":
+        raise ValueError(f"Last column must be 'label' but got {label_col}")
 
-    if not samples:
-        raise ValueError("No wav files found. Check dataset_root/label/*.wav")
+    X = np.array([[float(c) for c in r[:-1]] for r in rows], dtype=np.float32)
+    y_labels = [r[-1] for r in rows]
+    label_names = sorted(list(set(y_labels)))
+    label_to_id = {lab: i for i, lab in enumerate(label_names)}
+    y = np.array([label_to_id[lab] for lab in y_labels], dtype=np.int64)
 
-    return samples, labels
+    return X, y, label_names
 
 
 def build_clf() -> Pipeline:
-    return Pipeline([
+    """
+    [機能] SVM + StandardScaler を組む
+    """
+    # パイプラインにするのが一般的だが、推論側で同じ scaler を使いたいのでここでは明示
+    # gamma='scale' は sklearn デフォルト（特徴量分散に基づく）
+    clf = Pipeline([
         ("scaler", StandardScaler()),
         ("svm", SVC(
-            kernel="rbf",
-            C=100, # rbfカーネルで使う初期値(MAX 0.79)
-            probability=True,          # ①のために必要
+            kernel="poly", 
+            degree=3,
+            C=15,# polyカーネルで良い感じだった値に変更(MAX 0.706)
+            #C=1,  # linearカーネルで使う初期値(MAX 0.667)
+            #C=1, # rbfカーネルで使う初期値(MAX 0.732)
+            probability=True,            # predict_probaを使うため（以前のSVM版でも採用）:contentReference[oaicite:5]{index=5}
             class_weight="balanced",
             random_state=RANDOM_STATE,
             break_ties=True,
         )),
     ])
-
-
-def save_eval_predictions_csv(
-    out_csv: Path,
-    samples_te: List[Sample],
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    proba: np.ndarray,
-    label_names: List[str],
-):
-    out_csv.parent.mkdir(parents=True, exist_ok=True)
-    header = ["path", "y_true", "y_pred"] + [f"proba_{name}" for name in label_names]
-    with out_csv.open("w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(header)
-        for s, yt, yp, pr in zip(samples_te, y_true, y_pred, proba):
-            row = [str(s.path), label_names[int(yt)], label_names[int(yp)]] + [float(x) for x in pr.tolist()]
-            w.writerow(row)
-
-
-def save_validation_curve(
-    diag_dir: Path,
-    X: np.ndarray,
-    y: np.ndarray,
-    clf: Pipeline,
-    param_name: str,
-    param_range: np.ndarray,
-    cv,
-    title: str,
-    png_name: str,
-    csv_name: str,
-):
-    train_scores, val_scores = validation_curve(
-        clf, X, y,
-        param_name=param_name,
-        param_range=param_range,
-        cv=cv,
-        scoring="accuracy",
-        n_jobs=None,
-    )
-
-    tr_mean = train_scores.mean(axis=1)
-    tr_std = train_scores.std(axis=1)
-    va_mean = val_scores.mean(axis=1)
-    va_std = val_scores.std(axis=1)
-
-    # CSV
-    out_csv = diag_dir / csv_name
-    with out_csv.open("w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(["param_value", "train_mean", "train_std", "val_mean", "val_std"])
-        for pv, a, b, c, d in zip(param_range, tr_mean, tr_std, va_mean, va_std):
-            w.writerow([float(pv), float(a), float(b), float(c), float(d)])
-
-    # PNG
-    import matplotlib.pyplot as plt
-    plt.figure()
-    plt.title(title)
-    plt.xlabel(param_name)
-    plt.ylabel("accuracy")
-    plt.semilogx(param_range, tr_mean, marker="o", label="train")
-    plt.semilogx(param_range, va_mean, marker="o", label="val")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(diag_dir / png_name, dpi=200)
-    plt.close()
-
-
-def save_learning_curve(
-    diag_dir: Path,
-    X: np.ndarray,
-    y: np.ndarray,
-    clf: Pipeline,
-    cv,
-    train_sizes: np.ndarray,
-    png_name: str,
-    csv_name: str,
-):
-    sizes_abs, train_scores, val_scores = learning_curve(
-        clf, X, y,
-        train_sizes=train_sizes,
-        cv=cv,
-        scoring="accuracy",
-        shuffle=True,
-        random_state=RANDOM_STATE,
-        n_jobs=None,
-    )
-
-    tr_mean = train_scores.mean(axis=1)
-    tr_std = train_scores.std(axis=1)
-    va_mean = val_scores.mean(axis=1)
-    va_std = val_scores.std(axis=1)
-
-    # CSV
-    out_csv = diag_dir / csv_name
-    with out_csv.open("w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(["train_size_abs", "train_mean", "train_std", "val_mean", "val_std"])
-        for s, a, b, c, d in zip(sizes_abs, tr_mean, tr_std, va_mean, va_std):
-            w.writerow([int(s), float(a), float(b), float(c), float(d)])
-
-    # PNG
-    import matplotlib.pyplot as plt
-    plt.figure()
-    plt.title("Learning curve (SVM)")
-    plt.xlabel("train size (abs)")
-    plt.ylabel("accuracy")
-    plt.plot(sizes_abs, tr_mean, marker="o", label="train")
-    plt.plot(sizes_abs, va_mean, marker="o", label="val")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(diag_dir / png_name, dpi=200)
-    plt.close()
+    return clf
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_root", type=str, default="ML_wav_dataset_yolo",
-                        help="教師データ（label/*.wav）。wavは切り出し済みを想定")
-    parser.add_argument("--model_dir", type=str, default="ML/trained_svm_fft_modelv2",
-                        help="保存先フォルダ")
+    parser.add_argument("--wav_root", type=str, default="ML_wav_dataset_word",
+                        help="ラベル別にwavが入っているルートフォルダ（未完成ならここを指定）")
+    parser.add_argument("--train_csv", type=str, default="word/learning_fft_dataset.csv",
+                        help="生成/利用する学習CSV")
+    parser.add_argument("--model_dir", type=str, default="word/trained_svm_model",
+                        help="model.joblib / meta.json の保存先")
     args = parser.parse_args()
 
-    dataset_root = Path(args.dataset_root)
+    wav_root = Path(args.wav_root)
+    train_csv = Path(args.train_csv)
     model_dir = Path(args.model_dir)
     model_dir.mkdir(parents=True, exist_ok=True)
 
-    samples, label_names = list_samples(dataset_root)
-    y_all = np.array([s.label_idx for s in samples], dtype=int)
+    # CSVが無ければ wav_root から作る
+    if not train_csv.exists():
+        meta_build = build_fft_csv_from_wavs(wav_root=wav_root, out_csv=train_csv, fmax=FMAX)
+    else:
+        # CSVが既にある場合でも、推論用に sr/nfft/fmax 等は必ず保存する
+        samples = collect_labeled_wavs(wav_root)
+        nfft, sr = compute_global_nfft(samples)
 
-    # ★FFT_LEN（全wavの最大長）を計測
-    max_len = 0
-    for s in samples:
-        x_tmp, sr_tmp = read_wav_mono(s.path)
-        if TARGET_SR is not None and int(sr_tmp) != int(TARGET_SR):
-            raise ValueError(f"SR mismatch: wav={sr_tmp}, expected={TARGET_SR} (file={s.path})")
-        max_len = max(max_len, len(x_tmp))
+        # feature_dim はCSVから分かる（Xの列数）
+        X_tmp, _, _ = load_csv_dataset(train_csv)
+        feat_dim = int(X_tmp.shape[1])
 
-    FFT_LEN = int(max(max_len, N_FFT))
-    print(f"[INFO] FFT_LEN (max wav length) = {FFT_LEN} samples")
+        meta_build = {
+            "wav_root": str(wav_root.resolve()),
+            "csv_path": str(train_csv.resolve()),
+            "sr": int(sr),
+            "nfft": int(nfft),
+            "fmax": float(FMAX),
+            "fmin": float(FMIN),
+            "band_hz": float(BAND_HZ),
+            "n_bands": int((float(FMAX) - float(FMIN)) / float(BAND_HZ)),
+            "use_log1p": bool(USE_LOG1P),
+            "zero_mean": bool(ZERO_MEAN),
+            "window": str(WINDOW),
+            "feature_dim": int(feat_dim),
+        }
 
-    # 特徴量作成
-    X_list = []
-    meta_info = None
-    for s in samples:
-        feat, info = wav_to_fft_feature(s.path, FFT_LEN)
-        X_list.append(feat)
-        if meta_info is None:
-            meta_info = info
-        else:
-            if feat.shape[0] != int(meta_info["feature_dim"]):
-                raise ValueError(
-                    f"feature_dim mismatch: {feat.shape[0]} vs {meta_info['feature_dim']} (file={s.path})"
-                )
+    # 学習
+    X, y, label_names = load_csv_dataset(train_csv)
 
-    X = np.stack(X_list, axis=0).astype(np.float32)  # (N, D)
-
-    # train/test split（層化）
-    idx = np.arange(len(samples))
-    idx_tr, idx_te = train_test_split(
-        idx, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y_all
+    X_tr, X_te, y_tr, y_te = train_test_split(
+        X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
     )
-    X_tr, X_te = X[idx_tr], X[idx_te]
-    y_tr, y_te = y_all[idx_tr], y_all[idx_te]
 
     clf = build_clf()
     clf.fit(X_tr, y_tr)
 
     y_pred = clf.predict(X_te)
+
     acc = float(accuracy_score(y_te, y_pred))
     cm = confusion_matrix(y_te, y_pred)
     report = classification_report(y_te, y_pred, target_names=label_names, digits=4)
 
-    # 保存（モデル）
-    dump(clf, model_dir / "model.joblib")
+    # --- confusion matrix を画像として保存 ---
+    try:
+        import matplotlib.pyplot as plt
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=label_names)
+        disp.plot(values_format="d")
+        plt.title("Confusion Matrix")
+        plt.tight_layout()
+        cm_path = model_dir / "confusion_matrix.png"
+        plt.savefig(cm_path, dpi=200)
+        plt.close()
+    except Exception as e:
+        print(f"[WARN] Failed to save confusion matrix image: {e}")
+
+    # 保存
+    model_path = model_dir / "model.joblib"
+    joblib.dump({"model": clf, "label_names": label_names}, model_path)
 
     meta = {
         "label_names": label_names,
         "random_state": int(RANDOM_STATE),
         "test_size": float(TEST_SIZE),
-        "dataset_root": str(dataset_root.resolve()),
-        "n_samples": int(X.shape[0]),
-        "feature_dim": int(X.shape[1]),
-        **(meta_info or {}),
+        "accuracy": float(acc),
+        "confusion_matrix": cm.tolist(),
+        **meta_build,  # sr/nfft/fmax など（CSV生成した場合に入る）
     }
-    (model_dir / "meta.json").write_text(
-        json.dumps(meta, indent=2, ensure_ascii=False),
-        encoding="utf-8"
-    )
+    (model_dir / "meta.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+    (model_dir / "report.txt").write_text(report, encoding="utf-8")
 
-    # ①〜③ 診断出力
-    if DO_DIAGNOSTICS:
-        diag_dir = model_dir / "diagnostics"
-        diag_dir.mkdir(parents=True, exist_ok=True)
-
-        # ① 評価データ：クラス別確率をCSVへ
-        proba = clf.predict_proba(X_te)
-        samples_te = [samples[i] for i in idx_te]
-        save_eval_predictions_csv(
-            out_csv=diag_dir / "eval_predictions.csv",
-            samples_te=samples_te,
-            y_true=y_te,
-            y_pred=y_pred,
-            proba=proba,
-            label_names=label_names,
-        )
-
-        # ② 検証曲線（C, gamma）
-        cv = StratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=RANDOM_STATE)
-
-        save_validation_curve(
-            diag_dir=diag_dir,
-            X=X, y=y_all,
-            clf=build_clf(),
-            param_name="svm__C",
-            param_range=C_RANGE,
-            cv=cv,
-            title="Validation curve: svm__C",
-            png_name="validation_curve_C.png",
-            csv_name="validation_curve_C.csv",
-        )
-
-        save_validation_curve(
-            diag_dir=diag_dir,
-            X=X, y=y_all,
-            clf=build_clf(),
-            param_name="svm__gamma",
-            param_range=GAMMA_RANGE,
-            cv=cv,
-            title="Validation curve: svm__gamma",
-            png_name="validation_curve_gamma.png",
-            csv_name="validation_curve_gamma.csv",
-        )
-
-        # ③ 学習曲線
-        save_learning_curve(
-            diag_dir=diag_dir,
-            X=X, y=y_all,
-            clf=build_clf(),
-            cv=cv,
-            train_sizes=TRAIN_SIZES,
-            png_name="learning_curve.png",
-            csv_name="learning_curve.csv",
-        )
-
-    print("=== TRAIN/EVAL DONE (SVM + FFT from WAV) ===")
-    print("model_dir:", str(model_dir.resolve()))
-    print("dataset  :", str(dataset_root.resolve()))
-    print("accuracy :", acc)
-    print("labels   :", label_names)
-    print("confusion_matrix:", cm.tolist())
+    print(f"[OK] accuracy={acc:.4f}")
     print(report)
-    if DO_DIAGNOSTICS:
-        print("diagnostics_dir:", str((model_dir / "diagnostics").resolve()))
-        print("  - eval_predictions.csv")
-        print("  - validation_curve_C.(png/csv)")
-        print("  - validation_curve_gamma.(png/csv)")
-        print("  - learning_curve.(png/csv)")
+    print(f"[SAVED] {model_path}")
+    print(f"[SAVED] {model_dir / 'meta.json'}")
+    print(f"[SAVED] {model_dir / 'report.txt'}")
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ plt.close('all')
 # tone_ranges に 3 区間分 [ (start1, end1), (start2, end2), (start3, end3) ]
 FILE_CONFIGS = [
     {
-        "path": "sa.wav",
+        "path": "sakana.wav",
         "tone_ranges": [
             (1.0, 2.0),   # 1回目
             # (1.5, 2.5),   # 2回目
@@ -28,7 +28,7 @@ FILE_CONFIGS = [
         "label": "sa",
     },
     {
-        "path": "sha.wav",
+        "path": "shakana.wav",
         "tone_ranges": [
              (1.0, 2.0),   # 1回目
             # (1.5, 2.5),   # 2回目
@@ -44,7 +44,7 @@ FILE_CONFIGS = [
         "label": "sha",
     },
     {
-        "path": "tha.wav",
+        "path": "thakana.wav",
         "tone_ranges": [
              (1.0, 2.0),   # 1回目
             # (1.5, 2.5),   # 2回目
@@ -60,7 +60,7 @@ FILE_CONFIGS = [
         "label": "tha",
     },
     {
-        "path": "tya.wav",
+        "path": "tyakana.wav",
         "tone_ranges": [
              (1.0, 2.0),   # 1回目
             # (1.5, 2.5),   # 2回目
@@ -76,7 +76,7 @@ FILE_CONFIGS = [
         "label": "tya",
     },
     {
-        "path": "ta.wav",
+        "path": "takana.wav",
         "tone_ranges": [
              (1.0, 2.0),   # 1回目
             # (1.5, 2.5),   # 2回目
@@ -93,7 +93,7 @@ FILE_CONFIGS = [
     }
 ]
 
-OUTPUT_DIR  = "sata_ML12"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "word/10times_03"  # すべての結果をまとめるフォルダ
 
 # FFT表示帯域（Hz）
 BAND_HIGH   = 3000
