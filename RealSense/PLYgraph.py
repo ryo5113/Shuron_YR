@@ -88,8 +88,8 @@ def main():
     axes[2].grid(alpha=0.2)
 
     plt.tight_layout()
-    #plt.savefig("PLY/ply7/U_20deg_3cam_mouth.png")
-    plt.show()
+    plt.savefig("PLY/ml/U_-20deg_3cam_mouth.png")
+    #plt.show()
 
 if __name__ == "__main__":
     main()

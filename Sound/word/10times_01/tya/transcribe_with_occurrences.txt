@@ -1,0 +1,15 @@
+[language] ja
+[text] ちゃかな。
+
+[debug_result]
+
+[target] ちゃかな
+[occurrences] count=1
+01	0.00-1.14	ちゃかな
+
+[segments]
+01	0.00-1.14	ちゃかな。
+    [seg_debug] no_speech_prob=0.37053677439689636 avg_logprob=-1.0762836933135986 compression_ratio=0.625 temperature=0.0 tokens_len=5
+    [tokens_head] [50365, 18930, 24939, 1543, 51065]
+    - 0.00-0.86	ちゃ
+    - 0.86-1.14	かな。

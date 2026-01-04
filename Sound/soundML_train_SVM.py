@@ -299,10 +299,10 @@ def build_clf() -> Pipeline:
     clf = Pipeline([
         ("scaler", StandardScaler()),
         ("svm", SVC(
-            kernel="poly", 
+            kernel="linear", #バンド幅25Hzの時はLinearが一番いい（0.733）
             degree=3,
-            C=15,# polyカーネルで良い感じだった値に変更(MAX 0.706)
-            #C=1,  # linearカーネルで使う初期値(MAX 0.667)
+            #C=15,# polyカーネルで良い感じだった値に変更(MAX 0.706)
+            C=1,  # linearカーネルで使う初期値(MAX 0.667)
             #C=1, # rbfカーネルで使う初期値(MAX 0.732)
             probability=True,            # predict_probaを使うため（以前のSVM版でも採用）:contentReference[oaicite:5]{index=5}
             class_weight="balanced",

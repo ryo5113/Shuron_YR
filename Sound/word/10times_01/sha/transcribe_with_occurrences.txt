@@ -1,0 +1,18 @@
+[language] ja
+[text] シャカナ。
+
+[suppress_tokens_kanji] count=1384
+
+[segments_text]
+01	0.44-1.06	シャカナ。
+
+[target] しゃかな
+[occurrences] count=0
+
+[segments]
+01	0.44-1.06	シャカナ。
+    [seg_debug] no_speech_prob=0.47947490215301514 avg_logprob=-0.7197274565696716 compression_ratio=0.625 temperature=0.0
+    - 0.44-0.72	シ
+    - 0.72-0.78	ャ
+    - 0.78-0.86	カ
+    - 0.86-1.06	ナ。

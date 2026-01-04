@@ -1,0 +1,11 @@
+[language] ja
+[text] たかな。
+
+[target] たかな
+[occurrences] count=1
+01	0.00-1.20	たかな
+
+[segments]
+01	0.00-1.20	たかな。
+    - 0.00-0.92	た
+    - 0.92-1.20	かな。

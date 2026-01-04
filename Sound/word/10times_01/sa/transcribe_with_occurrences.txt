@@ -1,0 +1,15 @@
+[language] ja
+[text] さかな。
+
+[debug_result]
+
+[target] さかな
+[occurrences] count=1
+01	0.00-1.16	さかな
+
+[segments]
+01	0.00-1.16	さかな。
+    [seg_debug] no_speech_prob=0.5008965134620667 avg_logprob=-0.6996237436930338 compression_ratio=0.6 temperature=0.0 tokens_len=5
+    [tokens_head] [50365, 6722, 24939, 1543, 50965]
+    - 0.00-0.84	さ
+    - 0.84-1.16	かな。

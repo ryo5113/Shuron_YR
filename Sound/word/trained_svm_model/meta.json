@@ -8,46 +8,46 @@
   ],
   "random_state": 42,
   "test_size": 0.2,
-  "accuracy": 0.6333333333333333,
+  "accuracy": 0.7333333333333333,
   "confusion_matrix": [
     [
       5,
       0,
+      0,
       1,
+      0
+    ],
+    [
+      0,
+      6,
+      0,
       0,
       0
     ],
     [
       0,
-      3,
+      1,
+      4,
+      1,
+      0
+    ],
+    [
       0,
+      1,
+      1,
+      4,
+      0
+    ],
+    [
+      0,
+      2,
+      1,
       0,
       3
-    ],
-    [
-      0,
-      0,
-      4,
-      0,
-      2
-    ],
-    [
-      0,
-      1,
-      1,
-      2,
-      2
-    ],
-    [
-      0,
-      0,
-      1,
-      0,
-      5
     ]
   ],
-  "wav_root": "C:\\Users\\edu01\\Documents\\GitHub\\Shuron_YR\\Sound\\ML_wav_dataset_word",
-  "csv_path": "C:\\Users\\edu01\\Documents\\GitHub\\Shuron_YR\\Sound\\word\\learning_fft_dataset.csv",
+  "wav_root": "C:\\Users\\PC_User\\Documents\\GitHub\\Shuron_YR\\Sound\\ML_wav_dataset_word",
+  "csv_path": "C:\\Users\\PC_User\\Documents\\GitHub\\Shuron_YR\\Sound\\word\\learning_fft_dataset.csv",
   "sr": 48000,
   "nfft": 65536,
   "fmax": 2000.0,
