@@ -7,55 +7,55 @@
     "tyakana"
   ],
   "random_state": 42,
-  "test_size": 0.3,
-  "accuracy": 0.6933333333333334,
+  "test_size": 0.2,
+  "accuracy": 0.82,
   "confusion_matrix": [
     [
-      14,
+      8,
       0,
       0,
-      1,
-      0
+      0,
+      2
     ],
     [
       0,
-      7,
-      2,
-      1,
-      5
+      9,
+      0,
+      0,
+      1
     ],
     [
       0,
       0,
       9,
-      1,
-      5
-    ],
-    [
       0,
-      1,
-      0,
-      13,
       1
     ],
     [
+      1,
       0,
-      1,
-      4,
-      1,
-      9
+      0,
+      7,
+      2
+    ],
+    [
+      0,
+      0,
+      2,
+      0,
+      8
     ]
   ],
-  "wav_root": "C:\\Users\\edu01\\Documents\\GitHub\\Shuron_YR\\Sound\\ML_wav_dataset_word",
-  "csv_path": "C:\\Users\\edu01\\Documents\\GitHub\\Shuron_YR\\Sound\\word\\learning_fft_dataset.csv",
+  "wav_root": "C:\\Users\\PC_User\\Documents\\GitHub\\Shuron_YR\\Sound\\SVM_wav_dataset",
+  "csv_path": "C:\\Users\\PC_User\\Documents\\GitHub\\Shuron_YR\\Sound\\word\\learning_fft_dataset.csv",
   "sr": 48000,
   "nfft": 65536,
-  "fmax": 3000.0,
+  "fmax": 10000.0,
   "fmin": 0.0,
-  "band_hz": 30.0,
-  "n_bands": 100,
+  "band_hz": 25.0,
+  "n_bands": 400,
   "use_log1p": true,
   "zero_mean": true,
   "window": "hann",
-  "feature_dim": 100
+  "feature_dim": 400
 }

@@ -5,18 +5,19 @@ import numpy as np
 
 # ====== 入力 ======
 INPUT_FILES = [
-    #Path(r"sakana/sa/cleaned_audio.wav"),
+    # Path(r"word/10times_05/sa/cleaned_audio.wav"),
+    # Path(r"word/10times_05/sha/cleaned_audio.wav"),
+    # Path(r"word/10times_05/tha/cleaned_audio.wav"),
+    # Path(r"word/10times_05/tya/cleaned_audio.wav"),
+    # Path(r"word/10times_05/ta/cleaned_audio.wav"),
     Path(r"word/10times_ad/word/cleaned_audio.wav"),
-    # Path(r"word/10times_06/tha/cleaned_audio.wav"),
-    # Path(r"word/10times_06/tya/cleaned_audio.wav"),
-    # Path(r"word/10times_06/ta/cleaned_audio.wav"),
 ]
 # ===============
 
 # 無音判定パラメータ（ここは固定のまま）
 MIN_SILENCE_LEN_MS = 250
 SILENCE_THRESH_DBFS = -70.0
-KEEP_SILENCE_MS = 0
+KEEP_SILENCE_MS = 50
 
 # 後処理パラメータ（「閾値」ではなく後処理ルール）
 TARGET_COUNT = 10          # 10回発音が前提
@@ -164,7 +165,7 @@ def process_one(in_path: Path) -> None:
     )  # [[start_ms, end_ms], ...] :contentReference[oaicite:3]{index=3}
 
     base_dir = in_path.parent / f"{in_path.stem}_chunks"
-    voiced_dir = base_dir / "voiced"
+    voiced_dir = base_dir / "voiced2"
     rejected_dir = base_dir / "rejected"
 
     voiced_dir.mkdir(parents=True, exist_ok=True)
