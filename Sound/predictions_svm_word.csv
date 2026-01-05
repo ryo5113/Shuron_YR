@@ -1,0 +1,2 @@
+path,pred_label,proba_sakana,proba_shakana,proba_takana,proba_thakana,proba_tyakana
+word\10times_ad\word\cleaned_audio_chunks\voiced\pre01.wav,thakana,0.00671128956709245,0.1534647049646939,0.09455177157749196,0.40697087010895483,0.33830136378176695

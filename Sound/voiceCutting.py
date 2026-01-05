@@ -5,11 +5,11 @@ import numpy as np
 
 # ====== 入力 ======
 INPUT_FILES = [
-    Path(r"word/10times_01/sa/cleaned_audio.wav"),
-    Path(r"word/10times_01/sha/cleaned_audio.wav"),
-    Path(r"word/10times_01/tha/cleaned_audio.wav"),
-    Path(r"word/10times_01/tya/cleaned_audio.wav"),
-    Path(r"word/10times_01/ta/cleaned_audio.wav"),
+    #Path(r"sakana/sa/cleaned_audio.wav"),
+    Path(r"word/10times_ad/word/cleaned_audio.wav"),
+    # Path(r"word/10times_06/tha/cleaned_audio.wav"),
+    # Path(r"word/10times_06/tya/cleaned_audio.wav"),
+    # Path(r"word/10times_06/ta/cleaned_audio.wav"),
 ]
 # ===============
 

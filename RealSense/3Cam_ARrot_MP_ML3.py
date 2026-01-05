@@ -282,6 +282,7 @@ def get_color_intrinsics_struct(profile):
 # Face Mesh を1回だけ作成
 mp_face_mesh = mp.solutions.face_mesh
 FACE_MESH = mp_face_mesh.FaceMesh(
+    static_image_mode=True,
     max_num_faces=1,
     refine_landmarks=True,
     min_detection_confidence=0.5,
@@ -486,6 +487,8 @@ def crop_pcd_by_lip_polygon_project(
     lip_poly_px,              # (N,2) int32 (画像座標の唇外周ポリゴン)
     color_intrinsics,         # rs.intrinsics (fx, fy, ppx, ppy, width, height)
     T_cam_to_cam0,            # 4x4 (そのカメラ -> cam0)  ※Y反転座標系で求めたもの
+    depth_frame=None,
+    depth_tol_m=0.01,         # 奥行き許容範囲（depth_frameがある場合）
     mask_dilate_px=0,         # 外周を少し厚く含めたい場合（0でOK）
     debug_bgr=None,           # デバッグ用に投影画像を返す場合のBGR画像（Noneで投影画像不要）
     debug_save_path=None      # デバッグ用に投影画像を保存する場合のパス（Noneで保存不要）
@@ -531,9 +534,30 @@ def crop_pcd_by_lip_polygon_project(
     in_img = (u >= 0) & (u < w) & (v >= 0) & (v < h)
     u = u[in_img]; v = v[in_img]
     idx = valid_idx[in_img]
+    Z_img = Z[in_img]  # depth_frame と比較するために保持
 
     inside = mask[v, u] > 0
-    keep_idx = idx[inside].tolist()
+    # Z（点の奥行）と depth_frame の距離が一致する点だけ残す
+    if depth_frame is not None:
+        # in_img フィルタ後の Z を保持していないので、ここで合わせて持つ
+        # 既存コードの in_img 後に Z_img を追加して使う（下の「※」参照）
+        inside_i = np.where(inside)[0]
+        if inside_i.size == 0:
+            return None
+
+        u_in = u[inside_i]
+        v_in = v[inside_i]
+        z_in = Z_img[inside_i]  # ★「※」で作る配列
+
+        # depth_frame は meters で返る（get_distance）
+        d_in = np.array([depth_frame.get_distance(int(uu), int(vv)) for uu, vv in zip(u_in, v_in)],
+                        dtype=np.float64)
+
+        ok_depth = (d_in > 0) & (np.abs(z_in - d_in) <= depth_tol_m)
+
+        keep_idx = idx[inside_i[ok_depth]].tolist()
+    else:
+        keep_idx = idx[inside].tolist()
 
     # ★ここからデバッグ画像保存（任意）
     if debug_bgr is not None and debug_save_path is not None:
@@ -687,7 +711,8 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
     merged_pcd_camcolor += pcd2_c
 
     # tag_R, tag_t から Cam0->Tag 変換を作る（仮定：Cam→Tag）
-    T_cam0_to_tag = make_T_from_Rt(tag_R, tag_t)
+    T_cam0_to_tag_raw = make_T_from_Rt(tag_R, tag_t)
+    T_cam0_to_tag = T_cam0_to_tag_raw @ T_FLIP  # Y反転補正
 
     # PLY保存（従来どおりの結合PLY）
     filename = f"PLY/ml/face_3cams_geom_merged_{int(pitch_label_deg)}deg_{timestamp}.ply"
@@ -830,6 +855,8 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
             lip_poly_px=lip_poly,
             color_intrinsics=color_intr,
             T_cam_to_cam0=T_cam_to_cam0,
+            depth_frame=depth_frames[cam_index],
+            depth_tol_m=0.01,
             mask_dilate_px=0,
             debug_bgr=debug_bgr,
             debug_save_path=debug_path
@@ -841,6 +868,8 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
             lip_poly_px=lip_poly,
             color_intrinsics=color_intr,
             T_cam_to_cam0=T_cam_to_cam0,
+            depth_frame=depth_frames[cam_index],
+            depth_tol_m=0.01,
             mask_dilate_px=0
         )
 
@@ -870,6 +899,25 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         # 唇中心を原点に（Tag座標上で）
         pts = np.asarray(mouth_pcd_tag.points)
         pts_centered = pts - lip_center_tag.reshape(1, 3)
+
+        # 口の横幅方向をX軸に
+        x_axis = pts_tag["right"] - pts_tag["left"]
+        x_axis = x_axis / (np.linalg.norm(x_axis) + 1e-9)
+
+        # 口の縦方向をY軸に（X軸と直交化）
+        y_axis = pts_tag["upper"] - pts_tag["lower"]
+        y_axis = y_axis - np.dot(y_axis, x_axis) * x_axis
+        y_axis = y_axis / (np.linalg.norm(y_axis) + 1e-9)
+
+        # 右手系のZ軸
+        z_axis = np.cross(x_axis, y_axis)
+        z_axis = z_axis / (np.linalg.norm(z_axis) + 1e-9)
+
+        # 回転行列（列に各軸）
+        R_mouth = np.stack([x_axis, y_axis, z_axis], axis=1)
+
+        # 「口ローカル座標」へ： p_local = R^T * p_centered
+        pts_centered = (R_mouth.T @ pts_centered.T).T
 
         mouth_pcd_tag_centered = o3d.geometry.PointCloud()
         mouth_pcd_tag_centered.points = o3d.utility.Vector3dVector(pts_centered)

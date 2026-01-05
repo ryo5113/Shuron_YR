@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 # 読み込む PLY ファイル名
 #PLY_PATH = "PLY/ml/face_3cams_geom_merged_0deg_20251226_121815.ply" # 元の顔全体点群（3台カメラ合成・色付き）
 #PLY_PATH = "PLY/ml/raw_face/face_cam0_raw_0deg_20251226_121815.ply" # 元の顔全体点群（カメラ1台分・色付き）
-PLY_PATH = "PLY/ml/mouth/mouth_-20deg_20251230_183340.ply" # 元の口元点群（カメラ1台分・色なし）
+PLY_PATH = "PLY/ml/mouth/mouth_-36deg_20260105_162936.ply" # 元の口元点群（カメラ1台分・色なし）
 #LY_PATH = "PLY/ml/mouth/mouth_camcolor_0deg_20251226_121815.ply" # 元の口元点群（カメラ1台分・カメラ別色付き）
 
 # カメラから顔中心までの距離 [m]（頭をその場回転させているという前提）
@@ -59,7 +59,7 @@ def main():
 
     # 1段目: XY 平面
     axes[0].scatter(-points[:, 0], points[:, 1], c=colors, s=0.5)
-    axes[0].set_xlim([-0.07, 0.08])
+    axes[0].set_xlim([-0.1, 0.1])
     axes[0].set_ylim([-0.1, 0.1])
     axes[0].set_xlabel('X [m]', fontsize=20)
     axes[0].set_ylabel('Y [m]', fontsize=20)
@@ -69,7 +69,7 @@ def main():
 
     # 2段目: XZ 平面
     axes[1].scatter(-points[:, 0], points[:, 2], c=colors, s=0.5)
-    axes[1].set_xlim([-0.07, 0.08])
+    axes[1].set_xlim([-0.1, 0.1])
     axes[1].set_ylim([-0.1, 0.1])
     axes[1].set_xlabel('X [m]', fontsize=20)
     axes[1].set_ylabel('Z [m]', fontsize=20)
@@ -88,8 +88,8 @@ def main():
     axes[2].grid(alpha=0.2)
 
     plt.tight_layout()
-    plt.savefig("PLY/ml/U_-20deg_3cam_mouth.png")
-    #plt.show()
+    #plt.savefig("PLY/ml/U_-20deg_3cam_mouth.png")
+    plt.show()
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,30 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: tyakana.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 23
+segment_1: start_time=0.368000s, end_time=2.016000s, duration=1.648000s
+segment_2: start_time=3.040000s, end_time=3.226667s, duration=0.186667s
+segment_3: start_time=3.237333s, end_time=3.616000s, duration=0.378667s
+segment_4: start_time=3.941333s, end_time=3.968000s, duration=0.026667s
+segment_5: start_time=4.544000s, end_time=4.709333s, duration=0.165333s
+segment_6: start_time=4.746667s, end_time=5.125333s, duration=0.378667s
+segment_7: start_time=6.133333s, end_time=6.698667s, duration=0.565333s
+segment_8: start_time=7.685333s, end_time=7.861333s, duration=0.176000s
+segment_9: start_time=7.872000s, end_time=8.266667s, duration=0.394667s
+segment_10: start_time=9.141333s, end_time=9.205333s, duration=0.064000s
+segment_11: start_time=9.264000s, end_time=9.829333s, duration=0.565333s
+segment_12: start_time=10.741333s, end_time=10.912000s, duration=0.170667s
+segment_13: start_time=10.949333s, end_time=11.328000s, duration=0.378667s
+segment_14: start_time=12.298667s, end_time=12.896000s, duration=0.597333s
+segment_15: start_time=13.578667s, end_time=13.626667s, duration=0.048000s
+segment_16: start_time=13.674667s, end_time=13.733333s, duration=0.058667s
+segment_17: start_time=13.738667s, end_time=14.368000s, duration=0.629333s
+segment_18: start_time=14.682667s, end_time=14.730667s, duration=0.048000s
+segment_19: start_time=14.901333s, end_time=14.928000s, duration=0.026667s
+segment_20: start_time=14.981333s, end_time=14.997333s, duration=0.016000s
+segment_21: start_time=15.045333s, end_time=15.872000s, duration=0.826667s
+segment_22: start_time=16.112000s, end_time=16.133333s, duration=0.021333s
+segment_23: start_time=16.197333s, end_time=16.954667s, duration=0.757333s
+mean_duration = 0.353391s

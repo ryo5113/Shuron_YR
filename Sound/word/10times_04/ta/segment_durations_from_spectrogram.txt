@@ -1,0 +1,30 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: takana.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 23
+segment_1: start_time=0.373333s, end_time=1.589333s, duration=1.216000s
+segment_2: start_time=1.610667s, end_time=2.000000s, duration=0.389333s
+segment_3: start_time=2.629333s, end_time=2.698667s, duration=0.069333s
+segment_4: start_time=2.874667s, end_time=3.077333s, duration=0.202667s
+segment_5: start_time=3.093333s, end_time=3.466667s, duration=0.373333s
+segment_6: start_time=4.416000s, end_time=4.965333s, duration=0.549333s
+segment_7: start_time=6.010667s, end_time=6.149333s, duration=0.138667s
+segment_8: start_time=6.181333s, end_time=6.533333s, duration=0.352000s
+segment_9: start_time=7.562667s, end_time=7.712000s, duration=0.149333s
+segment_10: start_time=7.728000s, end_time=8.112000s, duration=0.384000s
+segment_11: start_time=9.168000s, end_time=9.717333s, duration=0.549333s
+segment_12: start_time=10.730667s, end_time=10.885333s, duration=0.154667s
+segment_13: start_time=10.906667s, end_time=11.280000s, duration=0.373333s
+segment_14: start_time=12.250667s, end_time=12.394667s, duration=0.144000s
+segment_15: start_time=12.416000s, end_time=12.837333s, duration=0.421333s
+segment_16: start_time=13.210667s, end_time=13.264000s, duration=0.053333s
+segment_17: start_time=13.424000s, end_time=13.440000s, duration=0.016000s
+segment_18: start_time=13.578667s, end_time=13.589333s, duration=0.010667s
+segment_19: start_time=13.642667s, end_time=13.674667s, duration=0.032000s
+segment_20: start_time=13.717333s, end_time=14.314667s, duration=0.597333s
+segment_21: start_time=14.976000s, end_time=15.344000s, duration=0.368000s
+segment_22: start_time=15.386667s, end_time=15.776000s, duration=0.389333s
+segment_23: start_time=16.154667s, end_time=16.992000s, duration=0.837333s
+mean_duration = 0.337855s
