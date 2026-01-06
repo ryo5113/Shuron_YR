@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # 読み込む PLY ファイル名
-#PLY_PATH = "PLY/svm/face_3cams_geom_merged_-34deg_20260106_143923.ply" # 元の顔全体点群（3台カメラ合成・色付き）
-#PLY_PATH = "PLY/svm/raw_face/face_cam2_raw_-25deg_20260106_153639.ply" # 元の顔全体点群（カメラ1台分・色付き）
-PLY_PATH = "PLY/svm/mouth/U/mouth_-43deg_20260106_172420.ply" # 元の口元点群（カメラ1台分・色なし）
-#LY_PATH = "PLY/ml/mouth/mouth_camcolor_0deg_20251226_121815.ply" # 元の口元点群（カメラ1台分・カメラ別色付き）
+#PLY_PATH = "PLY/svm/U_face/face_3cams_geom_merged_26deg_20260106_172444.ply" # 元の顔全体点群（3台カメラ合成・色付き）
+#PLY_PATH = "PLY/svm/raw_face/U/face_cam1_raw_26deg_20260106_172444.ply" # 元の顔全体点群（カメラ1台分・色付き）
+PLY_PATH = "PLY/svm/mouth/I/mouth_0deg_20260106_171813.ply" # 元の口元点群（カメラ1台分・色なし）
+#PLY_PATH = "PLY/ml/mouth/mouth_camcolor_0deg_20251226_121815.ply" # 元の口元点群（カメラ1台分・カメラ別色付き）
 
 # カメラから顔中心までの距離 [m]（頭をその場回転させているという前提）
 PIVOT_Z = 0.6
@@ -53,7 +53,7 @@ def main():
     # points_rot = (R_y @ points_centered.T).T
     # points = points_rot + pivot
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     plt.rcParams["font.size"] = 20
 

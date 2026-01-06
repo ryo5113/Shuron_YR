@@ -1,17 +1,8 @@
 [language] ja
-[detected_ranges] 10
-[used_ranges] 10 (expected=10)
-[silence] min_silence_len_ms=200 silence_thresh_db=-22.12
+[detected_ranges] 1
+[used_ranges] 1 (expected=10)
+[silence] min_silence_len_ms=200 silence_thresh_db=-31.12
 [suppress_tokens_kanji] count=1378
 
 [segments]
-01	0.57-2.31	しゃかなしゃかな
-02	2.98-3.48	ちゃかな
-03	4.18-4.70	しゃかな
-04	5.43-5.89	だから
-05	6.66-7.09	だから
-06	7.86-8.33	だからな
-07	9.10-9.57	たかな
-08	10.33-10.83	シャカーナ
-09	11.56-12.06	しゃかな
-10	12.93-13.15	by H.
+01	0.40-13.15	しゃかな

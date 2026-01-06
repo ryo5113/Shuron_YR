@@ -160,7 +160,7 @@ def main():
     parser.add_argument(
         "--model_dir",
         type=str,
-        default="TrainModel/trained_svm_model(rbf)",
+        default="TrainModel/trained_svm_model(0106rbf)",
         help="model.joblib / meta.json のあるフォルダ",
     )
     parser.add_argument(
@@ -172,7 +172,7 @@ def main():
     parser.add_argument(
         "--out_csv",
         type=str,
-        default="predictions_svm_word.csv",
+        default="TrainModel/trained_svm_model(0106rbf)/predictions_svm_word6.csv",
         help="推論結果CSV",
     )
     args = parser.parse_args()

@@ -1,0 +1,17 @@
+[language] ja
+[text] ちゃかな。
+
+[suppress_tokens_kanji] count=1384
+
+[segments_text]
+01	0.00-1.14	ちゃかな。
+
+[target] ちゃかな
+[occurrences] count=1
+01	0.00-1.14	ちゃかな
+
+[segments]
+01	0.00-1.14	ちゃかな。
+    [seg_debug] no_speech_prob=0.37053677439689636 avg_logprob=-1.260055700937907 compression_ratio=0.625 temperature=0.2
+    - 0.00-0.86	ちゃ
+    - 0.86-1.14	かな。

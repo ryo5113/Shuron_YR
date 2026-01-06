@@ -1,0 +1,16 @@
+[language] ja
+[text] さかな。
+
+[suppress_tokens_kanji] count=1384
+
+[segments_text]
+01	0.00-1.04	さかな。
+
+[target] しゃかな
+[occurrences] count=0
+
+[segments]
+01	0.00-1.04	さかな。
+    [seg_debug] no_speech_prob=0.4569888412952423 avg_logprob=-0.36442212263743085 compression_ratio=0.6 temperature=0.2
+    - 0.00-0.72	さ
+    - 0.72-1.04	かな。

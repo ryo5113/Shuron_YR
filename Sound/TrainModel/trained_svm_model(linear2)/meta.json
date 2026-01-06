@@ -1,0 +1,61 @@
+{
+  "label_names": [
+    "sakana",
+    "shakana",
+    "takana",
+    "thakana",
+    "tyakana"
+  ],
+  "random_state": 42,
+  "test_size": 0.2,
+  "accuracy": 0.74,
+  "confusion_matrix": [
+    [
+      8,
+      0,
+      1,
+      0,
+      1
+    ],
+    [
+      0,
+      8,
+      0,
+      0,
+      2
+    ],
+    [
+      0,
+      0,
+      8,
+      0,
+      2
+    ],
+    [
+      0,
+      1,
+      0,
+      7,
+      2
+    ],
+    [
+      0,
+      0,
+      2,
+      2,
+      6
+    ]
+  ],
+  "wav_root": "C:\\Users\\PC_User\\Documents\\GitHub\\Shuron_YR\\Sound\\SVM_wav_dataset",
+  "csv_path": "C:\\Users\\PC_User\\Documents\\GitHub\\Shuron_YR\\Sound\\word\\learning_fft_dataset.csv",
+  "sr": 48000,
+  "nfft": 65536,
+  "fmax": 5000.0,
+  "fmin": 0.0,
+  "band_hz": 25.0,
+  "n_bands": 200,
+  "use_log1p": true,
+  "zero_mean": true,
+  "window": "hann",
+  "feature_dim": 200
+}

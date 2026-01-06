@@ -46,15 +46,8 @@
       11
     ]
   ],
-  "wav_root": "C:\\Users\\edu01\\Documents\\GitHub\\Shuron_YR\\Sound\\SVM_wav_dataset",
-  "csv_path": "C:\\Users\\edu01\\Documents\\GitHub\\Shuron_YR\\Sound\\word\\learning_fft_dataset.csv",
-  "labels": [
-    "sakana",
-    "shakana",
-    "takana",
-    "thakana",
-    "tyakana"
-  ],
+  "wav_root": "C:\\Users\\PC_User\\Documents\\GitHub\\Shuron_YR\\Sound\\SVM_wav_dataset",
+  "csv_path": "C:\\Users\\PC_User\\Documents\\GitHub\\Shuron_YR\\Sound\\word\\learning_fft_dataset.csv",
   "sr": 48000,
   "nfft": 65536,
   "fmax": 5000.0,
@@ -64,6 +57,5 @@
   "use_log1p": true,
   "zero_mean": true,
   "window": "hann",
-  "n_samples": 250,
   "feature_dim": 200
 }

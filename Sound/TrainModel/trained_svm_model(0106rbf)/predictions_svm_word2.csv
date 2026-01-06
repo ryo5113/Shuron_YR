@@ -1,0 +1,2 @@
+path,pred_label,proba_sakana,proba_shakana,proba_takana,proba_thakana,proba_tyakana
+test\pre02.wav,shakana,0.06554113833059856,0.3888517761871344,0.03377060855052519,0.3545093532221585,0.15732712370958338

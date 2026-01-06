@@ -12,8 +12,8 @@ from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
 # ====== ここだけ編集してください（元スクリプト踏襲） ======
-AUDIO_PATH  = "word/10times_01/sakana.wav"
-OUTPUT_PATH = "word/10times_01/sa/sakana_segmented.txt"
+AUDIO_PATH  = "word/10times_01/shakana.wav"
+OUTPUT_PATH = "word/10times_01/sha/shakana_segmented.txt"
 LANGUAGE    = "ja"        
 MODEL_NAME  = "large-v3"
 TEMPERATURE = 0.0

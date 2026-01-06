@@ -19,11 +19,11 @@ except ImportError as e:
 
 # ========= ユーザー設定 =========
 AUDIO_FILES = [
-    r"word/10times_01/sa/cleaned_audio_chunks/voiced2/chunk_04.wav",
-    r"word/10times_01/sha/cleaned_audio_chunks/voiced2/chunk_04.wav",
-    r"word/10times_01/tha/cleaned_audio_chunks/voiced2/chunk_04.wav",
-    r"word/10times_01/tya/cleaned_audio_chunks/voiced2/chunk_04.wav",
-    r"word/10times_01/ta/cleaned_audio_chunks/voiced2/chunk_04.wav",
+    r"word/10times_01/sa/cleaned_audio_chunks/voiced2/sakana.wav",
+    r"word/10times_01/sha/cleaned_audio_chunks/voiced2/shakana.wav",
+    r"word/10times_01/tha/cleaned_audio_chunks/voiced2/thakana.wav",
+    r"word/10times_01/tya/cleaned_audio_chunks/voiced2/tyakana.wav",
+    r"word/10times_01/ta/cleaned_audio_chunks/voiced2/takana.wav",
 ]
 
 PLOT_MAX_HZ = 5000  # 描画上限周波数 [Hz]
@@ -90,7 +90,8 @@ def compute_spectrum(x: np.ndarray, fs: int, n_fft=None):
 
 
 def main():
-    plt.figure()
+    plt.figure(figsize=(18,4))
+    plt.rcParams["font.size"] = 18
 
     for f in AUDIO_FILES:
         path = Path(f)
@@ -115,11 +116,11 @@ def main():
             plt.plot(freq[mask], mag[mask], label=f"{path.name} (fs={fs}Hz)")
 
     plt.xlim(0, PLOT_MAX_HZ)
-    plt.xlabel("Frequency [Hz]")
-    plt.ylabel("Magnitude [dB]" if USE_DB else "Magnitude [linear]")
-    plt.title("FFT Spectrum (0–10000 Hz)")
+    plt.xlabel("Frequency [Hz]", fontsize=18)
+    plt.ylabel("Magnitude [dB]" if USE_DB else "Magnitude [linear]", fontsize=18)
+    plt.title("FFT Spectrum", fontsize=18)
     plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    plt.legend()
+    plt.legend(fontsize=20)
     plt.tight_layout()
     plt.show()
 

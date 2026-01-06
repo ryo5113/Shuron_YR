@@ -7,43 +7,43 @@
     "tyakana"
   ],
   "random_state": 42,
-  "test_size": 0.2,
-  "accuracy": 0.82,
+  "test_size": 0.3,
+  "accuracy": 0.7733333333333333,
   "confusion_matrix": [
     [
-      8,
+      12,
       0,
-      0,
-      0,
-      2
-    ],
-    [
-      0,
-      9,
-      0,
-      0,
-      1
-    ],
-    [
-      0,
-      0,
-      9,
-      0,
-      1
-    ],
-    [
       1,
       0,
+      2
+    ],
+    [
       0,
-      7,
+      9,
+      1,
+      2,
+      3
+    ],
+    [
+      0,
+      0,
+      12,
+      0,
+      3
+    ],
+    [
+      0,
+      1,
+      0,
+      12,
       2
     ],
     [
       0,
       0,
-      2,
-      0,
-      8
+      1,
+      1,
+      13
     ]
   ],
   "wav_root": "C:\\Users\\PC_User\\Documents\\GitHub\\Shuron_YR\\Sound\\SVM_wav_dataset",
