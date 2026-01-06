@@ -42,7 +42,9 @@ try:
         #画像表示
         color_image_s = cv2.resize(color_image, (640, 360))
         depth_colormap_s = cv2.resize(depth_colormap, (640, 360))
-        images = np.hstack((color_image_s, depth_colormap_s))
+        # Color と Depth をオーバーレイして 1枚に
+        overlay = cv2.addWeighted(color_image_s, 0.6, depth_colormap_s, 0.4, 0)
+        images = np.hstack((color_image_s, depth_colormap_s, overlay))
         cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
         cv2.imshow('RealSense', images)
 

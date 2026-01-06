@@ -3,9 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # 読み込む PLY ファイル名
-#PLY_PATH = "PLY/ml/face_3cams_geom_merged_0deg_20251226_121815.ply" # 元の顔全体点群（3台カメラ合成・色付き）
-#PLY_PATH = "PLY/ml/raw_face/face_cam0_raw_0deg_20251226_121815.ply" # 元の顔全体点群（カメラ1台分・色付き）
-PLY_PATH = "PLY/ml/mouth/mouth_-36deg_20260105_162936.ply" # 元の口元点群（カメラ1台分・色なし）
+#PLY_PATH = "PLY/svm/face_3cams_geom_merged_-34deg_20260106_143923.ply" # 元の顔全体点群（3台カメラ合成・色付き）
+#PLY_PATH = "PLY/svm/raw_face/face_cam2_raw_-25deg_20260106_153639.ply" # 元の顔全体点群（カメラ1台分・色付き）
+PLY_PATH = "PLY/svm/mouth/U/mouth_-43deg_20260106_172420.ply" # 元の口元点群（カメラ1台分・色なし）
 #LY_PATH = "PLY/ml/mouth/mouth_camcolor_0deg_20251226_121815.ply" # 元の口元点群（カメラ1台分・カメラ別色付き）
 
 # カメラから顔中心までの距離 [m]（頭をその場回転させているという前提）

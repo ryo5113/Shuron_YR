@@ -1,15 +1,17 @@
 [language] ja
-[text] ちゃかな。
+[text] チャカナ
 
-[debug_result]
+[suppress_tokens_kanji] count=1384
+
+[segments_text]
+01	0.00-1.26	チャカナ
 
 [target] ちゃかな
-[occurrences] count=1
-01	0.00-1.14	ちゃかな
+[occurrences] count=0
 
 [segments]
-01	0.00-1.14	ちゃかな。
-    [seg_debug] no_speech_prob=0.37053677439689636 avg_logprob=-1.0762836933135986 compression_ratio=0.625 temperature=0.0 tokens_len=5
-    [tokens_head] [50365, 18930, 24939, 1543, 51065]
-    - 0.00-0.86	ちゃ
-    - 0.86-1.14	かな。
+01	0.00-1.26	チャカナ
+    [seg_debug] no_speech_prob=0.37053635716438293 avg_logprob=-1.238401730855306 compression_ratio=0.6 temperature=0.2
+    - 0.00-0.84	チャ
+    - 0.84-0.98	カ
+    - 0.98-1.26	ナ

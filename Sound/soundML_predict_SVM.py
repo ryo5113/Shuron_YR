@@ -76,7 +76,8 @@ def mag_to_equal_band_features(
             sel = (freqs >= lo) & (freqs < hi)
 
         if np.any(sel):
-            feat[i] = float(np.mean(mag[sel]))
+            feat[i] = float(np.mean(mag[sel])) # 平均振幅に変更
+            #feat[i] = float(np.sum(mag[sel])) # バンド和に変更
         else:
             feat[i] = 0.0
 
@@ -159,7 +160,7 @@ def main():
     parser.add_argument(
         "--model_dir",
         type=str,
-        default="word/trained_svm_model",
+        default="TrainModel/trained_svm_model(rbf)",
         help="model.joblib / meta.json のあるフォルダ",
     )
     parser.add_argument(

@@ -1,3 +1,6 @@
+# 従来の方法（漢字抑制＋無音区間分割＋1発音1行文字起こし）で
+# whisperを使って文字起こしを行うスクリプト
+
 import os
 import sys
 import time
@@ -11,7 +14,7 @@ from pydub.silence import detect_nonsilent
 # ====== ここだけ編集してください（元スクリプト踏襲） ======
 AUDIO_PATH  = "word/10times_01/sakana.wav"
 OUTPUT_PATH = "word/10times_01/sa/sakana_segmented.txt"
-LANGUAGE    = "ja"        # ★前提：日本語（"ja"固定）
+LANGUAGE    = "ja"        
 MODEL_NAME  = "large-v3"
 TEMPERATURE = 0.0
 
@@ -37,7 +40,7 @@ def token_has_kanji(token_text: str) -> bool:
 def build_suppress_tokens_for_kanji(lang: str):
     tok = whisper.tokenizer.get_tokenizer(multilingual=True, language=lang, task="transcribe")
     suppress = []
-    for tid in range(tok.n_vocab):
+    for tid in range(tok.encoding.n_vocab):
         txt = tok.decode([tid])
         if txt and token_has_kanji(txt):
             suppress.append(tid)

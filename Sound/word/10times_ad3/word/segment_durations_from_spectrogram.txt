@@ -1,0 +1,16 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: word.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 9
+segment_1: start_time=0.368000s, end_time=1.408000s, duration=1.040000s
+segment_2: start_time=1.808000s, end_time=1.829333s, duration=0.021333s
+segment_3: start_time=1.909333s, end_time=2.560000s, duration=0.650667s
+segment_4: start_time=2.592000s, end_time=2.922667s, duration=0.330667s
+segment_5: start_time=3.413333s, end_time=3.461333s, duration=0.048000s
+segment_6: start_time=3.477333s, end_time=3.493333s, duration=0.016000s
+segment_7: start_time=3.514667s, end_time=3.573333s, duration=0.058667s
+segment_8: start_time=3.605333s, end_time=4.432000s, duration=0.826667s
+segment_9: start_time=4.981333s, end_time=5.392000s, duration=0.410667s
+mean_duration = 0.378074s

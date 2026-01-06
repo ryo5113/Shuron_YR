@@ -10,7 +10,7 @@ INPUT_FILES = [
     # Path(r"word/10times_05/tha/cleaned_audio.wav"),
     # Path(r"word/10times_05/tya/cleaned_audio.wav"),
     # Path(r"word/10times_05/ta/cleaned_audio.wav"),
-    Path(r"word/10times_ad/word/cleaned_audio.wav"),
+    Path(r"word/10times_ad3/word/cleaned_audio.wav"),
 ]
 # ===============
 

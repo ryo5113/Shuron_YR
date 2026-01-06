@@ -1,16 +1,18 @@
+# Whisperのmodel.transcribe()で特定語の出現時刻を取得するスクリプト
+
 import os
 import sys
 import unicodedata
 import whisper
 
 # ====== ここだけ編集してください ======
-AUDIO_PATH  = "word/10times_01/shakana.wav"
-OUTPUT_PATH = "word/10times_01/sha/transcribe_with_occurrences.txt"
+AUDIO_PATH  = "word/10times_01/sakana.wav"
+OUTPUT_PATH = "word/10times_01/sa/sakana_transcribe.txt"
 LANGUAGE    = "ja"        # ★前提：日本語（"ja"固定）
 MODEL_NAME  = "large-v3"
-TEMPERATURE = 0.0
+TEMPERATURE = 0.2
 WORD_TIMESTAMPS = True    # True推奨（出現時刻を取るため）
-TARGET_WORD = "しゃかな"  # ★出現時刻を知りたい語
+TARGET_WORD = "さかな"  # ★出現時刻を知りたい語
 # ================================
 
 # 句読点等の簡易除去（日本語向けに最低限）

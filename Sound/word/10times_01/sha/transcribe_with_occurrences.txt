@@ -11,7 +11,7 @@
 
 [segments]
 01	0.44-1.06	シャカナ。
-    [seg_debug] no_speech_prob=0.47947490215301514 avg_logprob=-0.7197274565696716 compression_ratio=0.625 temperature=0.0
+    [seg_debug] no_speech_prob=0.4794743061065674 avg_logprob=-0.7197275161743164 compression_ratio=0.625 temperature=0.2
     - 0.44-0.72	シ
     - 0.72-0.78	ャ
     - 0.78-0.86	カ

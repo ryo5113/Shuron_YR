@@ -1,0 +1,17 @@
+[language] ja
+[detected_ranges] 11
+[used_ranges] 10 (expected=10)
+[silence] min_silence_len_ms=200 silence_thresh_db=-21.43
+[suppress_tokens_kanji] count=1378
+
+[segments]
+01	0.80-1.28	な
+02	2.03-2.52	さかな
+03	3.29-3.80	どうかはな
+04	4.53-5.04	だかな
+05	5.85-6.33	なかなか
+06	7.11-7.63	なかなか
+07	8.36-8.88	なかなか
+08	9.48-10.18	わからない
+09	10.98-11.48	なかなか
+10	12.32-12.82	わかんな

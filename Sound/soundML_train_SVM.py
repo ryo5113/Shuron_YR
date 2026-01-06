@@ -20,11 +20,10 @@ from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, ConfusionMatrixDisplay
 
-
 # ===== 固定設定（必要ならここだけ変更）=====
 RANDOM_STATE = 42
-TEST_SIZE = 0.2          # 例: 0.2 = 8:2
-FMAX = 10000.0            # 例: 5000Hzまで使う
+TEST_SIZE = 0.3          # 例: 0.2 = 8:2
+FMAX = 5000.0            # 例: 5000Hzまで使う
 FMIN = 0.0               # 0Hzから使う（等間隔バンド化の下限）
 BAND_HZ = 25.0           # 50Hzごとの等間隔バンド幅
 TARGET_SR = 48000        # wavのサンプリング周波数が全て同一である前提
@@ -32,7 +31,6 @@ USE_LOG1P = True         # 振幅をlog1pにするか
 ZERO_MEAN = True         # 平均を引くか
 WINDOW = "hann"          # 窓関数
 # =====================
-
 
 @dataclass
 class Sample:
@@ -299,11 +297,11 @@ def build_clf() -> Pipeline:
     clf = Pipeline([
         ("scaler", StandardScaler()),
         ("svm", SVC(
-            kernel="rbf", 
-            degree=2,
-            #C=0.005,# linearカーネルで良い感じだった値に変更(MAX 0.780)
-            #C=5,  # polyカーネルで使う初期値(MAX 0.720)
-            C=2, # rbfカーネルで使う初期値(MAX 0.820,現在使用中)
+            kernel="rbf",  # linear, rbf, poly
+            degree=3,
+            #C=0.007,# linearカーネルで良い感じだった値に変更(MAX 0.780)
+            #C=3,  # polyカーネルで使う初期値(MAX 0.720)
+            C=5, # rbfカーネルで使う初期値(MAX 0.820,現在使用中)
             probability=True,            # predict_probaを使うため（以前のSVM版でも採用）:contentReference[oaicite:5]{index=5}
             class_weight="balanced",
             random_state=RANDOM_STATE,

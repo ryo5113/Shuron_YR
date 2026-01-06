@@ -1,0 +1,17 @@
+[language] ja
+[detected_ranges] 20
+[used_ranges] 10 (expected=10)
+[silence] min_silence_len_ms=200 silence_thresh_db=-23.45
+[suppress_tokens_kanji] count=1378
+
+[segments]
+01	0.53-1.77	さかな
+02	2.22-3.38	だかな
+03	4.04-4.10	ご協賛ありがとうございました
+04	4.35-5.01	さかな
+05	5.43-5.44	ご協賛ありがとうございました
+06	5.74-5.84	by H.
+07	6.06-6.50	さかな
+08	7.07-8.04	さかな
+09	8.56-8.60	ご協賛ありがとうございました
+10	8.84-9.53	さかな

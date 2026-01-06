@@ -1,0 +1,17 @@
+[language] ja
+[detected_ranges] 11
+[used_ranges] 10 (expected=10)
+[silence] min_silence_len_ms=200 silence_thresh_db=-22.61
+[suppress_tokens_kanji] count=1378
+
+[segments]
+01	0.59-1.41	たかな
+02	2.09-2.73	たかな
+03	3.53-4.03	かかな
+04	4.80-5.37	たかな
+05	6.04-6.71	たかな
+06	7.34-8.04	たかな
+07	8.81-9.32	たかな
+08	10.02-10.63	たかな
+09	11.48-11.97	さかな
+10	12.76-13.26	かかな

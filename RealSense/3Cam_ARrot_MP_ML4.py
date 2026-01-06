@@ -527,7 +527,7 @@ def crop_pcd_by_lip_polygon_project(
 
     fx, fy, cx, cy = color_intrinsics.fx, color_intrinsics.fy, color_intrinsics.ppx, color_intrinsics.ppy
 
-    # ★Y反転座標系なので v の式が「cy - fy*(Y/Z)」
+    # Y反転座標系なので v の式が「cy - fy*(Y/Z)」
     u = (fx * (X / Z) + cx).astype(np.int32)
     v = (cy - fy * (Y / Z)).astype(np.int32)
 
@@ -537,29 +537,45 @@ def crop_pcd_by_lip_polygon_project(
     Z_img = Z[in_img]  # depth_frame と比較するために保持
 
     inside = mask[v, u] > 0
-    # Z（点の奥行）と depth_frame の距離が一致する点だけ残す
-    if depth_frame is not None:
-        # in_img フィルタ後の Z を保持していないので、ここで合わせて持つ
-        # 既存コードの in_img 後に Z_img を追加して使う（下の「※」参照）
-        inside_i = np.where(inside)[0]
-        if inside_i.size == 0:
-            return None
+    inside_i = np.where(inside)[0]
+    if inside_i.size == 0:
+        return None
 
-        u_in = u[inside_i]
-        v_in = v[inside_i]
-        z_in = Z_img[inside_i]  # ★「※」で作る配列
+    u_in = u[inside_i]
+    v_in = v[inside_i]
+    z_in = Z_img[inside_i]
+    idx_in = idx[inside_i]
 
-        # depth_frame は meters で返る（get_distance）
-        d_in = np.array([depth_frame.get_distance(int(uu), int(vv)) for uu, vv in zip(u_in, v_in)],
-                        dtype=np.float64)
+    pix_key = (v_in.astype(np.int64) * w + u_in.astype(np.int64))
+    uniq, inv = np.unique(pix_key, return_inverse=True)
 
-        ok_depth = (d_in > 0) & (np.abs(z_in - d_in) <= depth_tol_m)
+    minz = np.full((uniq.shape[0],), np.inf, dtype=np.float64)
+    np.minimum.at(minz, inv, z_in)
 
-        keep_idx = idx[inside_i[ok_depth]].tolist()
-    else:
-        keep_idx = idx[inside].tolist()
+    front_band_m = 0.003  # 例: 3mm。唇表面の厚み/ノイズ分だけ許容
+    is_front = z_in <= (minz[inv] + front_band_m)
 
-    # ★ここからデバッグ画像保存（任意）
+    keep = is_front
+    keep_idx = idx_in[keep].tolist()
+    if not keep_idx:
+        return None
+
+    # # Z（点の奥行）と depth_frame の距離が一致する点だけ残す
+    # if depth_frame is not None:
+    #     # depth_frame は meters で返る（get_distance）
+    #     d_in = np.array([depth_frame.get_distance(int(uu), int(vv)) for uu, vv in zip(u_in, v_in)],
+    #                     dtype=np.float64)
+
+    #     ok_depth = (d_in > 0) & (np.abs(z_in - d_in) <= depth_tol_m)
+    #     keep = is_front & ok_depth
+    # else:
+    #     keep = is_front
+
+    # keep_idx = idx_in[keep].tolist()
+    # if not keep_idx:
+    #     return None
+
+    # ここからデバッグ画像保存（任意）
     if debug_bgr is not None and debug_save_path is not None:
         vis = cv2.bitwise_and(debug_bgr, debug_bgr, mask=mask)
 
@@ -602,6 +618,30 @@ def compute_lip_metrics(points_cam0):
         "height": float(height),
         "depth":  float(depth),
     }
+
+def keep_largest_cluster_dbscan(pcd, eps=0.006, min_points=30):
+    """
+    Open3D DBSCANでクラスタリングし、最大クラスタのみ残す。
+    eps: 近傍半径[m], min_points: クラスタ最小点数
+    """
+    if pcd is None or len(pcd.points) == 0:
+        return pcd
+
+    labels = np.asarray(pcd.cluster_dbscan(eps=eps, min_points=min_points, print_progress=False))
+    if labels.size == 0:
+        return pcd
+
+    valid = labels >= 0
+    if not np.any(valid):
+        # 全点がノイズ扱い(-1)になった場合は、削り過ぎ防止のためそのまま返す
+        return pcd
+
+    # 最大クラスタID
+    counts = np.bincount(labels[valid])
+    largest = int(np.argmax(counts))
+
+    keep_idx = np.where(labels == largest)[0].tolist()
+    return pcd.select_by_index(keep_idx)
 
 # =========================================================
 # 実行オプション
@@ -647,17 +687,17 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
                 color_frames[i] = color
 
     # PLY保存（角度ラベル入り）
-    os.makedirs("PLY/ml", exist_ok=True)
+    os.makedirs("PLY/svm", exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     # Tag姿勢の記録 
-    os.makedirs("PLY/ml/tag_pose", exist_ok=True)
+    os.makedirs("PLY/svm/tag_pose", exist_ok=True)
 
     roll, pitch, yaw = rotation_matrix_to_euler(tag_R)
     # main側と同じ符号系に揃えたいなら pitch を反転した値も保存しておく
     pitch_deg_raw = math.degrees(pitch)
     pitch_deg_flipped = -pitch_deg_raw
 
-    pose_path = f"PLY/ml/tag_pose/tag_pose_{timestamp}.txt"
+    pose_path = f"PLY/svm/tag_pose/tag_pose_{timestamp}.txt"
     with open(pose_path, "w", encoding="utf-8") as f:
         f.write(f"pitch_label_deg(arg): {pitch_label_deg}\n")
         f.write("R_tag (Cam->Tag):\n")
@@ -682,9 +722,9 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         raw_pcds.append(pcd_raw)
 
     # 各カメラ raw PLY を保存（座標変換なし）
-    os.makedirs("PLY/ml/raw_face", exist_ok=True)
+    os.makedirs("PLY/svm/raw_face", exist_ok=True)
     for i, pcd_raw in enumerate(raw_pcds):
-        raw_path = f"PLY/ml/raw_face/face_cam{i}_raw_{int(pitch_label_deg)}deg_{timestamp}.ply"
+        raw_path = f"PLY/svm/raw_face/face_cam{i}_raw_{int(pitch_label_deg)}deg_{timestamp}.ply"
         o3d.io.write_point_cloud(raw_path, pcd_raw)
         print(f"[SAVE] {raw_path}")
 
@@ -734,12 +774,12 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
     T_cam0_to_tag = T_cam0_to_tag_raw @ T_FLIP  # Y反転補正
 
     # PLY保存（従来どおりの結合PLY）
-    filename = f"PLY/ml/face_3cams_geom_merged_{int(pitch_label_deg)}deg_{timestamp}.ply"
+    filename = f"PLY/svm/face_3cams_geom_merged_{int(pitch_label_deg)}deg_{timestamp}.ply"
     o3d.io.write_point_cloud(filename, merged_pcd)
     print(f"[SAVE] {filename}")
 
     # PLY保存（追加：カメラ色付き結合PLY）
-    filename_camcolor = f"PLY/ml/face_3cams_geom_merged_camcolor_{int(pitch_label_deg)}deg_{timestamp}.ply"
+    filename_camcolor = f"PLY/svm/face_3cams_geom_merged_camcolor_{int(pitch_label_deg)}deg_{timestamp}.ply"
     o3d.io.write_point_cloud(filename_camcolor, merged_pcd_camcolor)
     print(f"[SAVE] {filename_camcolor}")
 
@@ -828,8 +868,8 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         print(f"  高さ (上下唇Y差)         : {metrics['height']:.6f} [m]")
         print(f"  奥行 ( max(Z_left, Z_right) - min(Z_upper, Z_lower)): {metrics['depth']:.6f} [m]")
 
-        os.makedirs("PLY/ml/lip_metrics", exist_ok=True)
-        txt_path = f"PLY/ml/lip_metrics/lip_metrics_{int(pitch_label_deg)}deg_{timestamp}.txt"
+        os.makedirs("PLY/svm/lip_metrics", exist_ok=True)
+        txt_path = f"PLY/svm/lip_metrics/lip_metrics_{int(pitch_label_deg)}deg_{timestamp}.txt"
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(f"pitch_label_deg: {pitch_label_deg}\n")
             f.write(f"camera_index: {selected['camera_index']}\n")
@@ -865,7 +905,7 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         else:
             T_cam_to_cam0 = T_2_to_0_icp
 
-        dbg_dir = "PLY/ml/lip_mask_debug"
+        dbg_dir = "PLY/svm/lip_mask_debug"
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         debug_path = f"{dbg_dir}/lipmask_cam{cam_index}_{int(pitch_label_deg)}deg_{ts}.png"
         
@@ -894,6 +934,15 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
 
         if mouth_pcd is None or len(mouth_pcd.points) == 0:
             print("[LIP] mouth_pcd is empty (polygon crop). skip save.")
+            return
+        
+        # 最大クラスタのみ残す
+        mouth_pcd = keep_largest_cluster_dbscan(mouth_pcd, eps=0.006, min_points=30)
+        mouth_pcd_camcolor = keep_largest_cluster_dbscan(mouth_pcd_camcolor, eps=0.006, min_points=30)
+
+        # クラスタリング後に0点になる可能性があるので再チェック
+        if mouth_pcd is None or len(mouth_pcd.points) == 0:
+            print("[LIP] mouth_pcd became empty after clustering. skip save.")
             return
 
         def transform_pcd_points(pcd, T):
@@ -935,6 +984,30 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         # 回転行列（列に各軸）
         R_mouth = np.stack([x_axis, y_axis, z_axis], axis=1)
 
+        os.makedirs("PLY/svm/mouth_pose", exist_ok=True)
+
+        roll_m, pitch_m, yaw_m = rotation_matrix_to_euler(R_mouth)
+        mouth_pose_path = f"PLY/svm/mouth_pose/mouth_pose_{timestamp}.txt"
+
+        with open(mouth_pose_path, "w", encoding="utf-8") as f:
+            f.write(f"pitch_label_deg(arg): {pitch_label_deg}\n")
+            f.write(f"camera_index(lip source): {selected['camera_index']}\n")
+
+            # 口中心（Tag座標）
+            f.write("lip_center_tag (Tag coord) [m]:\n")
+            f.write(np.array2string(lip_center_tag.reshape(3), precision=8, suppress_small=False))
+            f.write("\n\n")
+
+            # 口姿勢（Tag座標に対する口ローカル軸）
+            f.write("R_mouth (Tag->Mouth axes as columns):\n")
+            f.write(np.array2string(R_mouth, precision=8, suppress_small=False))
+            f.write("\n")
+
+            f.write(f"euler_deg_from_R_mouth (roll,pitch,yaw): "
+                    f"{math.degrees(roll_m):.6f}, {math.degrees(pitch_m):.6f}, {math.degrees(yaw_m):.6f}\n")
+
+        print(f"[SAVE] Mouth pose: {mouth_pose_path}")
+
         # 「口ローカル座標」へ： p_local = R^T * p_centered
         pts_centered = (R_mouth.T @ pts_centered.T).T
 
@@ -955,9 +1028,9 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         if mouth_pcd is None or len(mouth_pcd.points) == 0:
             print("[LIP] mouth_pcd is empty (polygon crop). skip save.")
         else:
-            os.makedirs("PLY/ml/mouth", exist_ok=True)
+            os.makedirs("PLY/svm/mouth", exist_ok=True)
 
-            mouth_filename = f"PLY/ml/mouth/mouth_{int(pitch_label_deg)}deg_{timestamp}.ply"
+            mouth_filename = f"PLY/svm/mouth/mouth_{int(pitch_label_deg)}deg_{timestamp}.ply"
             o3d.io.write_point_cloud(mouth_filename, mouth_pcd_tag_centered)  # ←ここが重要（変換後を保存）
             print(f"[SAVE] mouth pcd: {mouth_filename}")
 
@@ -968,9 +1041,9 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         # ★ここから画像保存
         annotated = selected.get("annotated_image", None)
         if annotated is not None:
-            os.makedirs("PLY/ml/mediapipe_img", exist_ok=True)
+            os.makedirs("PLY/svm/mediapipe_img", exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            img_path = f"PLY/ml/mediapipe_img/lip_cam{selected['camera_index']}_{ts}.png"
+            img_path = f"PLY/svm/mediapipe_img/lip_cam{selected['camera_index']}_{ts}.png"
             cv2.imwrite(img_path, annotated)
             print(f"[LIP] MediaPipe描画画像を保存しました: {img_path}")
 
@@ -997,6 +1070,8 @@ def main():
 
         print("[INFO] Running...  Stop with Ctrl+C (KeyboardInterrupt).")
 
+        is_processing = False
+
         while True:
             # cam0で AprilTag 姿勢推定
             frames0 = pipelines[0].wait_for_frames()
@@ -1020,7 +1095,7 @@ def main():
 
             for r in results:
                 R_tag = r.pose_R
-                t_tag = r.pose_t  # ★追加（3要素の並進ベクトルの想定）
+                t_tag = r.pose_t  #（3要素の並進ベクトルの想定）
                 roll, pitch, yaw = rotation_matrix_to_euler(R_tag)
                 pitch = -pitch  # 頭の回転方向に合わせて符号反転
                 # 角度（deg）
@@ -1054,6 +1129,10 @@ def main():
                 cv2.putText(frame_vis, f"CAPTURE: {status}",
                             (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
                             (0, 255, 0) if capture_ready else (0, 0, 255), 2)
+                
+                if is_processing:
+                    cv2.putText(frame_vis, "PROCESSING... DO NOT MOVE",
+                                (30, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
 
                 if matched_any:
                     # 表示するPitchは、既存の平滑化後を使う（必要なければ pitch_deg にしてOK）
@@ -1071,7 +1150,15 @@ def main():
 
                 # 手動撮影キー（例：'c'）
                 if key == ord('c'):
-                    if capture_ready:
+                    if capture_ready and (not is_processing):
+                        is_processing = True
+
+                        overlay = frame_vis.copy()
+                        cv2.putText(overlay, "CAPTURED. PROCESSING... DO NOT MOVE",
+                                    (30, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                        cv2.imshow("Cam0 AprilTag Pose (Trigger)", overlay)
+                        cv2.waitKey(1)
+
                         print(f"[TRIGGER] manual capture | pitch={pitch_deg_smooth:.2f} deg")
                         # 記録する姿勢＝この時点の Tag の R,t を capture 側へ渡す
                         # pitch_label_deg は「記録したい角度」として、ここでは pitch_deg_smooth を渡す
@@ -1080,6 +1167,8 @@ def main():
                             pitch_label_deg=pitch_deg_smooth,
                             tag_R=R_tag, tag_t=t_tag
                         )
+
+                        is_processing = False
                     else:
                         print("[TRIGGER] manual capture ignored (not ready)")
 
