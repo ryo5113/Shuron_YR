@@ -76,8 +76,8 @@ def mag_to_equal_band_features(
             sel = (freqs >= lo) & (freqs < hi)
 
         if np.any(sel):
-            feat[i] = float(np.mean(mag[sel])) # 平均振幅に変更
-            #feat[i] = float(np.sum(mag[sel])) # バンド和に変更
+            #feat[i] = float(np.mean(mag[sel])) # 平均振幅に変更
+            feat[i] = float(np.sum(mag[sel])) # バンド和に変更
         else:
             feat[i] = 0.0
 
@@ -90,18 +90,19 @@ def wav_to_fft_feature(wav_path: Path, meta: Dict[str, Any]) -> np.ndarray:
     """
     x, sr = read_wav_mono_float32(wav_path)
 
-    expected_sr = int(meta["sr"])
+    expected_sr = int(meta["fft"]["sr"])
     if int(sr) != expected_sr:
         raise ValueError(f"SR mismatch: wav={sr}, expected={expected_sr} (file={wav_path})")
 
-    nfft = int(meta["nfft"])  # 学習側は "nfft"
-    fmin = float(meta.get("fmin", 0.0))
-    fmax = float(meta["fmax"])
-    band_hz = float(meta["band_hz"])
-    use_log1p = bool(meta["use_log1p"])
-    zero_mean = bool(meta.get("zero_mean", False))
-    window = str(meta.get("window", "hann"))
-    feature_dim = int(meta["feature_dim"])
+    nfft = int(meta["fft"]["nfft"])
+    fmin = float(meta["fft"].get("fmin", 0.0))
+    fmax = float(meta["fft"]["fmax"])
+
+    band_hz = float(meta["feature"]["band_hz"])
+    use_log1p = bool(meta["fft"]["use_log1p"])
+    zero_mean = bool(meta["fft"].get("zero_mean", False))
+    window = str(meta["fft"].get("window", "hann"))
+    feature_dim = int(meta["feature"]["feature_dim"])
 
     if zero_mean:
         x = x - float(np.mean(x))
@@ -160,7 +161,7 @@ def main():
     parser.add_argument(
         "--model_dir",
         type=str,
-        default="TrainModel/trained_svm_model(0106rbf)",
+        default="word/trained_svm_model_band/sum73/BEST_band_080Hz",
         help="model.joblib / meta.json のあるフォルダ",
     )
     parser.add_argument(
@@ -172,7 +173,7 @@ def main():
     parser.add_argument(
         "--out_csv",
         type=str,
-        default="TrainModel/trained_svm_model(0106rbf)/predictions_svm_word6.csv",
+        default="word/trained_svm_model_band/sum73/BEST_band_080Hz/predictions_svm_word6.csv",
         help="推論結果CSV",
     )
     args = parser.parse_args()
@@ -186,7 +187,7 @@ def main():
         raise FileNotFoundError(f"meta not found: {meta_path}")
 
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    label_names = meta["label_names"]
+    label_names = meta["labels"]
 
     clf, label_names_in_model = load_model_any(model_path)
     # label_names は meta.json を正として使う（学習スクリプトがここに保存しているため）
@@ -201,23 +202,27 @@ def main():
     X = np.stack([wav_to_fft_feature(w, meta) for w in wavs], axis=0)
 
     proba = clf.predict_proba(X)
+    proba_pct = proba * 100.0
     pred_idx = np.argmax(proba, axis=1)
     pred_label = [label_names[i] for i in pred_idx]
 
     out_csv = Path(args.out_csv)
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        header = ["path", "pred_label"] + [f"proba_{c}" for c in label_names]
+        header = ["path", "pred_label"] + [f"pct_{c}" for c in label_names]
         writer.writerow(header)
         for i, w in enumerate(wavs):
-            row = [str(w), pred_label[i]] + [float(x) for x in proba[i]]
+            row = [str(w), pred_label[i]] + [round(float(x), 1) for x in proba_pct[i]]
             writer.writerow(row)
 
     print("=== PREDICT DONE (SVM + Equal-band FFT from WAV) ===")
     print("out_csv:", out_csv.resolve())
-    for w, yhat in zip(wavs, pred_label):
-        print(w.name, "->", yhat)
-
+    for i, (w, yhat) in enumerate(zip(wavs, pred_label)):
+        order = np.argsort(-proba_pct[i])  # 降順
+        topk = []
+        for j in order[:3]:
+            topk.append(f"{label_names[j]}: {proba_pct[i][j]:.1f}%")
+        print(f"{w.name} -> {yhat}  (top3: " + ", ".join(topk) + ")")
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,77 @@
+[
+  {
+    "band_hz": 1.0,
+    "feature_dim": 8000,
+    "accuracy": 0.76
+  },
+  {
+    "band_hz": 2.0,
+    "feature_dim": 4000,
+    "accuracy": 0.74
+  },
+  {
+    "band_hz": 3.0,
+    "feature_dim": 2667,
+    "accuracy": 0.72
+  },
+  {
+    "band_hz": 4.0,
+    "feature_dim": 2000,
+    "accuracy": 0.72
+  },
+  {
+    "band_hz": 5.0,
+    "feature_dim": 1600,
+    "accuracy": 0.72
+  },
+  {
+    "band_hz": 10.0,
+    "feature_dim": 800,
+    "accuracy": 0.74
+  },
+  {
+    "band_hz": 20.0,
+    "feature_dim": 400,
+    "accuracy": 0.78
+  },
+  {
+    "band_hz": 25.0,
+    "feature_dim": 320,
+    "accuracy": 0.78
+  },
+  {
+    "band_hz": 30.0,
+    "feature_dim": 267,
+    "accuracy": 0.8
+  },
+  {
+    "band_hz": 40.0,
+    "feature_dim": 200,
+    "accuracy": 0.78
+  },
+  {
+    "band_hz": 50.0,
+    "feature_dim": 160,
+    "accuracy": 0.82
+  },
+  {
+    "band_hz": 60.0,
+    "feature_dim": 134,
+    "accuracy": 0.84
+  },
+  {
+    "band_hz": 70.0,
+    "feature_dim": 115,
+    "accuracy": 0.82
+  },
+  {
+    "band_hz": 80.0,
+    "feature_dim": 100,
+    "accuracy": 0.8
+  },
+  {
+    "band_hz": 100.0,
+    "feature_dim": 80,
+    "accuracy": 0.88
+  }
+]

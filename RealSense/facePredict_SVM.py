@@ -39,7 +39,6 @@ def load_points_from_ply(ply_path: Path) -> np.ndarray:
         raise ValueError(f"No valid points in {ply_path}")
     return pts
 
-
 def occupancy_grid_features(points: np.ndarray, grid: int) -> np.ndarray:
     """
     学習時と同じ前処理:
@@ -66,6 +65,12 @@ def occupancy_grid_features(points: np.ndarray, grid: int) -> np.ndarray:
 
     return occ.reshape(-1).astype(np.float64)
 
+def softmax(x: np.ndarray) -> np.ndarray:
+    x = np.asarray(x, dtype=np.float64)
+    x = x - np.max(x)  # 数値安定化
+    e = np.exp(x)
+    s = e / np.sum(e)
+    return s
 
 def main():
     if not MODEL_PATH.exists():
@@ -73,43 +78,101 @@ def main():
     if not INPUT_PLY.exists():
         raise FileNotFoundError(f"INPUT_PLY not found: {INPUT_PLY}")
 
-    # joblib.load で保存済みオブジェクトを復元 :contentReference[oaicite:3]{index=3}
+    # joblib.load で保存済みオブジェクトを復元
     payload = joblib.load(MODEL_PATH)
+    label_names = None
+    if isinstance(payload, dict):
+        label_names = payload.get("label_order", None)     # GridSearch版の学習スクリプトに対応
+        if label_names is None:
+            label_names = payload.get("label_classes", None)  # 旧版に対応
 
-    if not isinstance(payload, dict) or "pipeline" not in payload:
-        raise ValueError("Model file format is unexpected. Expected dict with key 'pipeline'.")
+    if not isinstance(payload, dict) or "model" not in payload:
+        raise ValueError("Model file format is unexpected. Expected dict with key 'model'.")
 
-    pipeline = payload["pipeline"]
-    label_classes = payload.get("label_classes", None)
+    model = payload["model"]
     grid = int(payload.get("grid", 10))  # 保存側に grid がある前提（なければ10）
 
     pts = load_points_from_ply(INPUT_PLY)
     feat = occupancy_grid_features(pts, grid=grid).reshape(1, -1)
 
-    # SVC.predict はクラスラベルを返す :contentReference[oaicite:4]{index=4}
-    pred_idx = int(pipeline.predict(feat)[0])
+    # SVC.predict はクラスラベルを返す
+    pred_idx = int(model.predict(feat)[0])
 
+    label_classes = payload.get("label_classes", None)
     if label_classes is not None:
         pred_label = str(label_classes[pred_idx])
     else:
         # label_classes が無い場合は整数ラベルのみ
         pred_label = str(pred_idx)
 
+        # まずクラス予測（整数ラベル）
+    pred_idx = int(model.predict(feat)[0])
+
+    # ===== 割合（％）の算出 =====
+    # SVCで確率を出すには probability=True が必要。可能なら predict_proba を使う
+    probs = None
+    scores = None
+
+    if hasattr(model, "predict_proba"):
+        try:
+            probs = np.asarray(model.predict_proba(feat)[0], dtype=np.float64)
+        except Exception:
+            probs = None
+
+    if probs is None and hasattr(model, "decision_function"):
+        try:
+            df = np.asarray(model.decision_function(feat), dtype=np.float64)
+            df = df.reshape(-1)
+
+            # 2値分類の decision_function は1つだけ返る場合があるので、その場合は2クラスに拡張
+            #（今回あなたは5ラベルなので通常ここは通りません）
+            if df.size == 1:
+                s = float(df[0])
+                scores = np.array([-s, s], dtype=np.float64)
+            else:
+                scores = df
+
+            probs = softmax(scores)  # “確率”ではなく、スコアを見やすく正規化した割合
+        except Exception:
+            probs = None
+
+    if probs is None:
+        raise RuntimeError("Cannot compute score/probability: model has neither usable predict_proba nor decision_function.")
+
+    # ラベル名を準備（無い場合は 0..n-1）
+    n_cls = len(probs)
+    if label_names is None:
+        label_names = [str(i) for i in range(n_cls)]
+    else:
+        label_names = [str(x) for x in label_names]
+
+    # top2
+    order = np.argsort(probs)[::-1]
+    top1, top2 = int(order[0]), int(order[1]) if n_cls >= 2 else (int(order[0]), None)
+
+    # 表示用
+    def fmt(i: int) -> str:
+        return f"{label_names[i]}: {probs[i]*100:.1f}%"
+
     print("=== Inference ===")
     print(f"model: {MODEL_PATH}")
     print(f"input: {INPUT_PLY}")
     print(f"grid: {grid} -> feature_dim: {grid ** 3}")
-    print(f"pred_index: {pred_idx}")
-    print(f"pred_label: {pred_label}")
 
-    # 可能なら decision_function も表示（SVCに存在） :contentReference[oaicite:5]{index=5}
-    if hasattr(pipeline, "decision_function"):
-        try:
-            score = pipeline.decision_function(feat)
-            print(f"decision_function: {np.asarray(score).ravel()}")
-        except Exception:
-            pass
+    print(f"pred_label: {label_names[pred_idx]}  ({probs[pred_idx]*100:.1f}%)")
 
+    print("top2:")
+    print(f"  1) {fmt(top1)}")
+    if top2 is not None:
+        print(f"  2) {fmt(top2)}")
+
+    print("all_labels:")
+    for i in order:
+        print(f"  - {fmt(int(i))}")
+
+    # 参考として decision_function も残したい場合（表示は短く）
+    if scores is not None:
+        print(f"decision_function (raw): {scores}")
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,31 @@
+{
+  "wav_root": "SVM_wav_dataset_re",
+  "n_samples": 250,
+  "labels": [
+    "sakana",
+    "shakana",
+    "takana",
+    "thakana",
+    "tyakana"
+  ],
+  "test_size": 0.2,
+  "random_state": 42,
+  "sr": 16000,
+  "nfft": 65536,
+  "fmin": 0.0,
+  "fmax": 8000.0,
+  "band_hz": 60.0,
+  "window": "hann",
+  "zero_mean": true,
+  "use_log1p": true,
+  "feature_dim": 134,
+  "svm": {
+    "kernel": "rbf",
+    "degree": 2,
+    "C": 3.0,
+    "gamma": "scale",
+    "class_weight": "balanced",
+    "probability": true
+  },
+  "accuracy": 0.9
+}

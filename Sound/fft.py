@@ -19,11 +19,11 @@ except ImportError as e:
 
 # ========= ユーザー設定 =========
 AUDIO_FILES = [
-    r"word/10times_01/sa/cleaned_audio_chunks/voiced2/sakana.wav",
-    r"word/10times_01/sha/cleaned_audio_chunks/voiced2/shakana.wav",
-    r"word/10times_01/tha/cleaned_audio_chunks/voiced2/thakana.wav",
-    r"word/10times_01/tya/cleaned_audio_chunks/voiced2/tyakana.wav",
-    r"word/10times_01/ta/cleaned_audio_chunks/voiced2/takana.wav",
+    r"word/10times_02/sa/cleaned_audio_chunks/voiced2/sakana.wav",
+    r"word/10times_02/sha/cleaned_audio_chunks/voiced2/shakana.wav",
+    r"word/10times_02/tha/cleaned_audio_chunks/voiced2/thakana.wav",
+    r"word/10times_02/tya/cleaned_audio_chunks/voiced2/tyakana.wav",
+    r"word/10times_02/ta/cleaned_audio_chunks/voiced2/takana.wav",
 ]
 
 PLOT_MAX_HZ = 5000  # 描画上限周波数 [Hz]
@@ -120,7 +120,7 @@ def main():
     plt.ylabel("Magnitude [dB]" if USE_DB else "Magnitude [linear]", fontsize=18)
     plt.title("FFT Spectrum", fontsize=18)
     plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    plt.legend(fontsize=20)
+    plt.legend(fontsize=8)
     plt.tight_layout()
     plt.show()
 

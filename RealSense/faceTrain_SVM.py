@@ -1,37 +1,57 @@
-# PLY点群 -> 10x10x10 占有(0/1) -> flatten(1000次元) -> SVM学習 -> 保存
-#
-# SVM入力は (n_samples, n_features) の固定長ベクトル 
+# faceTrain_SVM_cv.py
+# PLY点群 -> 10x10x10 占有(0/1) -> flatten -> SVM
+# + ラベル順を ["A","I","U","E","O"] に固定
+# + train側のみで GridSearchCV して最適モデルを作り、test(評価データ)で1回評価
+# + 混同行列描画・保存
 
 from pathlib import Path
+import json
 import numpy as np
 import trimesh
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 import joblib
 
+from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    classification_report,
+    ConfusionMatrixDisplay,
+)
 
 # =========================
 # 設定（ここだけ編集）
 # =========================
-DATA_ROOT = Path(r"./PLY_dataset")   # ラベル別フォルダを含むルート
-GRID = 10                             # 10 -> 10x10x10 = 1000次元
+DATA_ROOT = Path(r"./PLY_dataset")  # ラベル別フォルダを含むルート
+GRID = 10
 TEST_SIZE = 0.3
 SEED = 42
-OUT_MODEL = Path("PLY_dataset/ply_svm_model.joblib")
-OUT_CM_PNG = Path("PLY_dataset/confusion_matrix.png") # もし混同行列を画像保存する場合のパス
+
+# 表示したいラベル順（混同行列・レポートの順番もこれに揃える）
+LABEL_ORDER = ["A", "I", "U", "E", "O"]
+
+# 出力
+OUT_DIR = Path(r"./PLY_dataset")
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+OUT_MODEL = OUT_DIR / "ply_svm_model.joblib"
+OUT_CM_PNG = OUT_DIR / "confusion_matrix.png"
+OUT_META_JSON = OUT_DIR / "meta.json"
 CM_DPI = 200
+
+# SVM + GridSearch（必要なら範囲だけ編集）
+SVM_KERNEL = "rbf"
+C_GRID = [0.1, 1, 3, 5, 10, 30, 100]
+GAMMA_GRID = ["scale", "auto"]
+CLASS_WEIGHT = None          # 必要なら "balanced"
+PROBABILITY = False          # 必要なら True（ただし学習が遅くなることがあります）
+CV_SPLITS = 5
 # =========================
 
 
 def load_points_from_ply(ply_path: Path) -> np.ndarray:
-    """
-    PLYを読み込み、Nx3 の点群を返す。
-    trimesh は PLY を含む複数形式をロード可能 :contentReference[oaicite:4]{index=4}
-    """
     geom = trimesh.load(str(ply_path), process=False)
 
     if hasattr(geom, "vertices") and geom.vertices is not None:
@@ -49,10 +69,6 @@ def load_points_from_ply(ply_path: Path) -> np.ndarray:
 
 
 def occupancy_grid_features(points: np.ndarray, grid: int) -> np.ndarray:
-    """
-    点群を中心化+スケールして [-1, 1] に収め、grid^3 の占有(0/1)グリッドにする。
-    返り値: (grid^3,) の0/1ベクトル
-    """
     pts = points.astype(np.float64, copy=True)
 
     # center
@@ -76,88 +92,148 @@ def occupancy_grid_features(points: np.ndarray, grid: int) -> np.ndarray:
     return occ.reshape(-1).astype(np.float64)
 
 
-def collect_dataset(data_root: Path, grid: int):
+def collect_dataset_fixed_order(data_root: Path, grid: int, label_order: list[str]):
+    """
+    label_order の順に data_root/label/*.ply を読み込む
+    """
     if not data_root.exists():
         raise FileNotFoundError(f"DATA_ROOT not found: {data_root}")
 
     X_list, y_list = [], []
 
-    label_dirs = sorted([p for p in data_root.iterdir() if p.is_dir()], key=lambda p: p.name)
-    if len(label_dirs) == 0:
-        raise ValueError(f"No label directories under: {data_root}")
+    for lab in label_order:
+        lab_dir = data_root / lab
+        if not lab_dir.exists():
+            raise FileNotFoundError(f"Label dir not found: {lab_dir}")
 
-    for ld in label_dirs:
-        for pf in sorted(ld.glob("*.ply")):
+        for pf in sorted(lab_dir.glob("*.ply")):
             pts = load_points_from_ply(pf)
             feat = occupancy_grid_features(pts, grid=grid)
             X_list.append(feat)
-            y_list.append(ld.name)
+            y_list.append(lab)
 
     if len(X_list) == 0:
         raise ValueError(f"No PLY files found under: {data_root}")
 
     X = np.vstack(X_list)
-    y = np.array(y_list, dtype=object)
-    return X, y
+    y_str = np.array(y_list, dtype=object)
+    return X, y_str
+
+
+def build_pipeline() -> Pipeline:
+    return Pipeline([
+        ("scaler", StandardScaler()),
+        ("svc", SVC(
+            kernel=SVM_KERNEL,
+            class_weight=CLASS_WEIGHT,
+            probability=PROBABILITY,
+            random_state=SEED,  # probability=True のときに主に使われる
+        )),
+    ])
+
+
+def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: list[str], dpi: int = 200) -> None:
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=label_names)
+    disp.plot(values_format="d", xticks_rotation=45)
+    disp.figure_.tight_layout()
+    disp.figure_.savefig(path, dpi=dpi)
+    plt.close(disp.figure_)
 
 
 def main():
-    X, y_str = collect_dataset(DATA_ROOT, GRID)
+    # 1) データ作成（ラベル順固定）
+    X, y_str = collect_dataset_fixed_order(DATA_ROOT, GRID, LABEL_ORDER)
 
-    le = LabelEncoder()
-    y = le.fit_transform(y_str)
+    # 2) 文字ラベル -> 整数（順番固定）
+    label_to_id = {lab: i for i, lab in enumerate(LABEL_ORDER)}
+    y = np.array([label_to_id[s] for s in y_str], dtype=np.int64)
 
-    # 少数データだと stratify が失敗する場合があるので fallback
-    try:
-        X_tr, X_te, y_tr, y_te = train_test_split(
-            X, y, test_size=TEST_SIZE, random_state=SEED, stratify=y
-        )
-    except ValueError:
-        X_tr, X_te, y_tr, y_te = train_test_split(
-            X, y, test_size=TEST_SIZE, random_state=SEED, stratify=None
-        )
-
-    # SVC: 入力は (n_samples, n_features) の特徴量 
-    clf = Pipeline(
-        steps=[
-            ("scaler", StandardScaler()),
-            ("svc", SVC(kernel="rbf", degree=2, C=5, gamma="scale")),
-        ]
+    # 3) 外側ホールドアウト
+    idx_all = np.arange(len(y))
+    idx_tr, idx_te, y_tr, y_te = train_test_split(
+        idx_all, y,
+        test_size=TEST_SIZE,
+        random_state=SEED,
+        stratify=y
     )
+    X_tr, X_te = X[idx_tr], X[idx_te]
 
-    clf.fit(X_tr, y_tr)
-    pred = clf.predict(X_te)
+    # 4) 内側CVでGridSearch（train側のみで最適化）
+    cv = StratifiedKFold(n_splits=CV_SPLITS, shuffle=True, random_state=SEED)
+    param_grid = {
+        "svc__C": C_GRID,
+        "svc__gamma": GAMMA_GRID,
+    }
+
+    grid = GridSearchCV(
+        estimator=build_pipeline(),
+        param_grid=param_grid,
+        scoring="accuracy",
+        cv=cv,
+        n_jobs=-1,
+        refit=True,  # best_paramsで train全体に再fitされる :contentReference[oaicite:8]{index=8}
+        return_train_score=True,
+    )
+    grid.fit(X_tr, y_tr)
+
+    best_model = grid.best_estimator_
+    y_pred = best_model.predict(X_te)
+
+    # 5) 評価（順番固定）
+    labels_fixed = list(range(len(LABEL_ORDER)))
+    acc = float(accuracy_score(y_te, y_pred))
+
+    cm = confusion_matrix(y_te, y_pred, labels=labels_fixed)  # labelsで並び順固定できる :contentReference[oaicite:9]{index=9}
+    report = classification_report(
+        y_te, y_pred,
+        labels=labels_fixed,
+        target_names=LABEL_ORDER,
+        digits=4
+    )
 
     print("=== Dataset ===")
     print(f"DATA_ROOT: {DATA_ROOT}")
     print(f"samples: {len(X)}")
-    print(f"labels: {list(le.classes_)}")
+    print(f"labels(order fixed): {LABEL_ORDER}")
     print(f"GRID: {GRID} -> feature_dim: {GRID ** 3}")
 
-    print("=== Eval ===")
-    print(f"accuracy: {accuracy_score(y_te, pred):.4f}")
-    print("confusion_matrix:")
-    cm = confusion_matrix(y_te, pred)
+    print("=== Model Selection (train CV) ===")
+    print(f"best_cv_score: {grid.best_score_:.4f}")
+    print(f"best_params: {grid.best_params_}")
+
+    print("=== Test Eval (holdout) ===")
+    print(f"accuracy: {acc:.4f}")
+    print("confusion_matrix (fixed order A,I,U,E,O):")
     print(cm)
     print("classification_report:")
-    print(classification_report(y_te, pred, target_names=le.classes_))
+    print(report)
 
-    # ===== 混同行列の描画・保存（追加） =====
-    # ConfusionMatrixDisplay で描画できる :contentReference[oaicite:1]{index=1}
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=le.classes_)
-    disp.plot(values_format="d", xticks_rotation=45)
-
-    # matplotlib の savefig で保存 :contentReference[oaicite:2]{index=2}
-    disp.figure_.tight_layout()
-    disp.figure_.savefig(OUT_CM_PNG, dpi=CM_DPI)
-    plt.close(disp.figure_)
-
+    # 6) 混同行列の保存（表示ラベル順固定） :contentReference[oaicite:10]{index=10}
+    save_confusion_matrix_png(OUT_CM_PNG, cm, LABEL_ORDER, dpi=CM_DPI)
     print(f"saved confusion matrix: {OUT_CM_PNG}")
 
-    payload = {"pipeline": clf, "label_classes": le.classes_, "grid": GRID}
+    # 7) モデル保存
+    payload = {
+        "model": best_model,
+        "label_order": LABEL_ORDER,
+        "grid": GRID,
+        "best_params": grid.best_params_,
+        "best_cv_score": float(grid.best_score_),
+        "test_accuracy": acc,
+    } # モデル本体 + メタ情報をまとめて保存
     joblib.dump(payload, OUT_MODEL)
-    print(f"saved: {OUT_MODEL}")
+    print(f"saved model: {OUT_MODEL}")
 
+    # 8) メタ情報保存
+    meta = {
+        "label_order": LABEL_ORDER,
+        "grid": GRID,
+        "best_params": grid.best_params_,
+        "best_cv_score": float(grid.best_score_),
+        "test_accuracy": acc,
+    } # 値だけを入れる
+    OUT_META_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"saved meta: {OUT_META_JSON}")
 
 if __name__ == "__main__":
     main()

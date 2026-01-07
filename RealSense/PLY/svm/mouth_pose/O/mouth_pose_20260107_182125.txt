@@ -1,0 +1,10 @@
+pitch_label_deg(arg): 20.019951344004035
+camera_index(lip source): 0
+lip_center_tag (Tag coord) [m]:
+[-0.05499663  0.28933691  0.8981219 ]
+
+R_mouth (Tag->Mouth axes as columns):
+[[ 0.71000703 -0.36486925  0.60229596]
+ [ 0.19806957 -0.71729358 -0.6680257 ]
+ [ 0.67576506  0.59359945 -0.43701401]]
+euler_deg_from_R_mouth (roll,pitch,yaw): 126.360882, -42.513591, 15.587426

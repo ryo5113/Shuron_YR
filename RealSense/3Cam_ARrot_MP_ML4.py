@@ -1034,7 +1034,7 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
             o3d.io.write_point_cloud(mouth_filename, mouth_pcd_tag_centered)  # ←ここが重要（変換後を保存）
             print(f"[SAVE] mouth pcd: {mouth_filename}")
 
-            mouth_filename_camcolor = f"PLY/ml/mouth/mouth_camcolor_{int(pitch_label_deg)}deg_{timestamp}.ply"
+            mouth_filename_camcolor = f"PLY/svm/mouth/mouth_camcolor_{int(pitch_label_deg)}deg_{timestamp}.ply"
             o3d.io.write_point_cloud(mouth_filename_camcolor, mouth_pcd_camcolor_tag_centered)  # ←変換後を保存
             print(f"[SAVE] mouth pcd (camcolor): {mouth_filename_camcolor}")
 
