@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 # 読み込む PLY ファイル名
 #PLY_PATH = "PLY/svm/U_face/face_3cams_geom_merged_26deg_20260106_172444.ply" # 元の顔全体点群（3台カメラ合成・色付き）
 #PLY_PATH = "PLY/svm/raw_face/U/face_cam1_raw_26deg_20260106_172444.ply" # 元の顔全体点群（カメラ1台分・色付き）
-PLY_PATH = "PLY/svm/mouth/O/mouth_-41deg_20260107_182112.ply" # 元の口元点群（カメラ1台分・色なし）
+PLY_PATH = "PLY/svm/mouth/mouth_-11deg_20260108_193712.ply" # 元の口元点群（カメラ1台分・色なし）
 #PLY_PATH = "PLY/ml/mouth/mouth_camcolor_0deg_20251226_121815.ply" # 元の口元点群（カメラ1台分・カメラ別色付き）
 
 # カメラから顔中心までの距離 [m]（頭をその場回転させているという前提）
