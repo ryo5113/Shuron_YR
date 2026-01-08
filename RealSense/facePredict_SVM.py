@@ -11,7 +11,7 @@ import joblib
 # 設定（ここだけ編集）
 # =========================
 MODEL_PATH = Path(r"PLY_dataset/ply_svm_model.joblib")  
-INPUT_PLY  = Path(r"PLY/svm/mouth/U/mouth_-2deg_20260106_172411.ply")  # 例: Path(r"/mnt/data/mouth_-36deg_20260105_162936.ply")
+INPUT_PLY  = Path(r"Testdata/pre_O.ply")  # 例: Path(r"/mnt/data/mouth_-36deg_20260105_162936.ply")
 # =========================
 
 

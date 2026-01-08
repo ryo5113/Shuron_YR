@@ -12,11 +12,11 @@ from pydub.silence import detect_nonsilent
 
 # ====== 入力（要変更） ======
 AUDIO_PATH  = "word/10times_pre/pre/re/cleaned_audio.wav"
-OUTPUT_PATH = "word/10times_pre/pre/svm_segmented_result.txt"
+OUTPUT_PATH = "word/10times_pre/pre/svm_segmented_result2.txt"
 
 # 学習スクリプトが保存した場所（例）
-MODEL_JOBLIB = "word/trained_svm_model_band/sum73/BEST_band_080Hz/model.joblib"
-META_JSON    = "word/trained_svm_model_band/sum73/BEST_band_080Hz/meta.json"
+MODEL_JOBLIB = "word/trained_svm_model_band/sum82/BEST_band_065Hz/model.joblib"
+META_JSON    = "word/trained_svm_model_band/sum82/BEST_band_065Hz/meta.json"
 # ============================
 
 # ====== 切り出し（wordWhisper3.py/voiceCutting.py と同等） ======

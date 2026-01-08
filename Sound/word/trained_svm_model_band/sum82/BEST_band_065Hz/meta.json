@@ -28,9 +28,9 @@
     "use_log1p": true
   },
   "feature": {
-    "band_hz": 40.0,
+    "band_hz": 65.0,
     "aggregation": "sum(|X_k|) over bins in band",
-    "feature_dim": 200
+    "feature_dim": 124
   },
   "svm": {
     "kernel": "rbf",
@@ -39,6 +39,6 @@
     "class_weight": "balanced",
     "probability": true
   },
-  "cv_best_mean_accuracy": 0.7949999999999999,
-  "test_accuracy": 0.86
+  "cv_best_mean_accuracy": 0.8,
+  "test_accuracy": 0.92
 }

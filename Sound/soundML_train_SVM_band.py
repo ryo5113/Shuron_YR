@@ -33,7 +33,7 @@ from sklearn.svm import SVC
 # 実験設定（スクリプト内で編集）
 # ===========================
 # 外側ホールドアウト（教師:評価 = 7:3）
-TEST_SIZE = 0.3
+TEST_SIZE = 0.2
 RANDOM_STATE = 42
 
 # FFT特徴量
@@ -54,7 +54,7 @@ BAND_HZ_LIST = [1, 2, 3, 4, 5, 8, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65
 SVM_KERNEL = "rbf"
 
 # 内側CV（ハイパーパラメータ探索）
-CV_SPLITS = 5
+CV_SPLITS = 5 
 CV_SHUFFLE = True
 
 # 探索グリッド（必要な範囲だけ編集）
