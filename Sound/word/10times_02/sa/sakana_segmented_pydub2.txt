@@ -1,0 +1,18 @@
+[language] ja
+[detect_nonsilent] count=11 min_silence_len_ms=250 silence_thresh_dbfs=-70.0
+[postprocess] refined_count=12 target_count=10
+[keep_silence_ms] 50
+[suppress_tokens_kanji] count=1378
+
+[segments]
+01	0.44-1.19	ご協賛ありがとうございました
+02	1.22-1.84	さかな
+03	2.93-3.47	さかな
+04	4.56-5.09	さかな
+05	6.05-6.58	さかな。
+06	7.56-8.12	さかな
+07	9.06-9.61	さかな
+08	10.52-11.08	さかな
+09	12.11-12.64	そこはな。
+10	13.62-14.17	さかな
+11	15.13-15.68	さかな

@@ -1,0 +1,17 @@
+[language] ja
+[detect_nonsilent] count=9 min_silence_len_ms=250 silence_thresh_dbfs=-70.0
+[postprocess] refined_count=11 target_count=10
+[keep_silence_ms] 50
+[suppress_tokens_kanji] count=1378
+
+[segments]
+01	0.85-1.48	カッパーな
+02	2.17-2.79	たかな
+03	3.48-4.10	さかな
+04	4.81-5.45	たかな
+05	6.17-6.77	たかな
+06	7.50-8.10	たかな
+07	8.79-9.39	たかな
+08	10.09-10.70	たかな
+09	11.43-12.04	さかな
+10	12.71-13.34	たかな

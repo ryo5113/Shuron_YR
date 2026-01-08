@@ -48,7 +48,7 @@ TARGET_SR = 16000 # サンプリング周波数 [Hz] 分解能上昇のため480
 FIXED_NFFT = 65536
 
 # バンド幅候補（band_hz）
-BAND_HZ_LIST = [1, 2, 3, 4, 5, 8, 10, 20, 25, 30, 40, 50, 60, 70, 80, 100]
+BAND_HZ_LIST = [1, 2, 3, 4, 5, 8, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
 
 # SVM（poly固定）
 SVM_KERNEL = "rbf"
@@ -315,6 +315,7 @@ def main():
 
         y_pred_te_band = grid.predict(X_te)
         cm_te_band = confusion_matrix(y_te, y_pred_te_band)
+        test_acc_band = float(accuracy_score(y_te, y_pred_te_band))
 
         band_dir = out_root / f"band_{int(band_hz):03d}Hz"
         save_confusion_matrix_png(
@@ -332,6 +333,7 @@ def main():
             "band_hz": float(band_hz),
             "feature_dim": feat_dim,
             "cv_mean_accuracy": best_cv,
+            "test_accuracy": test_acc_band,
             "best_params": best_params,
         })
 
@@ -340,12 +342,13 @@ def main():
                 "band_hz": float(band_hz),
                 "feature_dim": feat_dim,
                 "cv_mean_accuracy": best_cv,
+                "test_accuracy": test_acc_band,
                 "best_params": best_params,
                 "grid": grid,
                 "X_te": X_te,  # 保存用
             }
 
-        print(f"[band_hz={band_hz:>5}] CV(best)={best_cv:.4f} feat_dim={feat_dim} params={best_params}")
+        print(f"[band_hz={band_hz:>5}] CV(best)={best_cv:.4f} TEST={test_acc_band:.4f} feat_dim={feat_dim} params={best_params}")
 
     assert best_overall is not None
 
@@ -364,9 +367,9 @@ def main():
     save_json(out_root / "band_sweep_cv_results.json", sweep_rows)
     with (out_root / "band_sweep_cv_results.csv").open("w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["band_hz", "feature_dim", "cv_mean_accuracy", "best_params_json"])
+        w.writerow(["band_hz", "feature_dim", "cv_mean_accuracy", "test_accuracy", "best_params_json"])
         for r in sweep_rows:
-            w.writerow([r["band_hz"], r["feature_dim"], r["cv_mean_accuracy"], json.dumps(r["best_params"], ensure_ascii=False)])
+            w.writerow([r["band_hz"], r["feature_dim"], r["cv_mean_accuracy"], r["test_accuracy"], json.dumps(r["best_params"], ensure_ascii=False)])
 
     # (b) 最良モデル一式
     best_dir = out_root / f"BEST_band_{int(best_band):03d}Hz"
@@ -429,8 +432,7 @@ def main():
         save_text(best_dir / "confusion_matrix_error.txt", str(e))
 
     print("\n======================")
-    print(f"BEST band_hz = {best_band} Hz (CV mean acc = {best_overall['cv_mean_accuracy']:.4f})")
-    print(f"TEST accuracy = {test_acc:.4f} (evaluated once on outer holdout)")
+    print(f"BEST band_hz = {best_band} Hz (TEST acc = {best_overall['test_accuracy']:.4f}, CV mean acc = {best_overall['cv_mean_accuracy']:.4f})")
     print(f"Saved to: {best_dir}")
     print("======================\n")
 

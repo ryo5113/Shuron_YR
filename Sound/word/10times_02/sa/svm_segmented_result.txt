@@ -1,0 +1,16 @@
+[model]
+model_joblib=word/trained_svm_model_band/sum73/BEST_band_080Hz/model.joblib
+meta_json=word/trained_svm_model_band/sum73/BEST_band_080Hz/meta.json
+labels=['sakana', 'shakana', 'takana', 'thakana', 'tyakana']
+
+[segments]
+01	1.22-1.84	sakana	sakana:0.663 shakana:0.154 takana:0.080 thakana:0.040 tyakana:0.062
+02	2.93-3.47	sakana	sakana:0.928 shakana:0.012 takana:0.022 thakana:0.025 tyakana:0.013
+03	4.57-5.09	sakana	sakana:0.929 shakana:0.011 takana:0.022 thakana:0.025 tyakana:0.013
+04	6.05-6.58	sakana	sakana:0.953 shakana:0.010 takana:0.013 thakana:0.017 tyakana:0.007
+05	7.57-8.12	sakana	sakana:0.952 shakana:0.005 takana:0.032 thakana:0.006 tyakana:0.005
+06	9.06-9.61	sakana	sakana:0.949 shakana:0.006 takana:0.017 thakana:0.022 tyakana:0.006
+07	10.52-11.09	sakana	sakana:0.923 shakana:0.014 takana:0.025 thakana:0.025 tyakana:0.013
+08	12.11-12.64	sakana	sakana:0.925 shakana:0.010 takana:0.022 thakana:0.026 tyakana:0.019
+09	13.62-14.17	sakana	sakana:0.967 shakana:0.004 takana:0.020 thakana:0.004 tyakana:0.004
+10	15.13-15.69	sakana	sakana:0.917 shakana:0.020 takana:0.033 thakana:0.017 tyakana:0.012

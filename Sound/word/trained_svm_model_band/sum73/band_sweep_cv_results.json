@@ -3,6 +3,7 @@
     "band_hz": 1.0,
     "feature_dim": 8000,
     "cv_mean_accuracy": 0.7314285714285715,
+    "test_accuracy": 0.7066666666666667,
     "best_params": {
       "svm__C": 5.0,
       "svm__gamma": "scale"
@@ -12,6 +13,7 @@
     "band_hz": 2.0,
     "feature_dim": 4000,
     "cv_mean_accuracy": 0.7257142857142858,
+    "test_accuracy": 0.7466666666666667,
     "best_params": {
       "svm__C": 5.0,
       "svm__gamma": "scale"
@@ -21,6 +23,7 @@
     "band_hz": 3.0,
     "feature_dim": 2667,
     "cv_mean_accuracy": 0.7257142857142858,
+    "test_accuracy": 0.76,
     "best_params": {
       "svm__C": 3.0,
       "svm__gamma": "scale"
@@ -30,6 +33,7 @@
     "band_hz": 4.0,
     "feature_dim": 2000,
     "cv_mean_accuracy": 0.7314285714285715,
+    "test_accuracy": 0.7733333333333333,
     "best_params": {
       "svm__C": 3.0,
       "svm__gamma": "scale"
@@ -39,6 +43,7 @@
     "band_hz": 5.0,
     "feature_dim": 1600,
     "cv_mean_accuracy": 0.7371428571428572,
+    "test_accuracy": 0.76,
     "best_params": {
       "svm__C": 3.0,
       "svm__gamma": "scale"
@@ -48,6 +53,7 @@
     "band_hz": 8.0,
     "feature_dim": 1000,
     "cv_mean_accuracy": 0.7371428571428572,
+    "test_accuracy": 0.7866666666666666,
     "best_params": {
       "svm__C": 3.0,
       "svm__gamma": "scale"
@@ -57,6 +63,17 @@
     "band_hz": 10.0,
     "feature_dim": 800,
     "cv_mean_accuracy": 0.7371428571428572,
+    "test_accuracy": 0.8,
+    "best_params": {
+      "svm__C": 3.0,
+      "svm__gamma": "scale"
+    }
+  },
+  {
+    "band_hz": 15.0,
+    "feature_dim": 534,
+    "cv_mean_accuracy": 0.7371428571428572,
+    "test_accuracy": 0.8266666666666667,
     "best_params": {
       "svm__C": 3.0,
       "svm__gamma": "scale"
@@ -66,6 +83,7 @@
     "band_hz": 20.0,
     "feature_dim": 400,
     "cv_mean_accuracy": 0.7371428571428572,
+    "test_accuracy": 0.84,
     "best_params": {
       "svm__C": 3.0,
       "svm__gamma": "scale"
@@ -75,6 +93,7 @@
     "band_hz": 25.0,
     "feature_dim": 320,
     "cv_mean_accuracy": 0.7371428571428572,
+    "test_accuracy": 0.84,
     "best_params": {
       "svm__C": 5.0,
       "svm__gamma": "scale"
@@ -84,8 +103,19 @@
     "band_hz": 30.0,
     "feature_dim": 267,
     "cv_mean_accuracy": 0.7257142857142858,
+    "test_accuracy": 0.84,
     "best_params": {
       "svm__C": 3.0,
+      "svm__gamma": "scale"
+    }
+  },
+  {
+    "band_hz": 35.0,
+    "feature_dim": 229,
+    "cv_mean_accuracy": 0.7485714285714286,
+    "test_accuracy": 0.84,
+    "best_params": {
+      "svm__C": 5.0,
       "svm__gamma": "scale"
     }
   },
@@ -93,8 +123,19 @@
     "band_hz": 40.0,
     "feature_dim": 200,
     "cv_mean_accuracy": 0.7314285714285715,
+    "test_accuracy": 0.84,
     "best_params": {
       "svm__C": 5.0,
+      "svm__gamma": "scale"
+    }
+  },
+  {
+    "band_hz": 45.0,
+    "feature_dim": 178,
+    "cv_mean_accuracy": 0.7371428571428572,
+    "test_accuracy": 0.84,
+    "best_params": {
+      "svm__C": 3.0,
       "svm__gamma": "scale"
     }
   },
@@ -102,8 +143,19 @@
     "band_hz": 50.0,
     "feature_dim": 160,
     "cv_mean_accuracy": 0.72,
+    "test_accuracy": 0.84,
     "best_params": {
       "svm__C": 3.0,
+      "svm__gamma": "scale"
+    }
+  },
+  {
+    "band_hz": 55.0,
+    "feature_dim": 146,
+    "cv_mean_accuracy": 0.7485714285714286,
+    "test_accuracy": 0.84,
+    "best_params": {
+      "svm__C": 5.0,
       "svm__gamma": "scale"
     }
   },
@@ -111,8 +163,19 @@
     "band_hz": 60.0,
     "feature_dim": 134,
     "cv_mean_accuracy": 0.7428571428571429,
+    "test_accuracy": 0.8533333333333334,
     "best_params": {
       "svm__C": 5.0,
+      "svm__gamma": "scale"
+    }
+  },
+  {
+    "band_hz": 65.0,
+    "feature_dim": 124,
+    "cv_mean_accuracy": 0.7142857142857143,
+    "test_accuracy": 0.8666666666666667,
+    "best_params": {
+      "svm__C": 3.0,
       "svm__gamma": "scale"
     }
   },
@@ -120,8 +183,19 @@
     "band_hz": 70.0,
     "feature_dim": 115,
     "cv_mean_accuracy": 0.7428571428571429,
+    "test_accuracy": 0.84,
     "best_params": {
       "svm__C": 3.0,
+      "svm__gamma": "scale"
+    }
+  },
+  {
+    "band_hz": 75.0,
+    "feature_dim": 107,
+    "cv_mean_accuracy": 0.7428571428571429,
+    "test_accuracy": 0.8533333333333334,
+    "best_params": {
+      "svm__C": 5.0,
       "svm__gamma": "scale"
     }
   },
@@ -129,6 +203,37 @@
     "band_hz": 80.0,
     "feature_dim": 100,
     "cv_mean_accuracy": 0.7828571428571429,
+    "test_accuracy": 0.84,
+    "best_params": {
+      "svm__C": 5.0,
+      "svm__gamma": "scale"
+    }
+  },
+  {
+    "band_hz": 85.0,
+    "feature_dim": 95,
+    "cv_mean_accuracy": 0.7485714285714286,
+    "test_accuracy": 0.84,
+    "best_params": {
+      "svm__C": 5.0,
+      "svm__gamma": "scale"
+    }
+  },
+  {
+    "band_hz": 90.0,
+    "feature_dim": 89,
+    "cv_mean_accuracy": 0.7428571428571428,
+    "test_accuracy": 0.8666666666666667,
+    "best_params": {
+      "svm__C": 5.0,
+      "svm__gamma": "scale"
+    }
+  },
+  {
+    "band_hz": 95.0,
+    "feature_dim": 85,
+    "cv_mean_accuracy": 0.7485714285714286,
+    "test_accuracy": 0.8533333333333334,
     "best_params": {
       "svm__C": 5.0,
       "svm__gamma": "scale"
@@ -138,6 +243,7 @@
     "band_hz": 100.0,
     "feature_dim": 80,
     "cv_mean_accuracy": 0.7371428571428572,
+    "test_accuracy": 0.8666666666666667,
     "best_params": {
       "svm__C": 10.0,
       "svm__gamma": "scale"

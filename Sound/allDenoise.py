@@ -12,7 +12,7 @@ plt.close('all')
 # tone_ranges に 3 区間分 [ (start1, end1), (start2, end2), (start3, end3) ]
 FILE_CONFIGS = [
     {
-        "path": "word.wav",
+        "path": "pre_sakana.wav",
         "tone_ranges": [
             (1.0, 2.0),   # 1回目
             # (2.5, 3.5),   # 2回目  
@@ -25,7 +25,7 @@ FILE_CONFIGS = [
             # (13.5, 14.5), # 9回目
             # (15.0, 16.0), # 10回目
         ],
-        "label": "word",
+        "label": "pre",
     },
     # {
     #     "path": "word/10times_05/sakana.wav",
@@ -109,7 +109,7 @@ FILE_CONFIGS = [
     # }
 ]
 
-OUTPUT_DIR  = "word/10times_ad3"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "word/10times_pre"  # すべての結果をまとめるフォルダ
 
 # FFT表示帯域（Hz）
 BAND_HIGH   = 5000

@@ -19,17 +19,17 @@ except ImportError as e:
 
 # ========= ユーザー設定 =========
 AUDIO_FILES = [
-    r"word/10times_02/sa/cleaned_audio_chunks/voiced2/sakana.wav",
-    r"word/10times_02/sha/cleaned_audio_chunks/voiced2/shakana.wav",
-    r"word/10times_02/tha/cleaned_audio_chunks/voiced2/thakana.wav",
-    r"word/10times_02/tya/cleaned_audio_chunks/voiced2/tyakana.wav",
-    r"word/10times_02/ta/cleaned_audio_chunks/voiced2/takana.wav",
+    r"word/10times_02/sa/re/cleaned_audio_chunks/voiced2/sakana.wav",
+    r"word/10times_02/sha/re/cleaned_audio_chunks/voiced2/shakana.wav",
+    r"word/10times_02/tha/re/cleaned_audio_chunks/voiced2/thakana.wav",
+    r"word/10times_02/tya/re/cleaned_audio_chunks/voiced2/tyakana.wav",
+    r"word/10times_02/ta/re/cleaned_audio_chunks/voiced2/takana.wav",
 ]
 
-PLOT_MAX_HZ = 5000  # 描画上限周波数 [Hz]
+PLOT_MAX_HZ = 8000  # 描画上限周波数 [Hz]
 START_SEC = 0.0       # 解析開始位置 [s]
 DURATION_SEC = None   # 解析時間 [s]（Noneなら全区間）
-N_FFT = None          # Noneなら信号長に合わせる（必要なら 2**15 などを指定）
+N_FFT = 65536          # Noneなら信号長に合わせる（必要なら 2**15 などを指定）
 USE_DB = False         # True: dB表示 / False: 線形振幅
 # ==============================
 
@@ -120,7 +120,7 @@ def main():
     plt.ylabel("Magnitude [dB]" if USE_DB else "Magnitude [linear]", fontsize=18)
     plt.title("FFT Spectrum", fontsize=18)
     plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    plt.legend(fontsize=8)
+    plt.legend(fontsize=18)
     plt.tight_layout()
     plt.show()
 

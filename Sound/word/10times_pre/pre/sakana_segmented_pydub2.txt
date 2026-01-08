@@ -1,0 +1,17 @@
+[language] ja
+[detect_nonsilent] count=11 min_silence_len_ms=250 silence_thresh_dbfs=-70.0
+[postprocess] refined_count=11 target_count=10
+[keep_silence_ms] 50
+[suppress_tokens_kanji] count=1378
+
+[segments]
+01	0.66-1.89	さかな
+02	2.75-3.33	さかな
+03	4.31-4.87	さかな。
+04	5.82-6.41	さかな
+05	7.42-7.96	さかな
+06	8.96-9.52	さかな
+07	10.53-11.09	さかな
+08	12.10-12.66	さかな。
+09	13.67-14.24	さかな
+10	15.19-15.76	さかな
