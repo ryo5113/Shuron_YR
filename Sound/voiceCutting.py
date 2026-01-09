@@ -5,25 +5,44 @@ import numpy as np
 
 # ====== 入力 ======
 INPUT_FILES = [
-    # Path(r"word/10times_05/sa/cleaned_audio.wav"),
-    # Path(r"word/10times_05/sha/cleaned_audio.wav"),
-    # Path(r"word/10times_05/tha/cleaned_audio.wav"),
-    # Path(r"word/10times_05/tya/cleaned_audio.wav"),
-    # Path(r"word/10times_05/ta/cleaned_audio.wav"),
-    Path(r"word/10times_ad3/word/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/sakana1/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/sakana2/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/sakana3/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/sakana4/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/sakana5/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/shakana1/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/shakana2/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/shakana3/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/shakana4/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/shakana5/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/takana1/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/takana2/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/takana3/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/takana4/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/takana5/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/thakana1/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/thakana2/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/thakana3/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/thakana4/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/thakana5/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/tyakana1/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/tyakana2/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/tyakana3/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/tyakana4/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_A/tyakana5/cleaned_audio.wav"),
 ]
 # ===============
 
 # 無音判定パラメータ（ここは固定のまま）
 MIN_SILENCE_LEN_MS = 250
-SILENCE_THRESH_DBFS = -70.0
-KEEP_SILENCE_MS = 50
+SILENCE_THRESH_DBFS = -62.0
+KEEP_SILENCE_MS = 100
 
 # 後処理パラメータ（「閾値」ではなく後処理ルール）
 TARGET_COUNT = 10          # 10回発音が前提
 FRAME_MS = 5               # エネルギー計算フレーム
-TRIM_REL_DB = 25.0         # 区間内ピークから -25dB までを「有音」とみなして前後を詰める
-MAX_CHUNK_MS = 1200         # これより長いchunkは「2回分結合の疑い」で分割を試す
+TRIM_REL_DB = 30.0         # 区間内ピークから -25dB までを「有音」とみなして前後を詰める
+MAX_CHUNK_MS = 1000     # これより長いchunkは「2回分結合の疑い」で分割を試す
 MIN_CHUNK_MS = 120         # これより短いchunkはノイズ疑い（今回は削除せずそのまま残す）
 VALLEY_DROP_DB = 20.0      # 分割点候補：ピークより -20dB 以下の谷を優先
 MIN_GAP_MS = 80            # 分割点の前後に最低これだけ余白がある谷を採用
@@ -188,13 +207,13 @@ def process_one(in_path: Path) -> None:
         chunk = audio[s:e]
         if is_valid_chunk(chunk):
             voiced_idx += 1
-            out_path = voiced_dir / f"chunk_{voiced_idx:02d}.wav"
+            out_path = voiced_dir / f"chunkA_{voiced_idx:02d}.wav"
             chunk.export(out_path, format="wav")
         else:
             # 除外chunkは保存しない／保存する（選択式）
             if SAVE_REJECTED:
                 rejected_idx += 1
-                out_path = rejected_dir / f"chunk_{rejected_idx:02d}.wav"
+                out_path = rejected_dir / f"chunkA_{rejected_idx:02d}.wav"
                 chunk.export(out_path, format="wav")
 
     print(f"[OK] {in_path.name} -> detected={len(ranges)} voiced={voiced_idx} rejected={rejected_idx}")

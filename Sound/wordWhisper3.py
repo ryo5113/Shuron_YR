@@ -11,8 +11,8 @@ from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
 # ====== 入力（必要に応じて変更） ======
-AUDIO_PATH  = "word/10times_pre/pre/cleaned_audio.wav"
-OUTPUT_PATH = "word/10times_pre/pre/sakana_segmented_pydub2.txt"
+AUDIO_PATH  = "word_Ex1/10times_Ex1_A/sakana1/cleaned_audio.wav"
+OUTPUT_PATH = "word_Ex1/10times_Ex1_A/sakana1/sakana_segmented_pydub.txt"
 
 LANGUAGE    = "ja"       
 MODEL_NAME  = "large-v3"
@@ -20,14 +20,14 @@ TEMPERATURE = 0.0
 
 # ====== voiceCutting.py と同じ分割パラメータ ======
 MIN_SILENCE_LEN_MS = 250
-SILENCE_THRESH_DBFS = -70.0
+SILENCE_THRESH_DBFS = -62.0
 KEEP_SILENCE_MS = 50
 
 # 後処理パラメータ（voiceCutting.pyと同様）
 TARGET_COUNT = 10
 FRAME_MS = 5
-TRIM_REL_DB = 25.0
-MAX_CHUNK_MS = 1200
+TRIM_REL_DB = 30.0
+MAX_CHUNK_MS = 1000
 MIN_CHUNK_MS = 120
 VALLEY_DROP_DB = 20.0
 MIN_GAP_MS = 80

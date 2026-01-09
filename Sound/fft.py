@@ -19,11 +19,11 @@ except ImportError as e:
 
 # ========= ユーザー設定 =========
 AUDIO_FILES = [
-    r"word/10times_02/sa/re/cleaned_audio_chunks/voiced2/sakana.wav",
-    r"word/10times_02/sha/re/cleaned_audio_chunks/voiced2/shakana.wav",
-    r"word/10times_02/tha/re/cleaned_audio_chunks/voiced2/thakana.wav",
-    r"word/10times_02/tya/re/cleaned_audio_chunks/voiced2/tyakana.wav",
-    r"word/10times_02/ta/re/cleaned_audio_chunks/voiced2/takana.wav",
+    r"word/10times_02/sa/cleaned_audio_chunks/voiced2/sakana.wav",
+    r"word/10times_02/sha/cleaned_audio_chunks/voiced2/shakana.wav",
+    r"word/10times_02/tha/cleaned_audio_chunks/voiced2/thakana.wav",
+    r"word/10times_02/tya/cleaned_audio_chunks/voiced2/tyakana.wav",
+    r"word/10times_02/ta/cleaned_audio_chunks/voiced2/takana.wav",
 ]
 
 PLOT_MAX_HZ = 8000  # 描画上限周波数 [Hz]

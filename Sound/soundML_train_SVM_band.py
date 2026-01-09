@@ -44,11 +44,11 @@ ZERO_MEAN = True
 USE_LOG1P = True
 
 # 固定FFT条件（ユーザー提示）
-TARGET_SR = 16000 # サンプリング周波数 [Hz] 分解能上昇のため48000→16000に変更
+TARGET_SR = 48000 # サンプリング周波数 [Hz] 
 FIXED_NFFT = 65536
 
 # バンド幅候補（band_hz）
-BAND_HZ_LIST = [1, 2, 3, 4, 5, 8, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
+BAND_HZ_LIST = [1, 2, 3, 4, 5, 8, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
 
 # SVM（poly固定）
 SVM_KERNEL = "rbf"
@@ -228,9 +228,9 @@ def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: List[str]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--wav_root", type=str, default="SVM_wav_dataset_re",
+    parser.add_argument("--wav_root", type=str, default="SVM_wav_dataset_30data",
                         help="ラベル別にwavが入っているルートフォルダ")
-    parser.add_argument("--model_dir", type=str, default="word/trained_svm_model_band",
+    parser.add_argument("--model_dir", type=str, default="word/trained_30data_svm_model_band",
                         help="出力先フォルダ")
     args = parser.parse_args()
 
