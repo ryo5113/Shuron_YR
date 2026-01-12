@@ -21,13 +21,13 @@ META_JSON    = "word/trained_svm_model_band/sum82/BEST_band_065Hz/meta.json"
 
 # ====== 切り出し（wordWhisper3.py/voiceCutting.py と同等） ======
 MIN_SILENCE_LEN_MS = 250
-SILENCE_THRESH_DBFS = -70.0
-KEEP_SILENCE_MS = 50
+SILENCE_THRESH_DBFS = -62.0
+KEEP_SILENCE_MS = 100
 
 TARGET_COUNT = 10
 FRAME_MS = 5
-TRIM_REL_DB = 25.0
-MAX_CHUNK_MS = 1200
+TRIM_REL_DB = 30.0
+MAX_CHUNK_MS = 1000
 MIN_CHUNK_MS = 120
 VALLEY_DROP_DB = 20.0
 MIN_GAP_MS = 80

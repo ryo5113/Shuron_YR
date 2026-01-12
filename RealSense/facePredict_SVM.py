@@ -10,8 +10,8 @@ import joblib
 # =========================
 # 設定（ここだけ編集）
 # =========================
-MODEL_PATH = Path(r"PLY_dataset/ply_svm_model.joblib")  
-INPUT_PLY  = Path(r"Testdata/pre_O.ply")  # 例: Path(r"/mnt/data/mouth_-36deg_20260105_162936.ply")
+MODEL_PATH = Path(r"PLY_dataset_YR/ply_svm_model.joblib")  
+INPUT_PLY  = Path(r"Testdata/E/pre_E_YR.ply")  # 例: Path(r"/mnt/data/mouth_-36deg_20260105_162936.ply")
 # =========================
 
 

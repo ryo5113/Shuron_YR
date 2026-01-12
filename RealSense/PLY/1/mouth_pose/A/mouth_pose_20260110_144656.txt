@@ -1,0 +1,19 @@
+pitch_label_deg(arg): 7.815768256610179
+camera_index(lip source): 0
+lip_center_tag (Tag coord) [m]:
+[-0.02001385  0.09672173  0.88754291]
+
+R_mouth (Tag->Mouth axes as columns):
+[[ 0.95949609 -0.07593062  0.27129644]
+ [ 0.04012664 -0.91634125 -0.39838237]
+ [ 0.27884954  0.39313254 -0.87617905]]
+euler_deg_from_R_mouth (roll,pitch,yaw): 155.834716, -16.191554, 2.394745
+
+[TAG POSE]
+R_tag (Cam->Tag):
+[[ 0.99080976  0.07286869 -0.11395688]
+ [-0.01456047  0.89504773  0.4457326 ]
+ [ 0.1344768  -0.43997695  0.88788303]]
+t_tag (Cam->Tag) [m]: [ 0.01371752 -0.1173842   0.46015314]
+euler_deg_tag (roll,pitch,yaw): -26.360016, -7.728367, -0.841931
+tag_pitch_deg_flipped(main style): 7.728367

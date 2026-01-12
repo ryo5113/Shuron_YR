@@ -1,0 +1,35 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: word_Ex1/10times_Ex1_A/sakana6.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 28
+segment_1: start_time=0.389333s, end_time=1.077333s, duration=0.688000s
+segment_2: start_time=1.109333s, end_time=1.754667s, duration=0.645333s
+segment_3: start_time=2.730667s, end_time=3.264000s, duration=0.533333s
+segment_4: start_time=4.293333s, end_time=4.805333s, duration=0.512000s
+segment_5: start_time=5.754667s, end_time=5.888000s, duration=0.133333s
+segment_6: start_time=5.925333s, end_time=6.282667s, duration=0.357333s
+segment_7: start_time=7.280000s, end_time=7.776000s, duration=0.496000s
+segment_8: start_time=8.213333s, end_time=8.298667s, duration=0.085333s
+segment_9: start_time=8.304000s, end_time=8.320000s, duration=0.016000s
+segment_10: start_time=8.346667s, end_time=8.405333s, duration=0.058667s
+segment_11: start_time=8.837333s, end_time=9.322667s, duration=0.485333s
+segment_12: start_time=9.978667s, end_time=10.112000s, duration=0.133333s
+segment_13: start_time=10.144000s, end_time=10.154667s, duration=0.010667s
+segment_14: start_time=10.432000s, end_time=10.933333s, duration=0.501333s
+segment_15: start_time=11.141333s, end_time=11.205333s, duration=0.064000s
+segment_16: start_time=11.216000s, end_time=11.226667s, duration=0.010667s
+segment_17: start_time=11.232000s, end_time=11.248000s, duration=0.016000s
+segment_18: start_time=11.253333s, end_time=11.290667s, duration=0.037333s
+segment_19: start_time=12.010667s, end_time=12.570667s, duration=0.560000s
+segment_20: start_time=13.573333s, end_time=14.106667s, duration=0.533333s
+segment_21: start_time=14.949333s, end_time=14.960000s, duration=0.010667s
+segment_22: start_time=14.986667s, end_time=14.997333s, duration=0.010667s
+segment_23: start_time=15.013333s, end_time=15.029333s, duration=0.016000s
+segment_24: start_time=15.066667s, end_time=15.658667s, duration=0.592000s
+segment_25: start_time=15.674667s, end_time=15.765333s, duration=0.090667s
+segment_26: start_time=15.813333s, end_time=15.930667s, duration=0.117333s
+segment_27: start_time=15.941333s, end_time=15.984000s, duration=0.042667s
+segment_28: start_time=16.016000s, end_time=16.885333s, duration=0.869333s
+mean_duration = 0.272381s
