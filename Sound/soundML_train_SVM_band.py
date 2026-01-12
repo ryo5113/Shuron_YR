@@ -422,7 +422,6 @@ def main():
 
     # 混同行列画像
     try:
-        import matplotlib.pyplot as plt
         disp = ConfusionMatrixDisplay(cm, display_labels=label_names)
         disp.plot(values_format="d")
         plt.tight_layout()

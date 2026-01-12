@@ -1,0 +1,32 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: word_Ex1/sakana2.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 25
+segment_1: start_time=0.410667s, end_time=1.290667s, duration=0.880000s
+segment_2: start_time=1.296000s, end_time=1.408000s, duration=0.112000s
+segment_3: start_time=1.472000s, end_time=2.149333s, duration=0.677333s
+segment_4: start_time=2.896000s, end_time=3.040000s, duration=0.144000s
+segment_5: start_time=3.056000s, end_time=3.445333s, duration=0.389333s
+segment_6: start_time=4.336000s, end_time=4.453333s, duration=0.117333s
+segment_7: start_time=4.480000s, end_time=4.869333s, duration=0.389333s
+segment_8: start_time=5.872000s, end_time=5.968000s, duration=0.096000s
+segment_9: start_time=6.010667s, end_time=6.394667s, duration=0.384000s
+segment_10: start_time=7.360000s, end_time=7.472000s, duration=0.112000s
+segment_11: start_time=7.514667s, end_time=7.877333s, duration=0.362667s
+segment_12: start_time=8.869333s, end_time=8.981333s, duration=0.112000s
+segment_13: start_time=9.024000s, end_time=9.402667s, duration=0.378667s
+segment_14: start_time=10.432000s, end_time=10.560000s, duration=0.128000s
+segment_15: start_time=10.576000s, end_time=10.933333s, duration=0.357333s
+segment_16: start_time=11.946667s, end_time=12.064000s, duration=0.117333s
+segment_17: start_time=12.096000s, end_time=12.474667s, duration=0.378667s
+segment_18: start_time=13.418667s, end_time=13.589333s, duration=0.170667s
+segment_19: start_time=13.594667s, end_time=13.989333s, duration=0.394667s
+segment_20: start_time=14.581333s, end_time=14.592000s, duration=0.010667s
+segment_21: start_time=14.602667s, end_time=14.640000s, duration=0.037333s
+segment_22: start_time=14.874667s, end_time=15.493333s, duration=0.618667s
+segment_23: start_time=15.685333s, end_time=15.744000s, duration=0.058667s
+segment_24: start_time=15.770667s, end_time=15.786667s, duration=0.016000s
+segment_25: start_time=15.850667s, end_time=16.693333s, duration=0.842667s
+mean_duration = 0.291413s

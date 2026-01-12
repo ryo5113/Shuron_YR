@@ -117,7 +117,7 @@ def main():
 
     plt.xlim(0, PLOT_MAX_HZ)
     plt.xlabel("Frequency [Hz]", fontsize=18)
-    plt.ylabel("Magnitude [dB]" if USE_DB else "Magnitude [linear]", fontsize=18)
+    plt.ylabel("Magnitude [dB]" if USE_DB else "Amplitude", fontsize=18)
     plt.title("FFT Spectrum", fontsize=18)
     plt.grid(True, which="both", linestyle="--", linewidth=0.5)
     plt.legend(fontsize=18)
