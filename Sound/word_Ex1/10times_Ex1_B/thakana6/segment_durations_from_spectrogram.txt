@@ -1,0 +1,32 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: word_Ex1/thakana6.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 25
+segment_1: start_time=0.373333s, end_time=1.936000s, duration=1.562667s
+segment_2: start_time=1.941333s, end_time=1.957333s, duration=0.016000s
+segment_3: start_time=2.080000s, end_time=2.133333s, duration=0.053333s
+segment_4: start_time=2.384000s, end_time=2.394667s, duration=0.010667s
+segment_5: start_time=2.405333s, end_time=2.432000s, duration=0.026667s
+segment_6: start_time=2.880000s, end_time=3.077333s, duration=0.197333s
+segment_7: start_time=3.082667s, end_time=3.445333s, duration=0.362667s
+segment_8: start_time=4.410667s, end_time=4.544000s, duration=0.133333s
+segment_9: start_time=4.608000s, end_time=4.954667s, duration=0.346667s
+segment_10: start_time=5.925333s, end_time=6.090667s, duration=0.165333s
+segment_11: start_time=6.160000s, end_time=6.496000s, duration=0.336000s
+segment_12: start_time=7.568000s, end_time=7.696000s, duration=0.128000s
+segment_13: start_time=7.754667s, end_time=8.106667s, duration=0.352000s
+segment_14: start_time=9.114667s, end_time=9.312000s, duration=0.197333s
+segment_15: start_time=9.344000s, end_time=9.669333s, duration=0.325333s
+segment_16: start_time=10.725333s, end_time=10.869333s, duration=0.144000s
+segment_17: start_time=10.906667s, end_time=11.248000s, duration=0.341333s
+segment_18: start_time=12.298667s, end_time=12.485333s, duration=0.186667s
+segment_19: start_time=12.501333s, end_time=12.885333s, duration=0.384000s
+segment_20: start_time=13.610667s, end_time=13.626667s, duration=0.016000s
+segment_21: start_time=13.877333s, end_time=14.069333s, duration=0.192000s
+segment_22: start_time=14.090667s, end_time=14.464000s, duration=0.373333s
+segment_23: start_time=15.312000s, end_time=15.322667s, duration=0.010667s
+segment_24: start_time=15.445333s, end_time=15.664000s, duration=0.218667s
+segment_25: start_time=15.690667s, end_time=17.013333s, duration=1.322667s
+mean_duration = 0.296107s

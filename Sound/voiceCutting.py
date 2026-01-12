@@ -5,59 +5,36 @@ import numpy as np
 
 # ====== 入力 ======
 INPUT_FILES = [
-    # Path(r"word_Ex1/10times_Ex1_A/sakana1/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/sakana2/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/sakana3/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/sakana4/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/sakana5/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/sakana6/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/shakana1/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/shakana2/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/shakana3/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/shakana4/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/shakana5/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/shakana6/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/takana1/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/takana2/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/takana3/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/takana4/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/takana5/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/takana6/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/thakana1/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/thakana2/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/thakana3/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/thakana4/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/thakana5/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/thakana6/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/tyakana1/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/tyakana2/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/tyakana3/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/tyakana4/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/tyakana5/cleaned_audio.wav"),
-    # Path(r"word_Ex1/10times_Ex1_A/tyakana6/cleaned_audio.wav"),
-    # Path(r"word/10times_01/sa/cleaned_audio.wav"),
-    # Path(r"word/10times_01/sha/cleaned_audio.wav"),
-    # Path(r"word/10times_01/ta/cleaned_audio.wav"),
-    # Path(r"word/10times_01/tha/cleaned_audio.wav"),
-    # Path(r"word/10times_01/tya/cleaned_audio.wav"),
-    # Path(r"word/10times_02/sa/cleaned_audio.wav"),
-    # Path(r"word/10times_02/sha/cleaned_audio.wav"),
-    # Path(r"word/10times_02/ta/cleaned_audio.wav"),
-    # Path(r"word/10times_02/tha/cleaned_audio.wav"),
-    # Path(r"word/10times_02/tya/cleaned_audio.wav"),
-    # Path(r"word/10times_03/sa/cleaned_audio.wav"),
-    # Path(r"word/10times_03/sha/cleaned_audio.wav"),
-    # Path(r"word/10times_03/ta/cleaned_audio.wav"),
-    # Path(r"word/10times_03/tha/cleaned_audio.wav"),
-    # Path(r"word/10times_03/tya/cleaned_audio.wav"),
-    # Path(r"word/10times_04/sa/cleaned_audio.wav"),
-    # Path(r"word/10times_04/sha/cleaned_audio.wav"),
-    # Path(r"word/10times_04/ta/cleaned_audio.wav"),
-    # Path(r"word/10times_04/tha/cleaned_audio.wav"),
-    # Path(r"word/10times_04/tya/cleaned_audio.wav"),
-    # Path(r"word/10times_05/sa/cleaned_audio.wav"),
-    # Path(r"word/10times_05/sha/cleaned_audio.wav"),
-    Path(r"word/10times_ad4/word/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/sakana1/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/sakana2/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/sakana3/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/sakana4/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/sakana5/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/sakana6/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/shakana1/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/shakana2/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/shakana3/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/shakana4/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/shakana5/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/shakana6/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/takana1/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/takana2/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/takana3/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/takana4/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/takana5/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/takana6/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/thakana1/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/thakana2/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/thakana3/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/thakana4/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/thakana5/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/thakana6/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/tyakana1/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/tyakana2/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/tyakana3/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/tyakana4/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/tyakana5/cleaned_audio.wav"),
+    Path(r"word_Ex1/10times_Ex1_B/tyakana6/cleaned_audio.wav"),
 ]
 # ===============
 
@@ -212,7 +189,7 @@ def process_one(in_path: Path) -> None:
     )  # [[start_ms, end_ms], ...] :contentReference[oaicite:3]{index=3}
 
     base_dir = in_path.parent / f"{in_path.stem}_chunks"
-    voiced_dir = base_dir / "voiced3"
+    voiced_dir = base_dir / "voiced"
     rejected_dir = base_dir / "rejected"
 
     voiced_dir.mkdir(parents=True, exist_ok=True)
@@ -235,13 +212,13 @@ def process_one(in_path: Path) -> None:
         chunk = audio[s:e]
         if is_valid_chunk(chunk):
             voiced_idx += 1
-            out_path = voiced_dir / f"chunk_{voiced_idx:02d}.wav"
+            out_path = voiced_dir / f"chunkB_{voiced_idx:02d}.wav"
             chunk.export(out_path, format="wav")
         else:
             # 除外chunkは保存しない／保存する（選択式）
             if SAVE_REJECTED:
                 rejected_idx += 1
-                out_path = rejected_dir / f"chunk_{rejected_idx:02d}.wav"
+                out_path = rejected_dir / f"chunkB_{rejected_idx:02d}.wav"
                 chunk.export(out_path, format="wav")
 
     print(f"[OK] {in_path.name} -> detected={len(ranges)} voiced={voiced_idx} rejected={rejected_idx}")
