@@ -3,9 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # 読み込む PLY ファイル名
-#PLY_PATH = "PLY/4/A_face/face_3cams_geom_merged_2deg_20260113_131131.ply" # 元の顔全体点群（3台カメラ合成・色付き）
+#PLY_PATH = "PLY/3/face_3cams_geom_merged_11deg_20260113_172954.ply" # 元の顔全体点群（3台カメラ合成・色付き）
 #PLY_PATH = "PLY/2(NT)/raw_face/face_cam2_raw_-1deg_20260112_132205.ply" # 元の顔全体点群（カメラ1台分・色付き）
-PLY_PATH = "PLY/4/mouth/mouth_-21deg_20260113_134633.ply" # 元の口元点群（カメラ1台分・色なし） U/19deg/01062513は入れ替え
+PLY_PATH = "PLY/3/mouth/U/mouth_13deg_20260113_174512.ply" # 元の口元点群（カメラ1台分・色なし） U/19deg/01062513は入れ替え
 #PLY_PATH = "Testdata/pre_O.ply"
 #PLY_PATH = "PLY/ml/mouth/mouth_camcolor_0deg_20251226_121815.ply" # 元の口元点群（カメラ1台分・カメラ別色付き）
 

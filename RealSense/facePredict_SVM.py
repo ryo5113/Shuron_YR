@@ -1,17 +1,15 @@
-# predict_ply_svm_no_cli.py
-# 保存済みSVMモデル(joblib) + 入力PLY -> 10x10x10占有特徴 -> 推論
+# 保存済みSVMモデル(joblib) + 入力PLY -> 15x15x15（3375次元）占有特徴 -> 推論
 
 from pathlib import Path
 import numpy as np
 import trimesh
 import joblib
 
-
 # =========================
 # 設定（ここだけ編集）
 # =========================
-MODEL_PATH = Path(r"PLY_dataset_YR/ply_svm_model.joblib")  
-INPUT_PLY  = Path(r"Testdata/E/pre_E_YR.ply")  # 例: Path(r"/mnt/data/mouth_-36deg_20260105_162936.ply")
+MODEL_PATH = Path(r"PLY_dataset_all/ply_svm_model.joblib")  
+INPUT_PLY  = Path(r"Testdata/O/pre_O_1.ply")  # 例: Path(r"/mnt/data/mouth_-36deg_20260105_162936.ply")
 # =========================
 
 

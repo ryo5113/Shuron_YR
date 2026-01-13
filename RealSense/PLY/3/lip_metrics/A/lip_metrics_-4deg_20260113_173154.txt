@@ -1,0 +1,12 @@
+pitch_label_deg: -4.366272802476055
+camera_index: 0
+points_cam0 (X,Y,Z in meters)
+  upper: [-2.78117193e-04 -2.27150805e-02  5.02000034e-01]
+  lower: [-0.00111162 -0.05944968  0.50400001]
+  left : [-0.02142377 -0.04347253  0.51200002]
+  right: [ 0.02065278 -0.04472355  0.50700003]
+
+[LIP METRICS]
+width : 0.042077  # 左右口角X差 [m]
+height: 0.036735  # 上下唇Y差 [m]
+depth : 0.010000  # max(Z_left, Z_right) - min(Z_upper, Z_lower) [m]
