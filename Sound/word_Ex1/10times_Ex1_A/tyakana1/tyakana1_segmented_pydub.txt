@@ -1,0 +1,17 @@
+[audio] word_Ex1/10times_Ex1_A/tyakana1/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=12 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=13 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.32-1.92	ちゃかな
+02	2.80-3.40	しゃかな
+03	4.23-4.82	しゃかな
+04	5.75-6.33	しゃかな
+05	7.21-7.75	しゃかない。
+06	8.40-9.40	ちゃかの
+07	10.34-10.92	しゃかんだろ
+08	11.83-12.45	しゃあながお。
+09	13.52-14.12	さかな
+10	15.20-15.84	だから

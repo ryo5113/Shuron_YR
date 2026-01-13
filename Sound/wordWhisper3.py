@@ -1,18 +1,52 @@
-# voiceCutting.py と同じ有音区間検出＋後処理を行い、
-# whisperで文字起こし＋漢字抑止を行うスクリプト
+# voiceCutting.py と同じ有音区間検出＋後処理を行い、whisperで文字起こし＋漢字抑止を行うスクリプト
 
 import os
 import sys
 import unicodedata
+from pathlib import Path
 import numpy as np
 import whisper
+import unicodedata
 
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
 # ====== 入力（必要に応じて変更） ======
-AUDIO_PATH  = "word_Ex1/10times_Ex1_A/sakana1/cleaned_audio.wav"
-OUTPUT_PATH = "word_Ex1/10times_Ex1_A/sakana1/sakana_segmented_pydub.txt"
+AUDIO_PATHS = [
+    "word_Ex1/10times_Ex1_A/sakana1/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/sakana2/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/sakana3/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/sakana4/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/sakana5/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/sakana6/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/shakana1/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/shakana2/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/shakana3/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/shakana4/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/shakana5/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/shakana6/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/takana1/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/takana2/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/takana3/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/takana4/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/takana5/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/takana6/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/thakana1/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/thakana2/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/thakana3/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/thakana4/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/thakana5/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/thakana6/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/tyakana1/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/tyakana2/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/tyakana3/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/tyakana4/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/tyakana5/cleaned_audio.wav",
+    "word_Ex1/10times_Ex1_A/tyakana6/cleaned_audio.wav",
+]
+
+# 出力ファイル名: {直上フォルダ名}_segmented_pydub.txt
+OUTPUT_SUFFIX = "_segmented_pydub.txt"
 
 LANGUAGE    = "ja"       
 MODEL_NAME  = "large-v3"
@@ -46,17 +80,33 @@ def token_has_kanji(token_text: str) -> bool:
             return True
     return False
 
-def build_suppress_tokens_for_kanji(language: str):
-    tok = whisper.tokenizer.get_tokenizer(multilingual=True, language=language, task="transcribe")
-    n_vocab = tok.encoding.n_vocab  # tok.n_vocab ではなく encoding 側
-    suppress = []
+def token_bytes_looks_like_common_kanji(b: bytes) -> bool:
+    # 釈(U+91C8) など一般的な漢字(主に U+4E00..U+9FFF) は UTF-8 で 0xE4..0xE9 から始まることが多い
+    # 例) 釈: E9 87 88
+    return any(0xE4 <= x <= 0xE9 for x in b)
+
+def build_suppress_tokens_for_kanji(tok) -> list[int]:
+    """Tokenizerを受け取り、漢字っぽいトークンIDを抑止リストとして返す。"""
+    n_vocab = tok.encoding.n_vocab
+    suppress: list[int] = []
     for tid in range(n_vocab):
+        # (A) 文字列としてデコードできるなら、漢字が含まれるかチェック
         try:
             s = tok.decode([tid])
         except Exception:
-            continue
+            s = ""
         if s and token_has_kanji(s):
             suppress.append(tid)
+            continue
+
+        # (B) bytes を見て「よくある漢字UTF-8先頭バイト帯(0xE4..0xE9)」を含むなら抑止
+        try:
+            b = tok.encoding.decode_single_token_bytes(tid)
+        except Exception:
+            b = b""
+        if b and token_bytes_looks_like_common_kanji(b):
+            suppress.append(tid)
+
     return sorted(set(suppress))
 
 # ====== voiceCutting.py 相当の後処理 ======
@@ -180,14 +230,14 @@ def audiosegment_to_whisper_wave(seg: AudioSegment) -> np.ndarray:
         samples /= maxv
     return samples
 
-def main():
-    if LANGUAGE != "ja":
-        raise ValueError('LANGUAGE は前提により "ja" にしてください。')
+def resolve_output_path(audio_path: str) -> str:
+    p = Path(audio_path)
+    parent_name = p.parent.name  # 直上フォルダ名
+    return str(p.parent / f"{parent_name}{OUTPUT_SUFFIX}")
 
-    model = whisper.load_model(MODEL_NAME)
-
+def process_one(audio_path: str, model, options) -> str:
     # 1) 固定閾値で有音区間検出（voiceCutting.pyと同じ）
-    audio = AudioSegment.from_file(AUDIO_PATH)
+    audio = AudioSegment.from_file(audio_path)
     ranges = detect_nonsilent(
         audio,
         min_silence_len=MIN_SILENCE_LEN_MS,
@@ -195,29 +245,17 @@ def main():
     )
 
     if not ranges:
-        raise RuntimeError("no voiced segments detected (ranges is empty).")
+        raise RuntimeError(f"no voiced segments detected (ranges is empty): {audio_path}")
 
     # 2) 後処理で範囲を整形（voiceCutting.pyと同じ）
     refined = postprocess_ranges(audio, ranges)
 
-    # 3) 漢字抑止（元wordWhisper.pyと同様）
-    suppress_tokens = build_suppress_tokens_for_kanji(LANGUAGE)
-
-    options = whisper.DecodingOptions(
-        language=LANGUAGE,
-        task="transcribe",
-        temperature=TEMPERATURE,
-        fp16=False,
-        suppress_tokens=suppress_tokens,
-        without_timestamps=True,
-    )
-
     lines = []
+    lines.append(f"[audio] {audio_path}")
     lines.append(f"[language] {LANGUAGE}")
     lines.append(f"[detect_nonsilent] count={len(ranges)} min_silence_len_ms={MIN_SILENCE_LEN_MS} silence_thresh_dbfs={SILENCE_THRESH_DBFS}")
     lines.append(f"[postprocess] refined_count={len(refined)} target_count={TARGET_COUNT}")
     lines.append(f"[keep_silence_ms] {KEEP_SILENCE_MS}")
-    lines.append(f"[suppress_tokens_kanji] count={len(suppress_tokens)}")
     lines.append("")
     lines.append("[segments]")
 
@@ -245,12 +283,35 @@ def main():
         # ★文字起こしした区間のタイムスタンプを出す
         lines.append(f"{idx:02d}\t{s/1000:.2f}-{e/1000:.2f}\t{text}")
 
-    out_dir = os.path.dirname(OUTPUT_PATH) or "."
+    out_path = resolve_output_path(audio_path)
+    out_dir = os.path.dirname(out_path) or "."
     os.makedirs(out_dir, exist_ok=True)
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
-    print(f"[i] done -> {OUTPUT_PATH}", file=sys.stderr)
+    print(f"[i] done -> {out_path}", file=sys.stderr)
+    return out_path
+
+def main():
+    if LANGUAGE != "ja":
+        raise ValueError('LANGUAGE は前提により "ja" にしてください。')
+
+    # model / options は一回だけ作る（複数ファイルで使い回す）
+    model = whisper.load_model(MODEL_NAME)
+    tok = whisper.tokenizer.get_tokenizer(multilingual=True, language=LANGUAGE, task="transcribe")
+    suppress_tokens = build_suppress_tokens_for_kanji(tok)
+
+    options = whisper.DecodingOptions(
+        language=LANGUAGE,
+        task="transcribe",
+        temperature=TEMPERATURE,
+        fp16=False,
+        suppress_tokens=suppress_tokens,
+        without_timestamps=True,
+    )
+
+    for audio_path in AUDIO_PATHS:
+        process_one(audio_path, model, options)
 
 if __name__ == "__main__":
     main()

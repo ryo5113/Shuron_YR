@@ -1,0 +1,17 @@
+[audio] word_Ex1/10times_Ex1_B/shakana2/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=11 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=12 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.39-2.00	釈迦の
+02	2.85-3.48	釈迦の
+03	4.40-5.04	釈迦の
+04	5.97-6.58	釈迦
+05	7.63-8.25	釈迦な
+06	9.21-9.81	釈迦の
+07	10.74-11.34	釈迦の
+08	12.31-12.90	釈迦の
+09	13.91-14.54	釈迦の
+10	15.50-16.11	釈迦の

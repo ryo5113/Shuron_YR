@@ -1,0 +1,18 @@
+[audio] word_Ex1/10times_Ex1_A/shakana2/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=12 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=15 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.25-1.85	しゃがむ
+02	2.70-3.29	しゃかな
+03	4.21-4.78	しゃかな
+04	5.75-6.25	しやかだ。
+05	7.29-7.86	しゃかな
+06	8.89-9.46	シャカナ
+07	10.43-10.97	しゃかな。
+08	11.88-12.47	しゃかんじゃ
+09	13.45-14.03	しゃかざ
+10	14.77-15.39	だから
+11	15.29-15.89	かな
