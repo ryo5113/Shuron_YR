@@ -1,0 +1,17 @@
+[audio] word_Ex1/10times_Ex1_C/thakana6/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=10 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=11 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.41-2.31	さかな
+02	3.05-3.90	さかな
+03	4.70-5.40	さかんな
+04	6.27-6.96	さかな
+05	7.83-8.54	さかな
+06	9.35-10.07	さかな
+07	10.80-11.62	さかな
+08	12.39-13.25	さかな
+09	13.96-14.82	さかな
+10	15.65-16.51	さかな

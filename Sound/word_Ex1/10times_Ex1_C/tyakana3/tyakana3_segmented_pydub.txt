@@ -1,0 +1,18 @@
+[audio] word_Ex1/10times_Ex1_C/tyakana3/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=11 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=15 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.38-2.00	ちゃかな
+02	2.82-3.48	だから
+03	4.33-4.94	じゃあ、カナ
+04	5.84-6.47	だから
+05	7.33-7.96	じゃあかな。
+06	8.83-9.46	だから
+07	10.41-11.02	さかざ
+08	11.91-12.57	ちゃかな
+09	13.51-14.16	じゃあ、かな?
+10	15.04-15.67	だから
+11	15.57-16.24	ありがとうございました

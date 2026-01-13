@@ -1,0 +1,18 @@
+[audio] word_Ex1/10times_Ex1_B/takana2/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=12 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=14 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.56-2.12	たかな
+02	3.00-3.57	たかな
+03	4.56-5.13	だからな。
+04	6.11-6.67	あかな
+05	7.70-8.24	たかな
+06	9.24-9.78	あの
+07	10.82-11.38	なかなか
+08	12.42-12.97	なかなか
+09	13.96-14.49	さかな
+10	15.07-16.12	だからな
+11	16.03-17.04	いいいい

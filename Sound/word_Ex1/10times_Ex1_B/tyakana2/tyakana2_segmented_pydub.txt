@@ -1,0 +1,18 @@
+[audio] word_Ex1/10times_Ex1_B/tyakana2/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=12 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=15 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	0.33-1.21	ごきげんよう
+02	1.35-2.00	さかな
+03	2.97-3.54	さかな
+04	4.22-5.12	じゃあ、あの
+05	6.09-6.67	さようなら
+06	7.67-8.22	さようなら
+07	9.21-9.79	さかの
+08	10.81-11.38	しゃかま
+09	12.42-12.98	だからあの
+10	13.96-14.51	さかな
+11	15.50-16.08	しゃかな

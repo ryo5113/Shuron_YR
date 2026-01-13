@@ -1,0 +1,17 @@
+[audio] word_Ex1/10times_Ex1_B/thakana6/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=12 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=14 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.34-1.96	さかな
+02	2.86-3.47	さっきの
+03	4.40-4.99	だからな
+04	5.92-6.53	さっきのな
+05	7.55-8.14	さかま
+06	9.10-9.71	さかな
+07	10.70-11.29	たかま
+08	12.26-12.90	さっきの
+09	13.86-14.49	さあ、かんな。
+10	15.47-16.29	さっきからな

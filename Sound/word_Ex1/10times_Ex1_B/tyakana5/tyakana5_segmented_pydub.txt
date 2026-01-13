@@ -1,0 +1,17 @@
+[audio] word_Ex1/10times_Ex1_B/tyakana5/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=10 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=11 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.30-1.93	ちゃかな
+02	2.88-3.48	ちゃかな
+03	4.49-5.09	さかな
+04	6.16-6.76	ちゃかな
+05	7.71-8.29	さかな
+06	9.28-9.86	ちゃかな
+07	10.88-11.48	ちゃかな
+08	12.33-13.02	ちゃかな
+09	14.01-14.62	さようなら。
+10	15.65-16.24	ちゃかな

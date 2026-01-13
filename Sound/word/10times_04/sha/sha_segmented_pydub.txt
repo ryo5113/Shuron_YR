@@ -1,0 +1,17 @@
+[audio] word/10times_04/sha/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=11 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=12 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.29-1.98	しゃかな
+02	2.84-3.45	しゃかな
+03	4.34-4.96	しゃかな。
+04	5.86-6.49	しゃかな
+05	7.42-8.05	しゃかんな
+06	8.96-9.59	しゃかな
+07	10.51-11.15	しゃかな
+08	12.10-12.72	しゃかな。
+09	13.63-14.27	さかな
+10	15.27-15.91	しゃかな

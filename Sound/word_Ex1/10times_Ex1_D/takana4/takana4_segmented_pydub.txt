@@ -1,0 +1,17 @@
+[audio] word_Ex1/10times_Ex1_D/takana4/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=11 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=12 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.05-1.82	かかわら
+02	2.74-3.23	さかな
+03	4.30-4.79	かな
+04	5.82-6.34	さかな
+05	7.35-7.82	さかな
+06	8.91-9.41	かかな
+07	10.56-10.95	かま
+08	12.11-12.48	かまっ
+09	13.54-14.06	しかも
+10	14.96-15.51	だから

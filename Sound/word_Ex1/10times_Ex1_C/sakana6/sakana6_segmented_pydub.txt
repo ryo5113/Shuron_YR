@@ -1,0 +1,17 @@
+[audio] word_Ex1/10times_Ex1_C/sakana6/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=10 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=12 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.49-2.08	さかな
+02	2.89-3.49	さかな
+03	4.33-4.93	パカダ
+04	5.87-6.48	さかな
+05	7.38-7.98	だからな。
+06	8.84-9.44	さかのん
+07	10.40-10.99	さかな
+08	11.92-12.48	さかな
+09	13.49-14.07	さかな
+10	15.01-15.64	だから

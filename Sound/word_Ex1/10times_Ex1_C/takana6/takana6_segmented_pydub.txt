@@ -1,0 +1,17 @@
+[audio] word_Ex1/10times_Ex1_C/takana6/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=11 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=13 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	1.49-2.14	だから
+02	2.99-3.64	だから
+03	4.55-5.20	だからな
+04	6.07-6.72	だからな
+05	7.58-8.24	だからな
+06	9.06-9.72	だから
+07	10.59-11.25	だから
+08	12.10-12.79	だから
+09	13.72-14.38	たかな
+10	15.30-15.97	たかな?

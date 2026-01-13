@@ -1,0 +1,17 @@
+[audio] word/10times_03/ta/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=12 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=12 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	0.88-1.98	たかな
+02	2.93-3.52	たかな
+03	4.52-5.10	たかな
+04	6.08-6.67	たかな
+05	7.60-8.20	たかな
+06	9.13-9.72	カッパーな
+07	10.70-11.29	たかな
+08	12.30-12.92	たかな
+09	13.86-14.48	たかな
+10	15.42-16.02	たかな

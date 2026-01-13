@@ -1,0 +1,18 @@
+[audio] word/10times_01/tha/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=10 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=13 target_count=10
+[keep_silence_ms] 50
+
+[segments]
+01	0.58-1.35	そかな
+02	1.81-2.61	さかな
+03	3.21-3.87	わからな
+04	4.39-5.12	そうかな
+05	5.77-6.41	そうかな
+06	6.95-7.69	そうかな
+07	8.24-8.95	そかな。
+08	9.50-10.25	さかな。
+09	10.79-11.56	さかな
+10	12.20-12.90	わからない
+11	12.80-13.39	ありがとうございました
