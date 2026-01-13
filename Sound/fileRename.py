@@ -39,5 +39,5 @@ def rename_wavs_to_sequential(folder: str, digits: int = 2, start: int = 1, pref
 
 if __name__ == "__main__":
     # ここを自分のフォルダパスに変更してください（例: r"C:\data\wavs" など）
-    target_folder = r"C:\Users\edu01\Documents\GitHub\Shuron_YR\Sound\word_Ex1\10times_Ex1_C\tyakana5\cleaned_audio_chunks\voiced"
-    rename_wavs_to_sequential(target_folder, digits=2, start=40, prefix="chunkC_")
+    target_folder = r"C:\Users\edu01\Documents\GitHub\Shuron_YR\Sound\word_Ex1\10times_Ex1_D\tyakana5\cleaned_audio_chunks\voiced"
+    rename_wavs_to_sequential(target_folder, digits=2, start=39, prefix="chunkD_")

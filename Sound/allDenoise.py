@@ -493,7 +493,7 @@ FILE_CONFIGS = [
     }
 ]
 
-OUTPUT_DIR  = "word_Ex1/10times_Ex1_C"  # すべての結果をまとめるフォルダ
+OUTPUT_DIR  = "word_Ex1/10times_Ex1_D"  # すべての結果をまとめるフォルダ
 
 # FFT表示帯域（Hz）
 BAND_HIGH   = 5000

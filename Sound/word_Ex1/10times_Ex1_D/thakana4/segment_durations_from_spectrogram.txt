@@ -1,0 +1,31 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: word_Ex1/thakana4.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 24
+segment_1: start_time=0.394667s, end_time=1.008000s, duration=0.613333s
+segment_2: start_time=1.034667s, end_time=1.162667s, duration=0.128000s
+segment_3: start_time=1.216000s, end_time=1.866667s, duration=0.650667s
+segment_4: start_time=2.805333s, end_time=3.040000s, duration=0.234667s
+segment_5: start_time=3.056000s, end_time=3.397333s, duration=0.341333s
+segment_6: start_time=4.314667s, end_time=4.538667s, duration=0.224000s
+segment_7: start_time=4.560000s, end_time=4.869333s, duration=0.309333s
+segment_8: start_time=5.925333s, end_time=6.170667s, duration=0.245333s
+segment_9: start_time=6.192000s, end_time=6.490667s, duration=0.298667s
+segment_10: start_time=7.440000s, end_time=7.706667s, duration=0.266667s
+segment_11: start_time=7.738667s, end_time=8.064000s, duration=0.325333s
+segment_12: start_time=8.202667s, end_time=8.218667s, duration=0.016000s
+segment_13: start_time=9.002667s, end_time=9.274667s, duration=0.272000s
+segment_14: start_time=9.317333s, end_time=9.605333s, duration=0.288000s
+segment_15: start_time=10.554667s, end_time=10.816000s, duration=0.261333s
+segment_16: start_time=10.858667s, end_time=11.152000s, duration=0.293333s
+segment_17: start_time=12.101333s, end_time=12.288000s, duration=0.186667s
+segment_18: start_time=12.330667s, end_time=12.661333s, duration=0.330667s
+segment_19: start_time=13.328000s, end_time=13.365333s, duration=0.037333s
+segment_20: start_time=13.616000s, end_time=13.861333s, duration=0.245333s
+segment_21: start_time=13.877333s, end_time=14.202667s, duration=0.325333s
+segment_22: start_time=15.205333s, end_time=15.226667s, duration=0.021333s
+segment_23: start_time=15.237333s, end_time=15.818667s, duration=0.581333s
+segment_24: start_time=16.202667s, end_time=16.944000s, duration=0.741333s
+mean_duration = 0.301556s

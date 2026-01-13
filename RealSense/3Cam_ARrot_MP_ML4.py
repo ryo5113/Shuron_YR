@@ -687,17 +687,17 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
                 color_frames[i] = color
 
     # PLY保存（角度ラベル入り）
-    os.makedirs("PLY/3", exist_ok=True)
+    os.makedirs("PLY/4", exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     # Tag姿勢の記録 
-    os.makedirs("PLY/3/tag_pose", exist_ok=True)
+    os.makedirs("PLY/4/tag_pose", exist_ok=True)
 
     roll, pitch, yaw = rotation_matrix_to_euler(tag_R)
     # main側と同じ符号系に揃えたいなら pitch を反転した値も保存しておく
     pitch_deg_raw = math.degrees(pitch)
     pitch_deg_flipped = -pitch_deg_raw
 
-    pose_path = f"PLY/3/tag_pose/tag_pose_{timestamp}.txt"
+    pose_path = f"PLY/4/tag_pose/tag_pose_{timestamp}.txt"
     with open(pose_path, "w", encoding="utf-8") as f:
         f.write(f"pitch_label_deg(arg): {pitch_label_deg}\n")
         f.write("R_tag (Cam->Tag):\n")
@@ -722,9 +722,9 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         raw_pcds.append(pcd_raw)
 
     # 各カメラ raw PLY を保存（座標変換なし）
-    os.makedirs("PLY/3/raw_face", exist_ok=True)
+    os.makedirs("PLY/4/raw_face", exist_ok=True)
     for i, pcd_raw in enumerate(raw_pcds):
-        raw_path = f"PLY/3/raw_face/face_cam{i}_raw_{int(pitch_label_deg)}deg_{timestamp}.ply"
+        raw_path = f"PLY/4/raw_face/face_cam{i}_raw_{int(pitch_label_deg)}deg_{timestamp}.ply"
         o3d.io.write_point_cloud(raw_path, pcd_raw)
         print(f"[SAVE] {raw_path}")
 
@@ -774,12 +774,12 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
     T_cam0_to_tag = T_cam0_to_tag_raw @ T_FLIP  # Y反転補正
 
     # PLY保存（従来どおりの結合PLY）
-    filename = f"PLY/3/face_3cams_geom_merged_{int(pitch_label_deg)}deg_{timestamp}.ply"
+    filename = f"PLY/4/face_3cams_geom_merged_{int(pitch_label_deg)}deg_{timestamp}.ply"
     o3d.io.write_point_cloud(filename, merged_pcd)
     print(f"[SAVE] {filename}")
 
     # PLY保存（追加：カメラ色付き結合PLY）
-    filename_camcolor = f"PLY/3/face_3cams_geom_merged_camcolor_{int(pitch_label_deg)}deg_{timestamp}.ply"
+    filename_camcolor = f"PLY/4/face_3cams_geom_merged_camcolor_{int(pitch_label_deg)}deg_{timestamp}.ply"
     o3d.io.write_point_cloud(filename_camcolor, merged_pcd_camcolor)
     print(f"[SAVE] {filename_camcolor}")
 
@@ -868,8 +868,8 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         print(f"  高さ (上下唇Y差)         : {metrics['height']:.6f} [m]")
         print(f"  奥行 ( max(Z_left, Z_right) - min(Z_upper, Z_lower)): {metrics['depth']:.6f} [m]")
 
-        os.makedirs("PLY/3/lip_metrics", exist_ok=True)
-        txt_path = f"PLY/3/lip_metrics/lip_metrics_{int(pitch_label_deg)}deg_{timestamp}.txt"
+        os.makedirs("PLY/4/lip_metrics", exist_ok=True)
+        txt_path = f"PLY/4/lip_metrics/lip_metrics_{int(pitch_label_deg)}deg_{timestamp}.txt"
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(f"pitch_label_deg: {pitch_label_deg}\n")
             f.write(f"camera_index: {selected['camera_index']}\n")
@@ -905,7 +905,7 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         else:
             T_cam_to_cam0 = T_2_to_0_icp
 
-        dbg_dir = "PLY/3/lip_mask_debug"
+        dbg_dir = "PLY/4/lip_mask_debug"
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         debug_path = f"{dbg_dir}/lipmask_cam{cam_index}_{int(pitch_label_deg)}deg_{ts}.png"
         
@@ -984,10 +984,10 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         # 回転行列（列に各軸）
         R_mouth = np.stack([x_axis, y_axis, z_axis], axis=1)
 
-        os.makedirs("PLY/3/mouth_pose", exist_ok=True)
+        os.makedirs("PLY/4/mouth_pose", exist_ok=True)
 
         roll_m, pitch_m, yaw_m = rotation_matrix_to_euler(R_mouth)
-        mouth_pose_path = f"PLY/3/mouth_pose/mouth_pose_{timestamp}.txt"
+        mouth_pose_path = f"PLY/4/mouth_pose/mouth_pose_{timestamp}.txt"
 
         # ★追加：撮影時点のARマーカー姿勢（Cam->Tag）も同じtxtに残す
         roll_t, pitch_t, yaw_t = rotation_matrix_to_euler(tag_R)
@@ -1045,22 +1045,22 @@ def capture_and_process_3cams(pipelines, profiles, pitch_label_deg, tag_R, tag_t
         if mouth_pcd is None or len(mouth_pcd.points) == 0:
             print("[LIP] mouth_pcd is empty (polygon crop). skip save.")
         else:
-            os.makedirs("PLY/3/mouth", exist_ok=True)
+            os.makedirs("PLY/4/mouth", exist_ok=True)
 
-            mouth_filename = f"PLY/3/mouth/mouth_{int(pitch_label_deg)}deg_{timestamp}.ply"
+            mouth_filename = f"PLY/4/mouth/mouth_{int(pitch_label_deg)}deg_{timestamp}.ply"
             o3d.io.write_point_cloud(mouth_filename, mouth_pcd_tag_centered)  # ←ここが重要（変換後を保存）
             print(f"[SAVE] mouth pcd: {mouth_filename}")
 
-            mouth_filename_camcolor = f"PLY/3/mouth/mouth_camcolor_{int(pitch_label_deg)}deg_{timestamp}.ply"
+            mouth_filename_camcolor = f"PLY/4/mouth/mouth_camcolor_{int(pitch_label_deg)}deg_{timestamp}.ply"
             o3d.io.write_point_cloud(mouth_filename_camcolor, mouth_pcd_camcolor_tag_centered)  # ←変換後を保存
             print(f"[SAVE] mouth pcd (camcolor): {mouth_filename_camcolor}")
 
         # ★ここから画像保存
         annotated = selected.get("annotated_image", None)
         if annotated is not None:
-            os.makedirs("PLY/3/mediapipe_img", exist_ok=True)
+            os.makedirs("PLY/4/mediapipe_img", exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            img_path = f"PLY/3/mediapipe_img/lip_cam{selected['camera_index']}_{ts}.png"
+            img_path = f"PLY/4/mediapipe_img/lip_cam{selected['camera_index']}_{ts}.png"
             cv2.imwrite(img_path, annotated)
             print(f"[LIP] MediaPipe描画画像を保存しました: {img_path}")
 

@@ -1,0 +1,32 @@
+# 有音区間(1回の発音)の推定時間 [スペクトログラム(denoised)ベース]
+# file: word_Ex1/shakana5.wav
+fs = 48000
+hop_length = 256
+frame_duration_sec = 0.005333
+num_segments = 25
+segment_1: start_time=0.378667s, end_time=1.322667s, duration=0.944000s
+segment_2: start_time=1.349333s, end_time=1.898667s, duration=0.549333s
+segment_3: start_time=2.720000s, end_time=3.232000s, duration=0.512000s
+segment_4: start_time=4.282667s, end_time=4.442667s, duration=0.160000s
+segment_5: start_time=4.469333s, end_time=4.784000s, duration=0.314667s
+segment_6: start_time=5.818667s, end_time=5.994667s, duration=0.176000s
+segment_7: start_time=6.021333s, end_time=6.309333s, duration=0.288000s
+segment_8: start_time=7.354667s, end_time=7.541333s, duration=0.186667s
+segment_9: start_time=7.557333s, end_time=7.840000s, duration=0.282667s
+segment_10: start_time=8.821333s, end_time=8.992000s, duration=0.170667s
+segment_11: start_time=8.997333s, end_time=9.280000s, duration=0.282667s
+segment_12: start_time=10.410667s, end_time=10.570667s, duration=0.160000s
+segment_13: start_time=10.608000s, end_time=10.917333s, duration=0.309333s
+segment_14: start_time=11.946667s, end_time=12.112000s, duration=0.165333s
+segment_15: start_time=12.138667s, end_time=12.458667s, duration=0.320000s
+segment_16: start_time=13.146667s, end_time=13.157333s, duration=0.010667s
+segment_17: start_time=13.488000s, end_time=14.000000s, duration=0.512000s
+segment_18: start_time=14.618667s, end_time=14.629333s, duration=0.010667s
+segment_19: start_time=14.677333s, end_time=14.725333s, duration=0.048000s
+segment_20: start_time=14.736000s, end_time=14.768000s, duration=0.032000s
+segment_21: start_time=14.826667s, end_time=15.498667s, duration=0.672000s
+segment_22: start_time=15.557333s, end_time=15.610667s, duration=0.053333s
+segment_23: start_time=15.717333s, end_time=15.749333s, duration=0.032000s
+segment_24: start_time=15.760000s, end_time=15.840000s, duration=0.080000s
+segment_25: start_time=15.877333s, end_time=16.832000s, duration=0.954667s
+mean_duration = 0.289067s
