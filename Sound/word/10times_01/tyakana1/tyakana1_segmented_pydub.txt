@@ -1,0 +1,17 @@
+[audio] word/10times_01/tyakana/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=12 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=12 target_count=10
+[keep_silence_ms] 100
+
+[segments]
+01	0.43-1.48	ちゃったーな
+02	1.98-2.76	ちゃかな
+03	3.29-4.06	ちゃかな
+04	4.56-5.33	じゃかな
+05	5.61-6.62	ちゃかな
+06	7.13-7.90	じゃかな。
+07	8.46-9.22	チャカーナ
+08	9.77-10.52	ちゃかな
+09	11.03-11.81	チャパーナ
+10	12.39-13.14	ちゃかな

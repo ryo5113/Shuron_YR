@@ -1,0 +1,17 @@
+[audio] word/10times_01/takana/cleaned_audio.wav
+[language] ja
+[detect_nonsilent] count=10 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=11 target_count=10
+[keep_silence_ms] 100
+
+[segments]
+01	0.41-1.54	カタナ
+02	1.93-2.85	たかな
+03	3.41-4.15	たかな
+04	4.74-5.50	たかな
+05	6.11-6.83	たかな
+06	7.24-8.16	たかな
+07	8.74-9.44	たかな
+08	10.02-10.77	さかな
+09	11.37-12.09	さかな
+10	12.65-13.40	たかな
