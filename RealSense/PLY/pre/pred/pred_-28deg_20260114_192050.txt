@@ -1,0 +1,9 @@
+pitch_label_deg: -28.279038728927684
+camera_index(lip source): 1
+pred_label: E
+decision_function:
+  A: 1.813295
+  I: 3.247095
+  U: -0.254847
+  E: 4.252840
+  O: 0.800750

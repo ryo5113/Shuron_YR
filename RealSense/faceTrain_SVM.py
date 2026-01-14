@@ -25,7 +25,7 @@ from sklearn.metrics import (
 # =========================
 # 設定（ここだけ編集）
 # =========================
-DATA_ROOT = Path(r"./PLY_dataset_YR")  # ラベル別フォルダを含むルート
+DATA_ROOT = Path(r"./PLY_dataset_all")  # ラベル別フォルダを含むルート
 GRID = 15 # 占有グリッドサイズ
 TEST_SIZE = 0.3
 SEED = 42
@@ -34,7 +34,7 @@ SEED = 42
 LABEL_ORDER = ["A", "I", "U", "E", "O"]
 
 # 出力
-OUT_DIR = Path(r"./PLY_dataset_YR")
+OUT_DIR = Path(r"./PLY_dataset_all")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 OUT_MODEL = OUT_DIR / "ply_svm_model.joblib"
 OUT_CM_PNG = OUT_DIR / "confusion_matrix.png"
@@ -46,7 +46,7 @@ SVM_KERNEL = "rbf"
 C_GRID = [0.1, 1, 3, 5, 10, 30, 100]
 GAMMA_GRID = ["scale", "auto"]
 CLASS_WEIGHT = None          # 必要なら "balanced"
-PROBABILITY = False          # 必要なら True（ただし学習が遅くなることがあります）
+PROBABILITY = True          # 必要なら True（ただし学習が遅くなることがあります）
 CV_SPLITS = 5
 # =========================
 
@@ -134,6 +134,7 @@ def build_pipeline() -> Pipeline:
 
 def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: list[str], dpi: int = 200) -> None:
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=label_names)
+    plt.rcParams["font.size"] = 16
     disp.plot(values_format="d", xticks_rotation=45)
     disp.figure_.tight_layout()
     disp.figure_.savefig(path, dpi=dpi)

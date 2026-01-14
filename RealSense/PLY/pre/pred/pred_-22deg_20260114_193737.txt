@@ -1,0 +1,4 @@
+pitch_label_deg: -22.33475124586184
+camera_index(lip source): 1
+pred_label: U
+decision_function:
