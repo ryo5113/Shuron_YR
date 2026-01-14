@@ -161,7 +161,7 @@ def main():
     parser.add_argument(
         "--model_dir",
         type=str,
-        default="word/trained_svm_model_band/sum73/BEST_band_080Hz",
+        default="word_Ex1/trained_all_svm_model_band/sum73/BEST_band_020Hz",
         help="model.joblib / meta.json のあるフォルダ",
     )
     parser.add_argument(
@@ -173,7 +173,7 @@ def main():
     parser.add_argument(
         "--out_csv",
         type=str,
-        default="word/trained_svm_model_band/sum73/BEST_band_080Hz/predictions_svm_word6.csv",
+        default="word_Ex1/trained_all_svm_model_band/sum73/BEST_band_020Hz/predictions_svm_word6.csv",
         help="推論結果CSV",
     )
     args = parser.parse_args()

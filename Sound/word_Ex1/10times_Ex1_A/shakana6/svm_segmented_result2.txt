@@ -1,0 +1,16 @@
+[model]
+model_joblib=word_Ex1/trained_all_svm_model_band/sum73/BEST_band_020Hz/model.joblib
+meta_json=word_Ex1/trained_all_svm_model_band/sum73/BEST_band_020Hz/meta.json
+labels=['sakana', 'shakana', 'takana', 'thakana', 'tyakana']
+
+[segments]
+01	1.14-1.85	shakana	shakana:78.6% tyakana:11.8% sakana:4.3%
+02	2.65-3.36	shakana	shakana:98.2% tyakana:0.7% takana:0.5%
+03	4.23-4.93	shakana	shakana:70.2% tyakana:27.2% takana:1.6%
+04	5.82-6.49	takana	takana:44.5% shakana:39.9% tyakana:11.4%
+05	7.42-8.09	takana	takana:42.0% shakana:24.9% tyakana:24.6%
+06	8.95-9.64	shakana	shakana:70.7% tyakana:18.6% sakana:6.2%
+07	10.53-11.20	tyakana	tyakana:58.2% takana:24.5% shakana:13.1%
+08	12.05-12.76	shakana	shakana:77.2% tyakana:13.7% thakana:6.1%
+09	13.62-14.31	takana	takana:41.9% tyakana:32.4% shakana:21.7%
+10	15.19-15.87	tyakana	tyakana:35.6% thakana:32.5% takana:19.1%

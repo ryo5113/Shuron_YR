@@ -31,7 +31,6 @@ INPUT_GLOBS = [
     r"word_Ex1\10times_Ex1_A\shakana6\shakana6_segmented_pydub.txt",
     r"word_Ex1\10times_Ex1_B\takana6\takana6_segmented_pydub.txt",
     r"word_Ex1\10times_Ex1_C\thakana6\thakana6_segmented_pydub.txt",
-    r"word_Ex1\10times_Ex1_D\thakana6\thakana6_segmented_pydub.txt",
     # r"another_folder\**\*_segmented_pydub.txt",
 ]
 
