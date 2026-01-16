@@ -23,12 +23,12 @@ AUDIO_FILES = [
     # r"word/10times_02/sha/cleaned_audio_chunks/voiced2/shakana.wav",
     # r"word/10times_02/tha/cleaned_audio_chunks/voiced2/thakana.wav",
     # r"word/10times_02/tya/cleaned_audio_chunks/voiced2/tyakana.wav",
+    #r"word/10times_01/sakana1/cleaned_audio_chunks/voiced3/sakana.wav",
     r"word/10times_01/sakana1/cleaned_audio_chunks/voiced3/sakana.wav",
-    r"word/10times_01/tyakana1/cleaned_audio_chunks/voiced3/tyakana.wav",
-    r"word/Clone/sakana/tts_output2_chunks/voiced/sakana(Clone).wav",
+    r"word/Clone/sakana/tts_output12_chunks/voiced/sakana(Clone).wav",
 ]
 
-PLOT_MAX_HZ = 1500  # 描画上限周波数 [Hz]
+PLOT_MAX_HZ = 8000  # 描画上限周波数 [Hz]
 START_SEC = 0.0       # 解析開始位置 [s]
 DURATION_SEC = None   # 解析時間 [s]（Noneなら全区間）
 N_FFT = 65536          # Noneなら信号長に合わせる（必要なら 2**15 などを指定）
@@ -125,7 +125,7 @@ def main():
     plt.yticks(fontsize=25)
     plt.title("FFT Spectrum", fontsize=25)
     plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    #plt.legend(fontsize=25)
+    plt.legend(fontsize=25)
     plt.tight_layout()
     plt.show()
 
