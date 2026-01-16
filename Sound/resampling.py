@@ -10,9 +10,9 @@ from scipy.signal import resample_poly
 # ======================
 # 設定（ここだけ編集）
 # ======================
-INPUT_DIR = r"word/10times_02/ta"         # 入力フォルダ（例：ラベル別フォルダを含むルート）
-OUTPUT_DIR = r"word/10times_02/ta//re"    # 出力フォルダ
-TARGET_SR = 16000                      # 変換先サンプリング周波数 [Hz]
+INPUT_DIR = r"takana_ct_chunks/voiced"         # 入力フォルダ（例：ラベル別フォルダを含むルート）
+OUTPUT_DIR = r"takana_ct_chunks/voiced"   # 出力フォルダ
+TARGET_SR = 48000                      # 変換先サンプリング周波数 [Hz]
 SUBTYPE = "PCM_16"                     # 出力wavの量子化（例: PCM_16, PCM_24, FLOAT）
 DRY_RUN = False                        # Trueで「変換せず一覧だけ表示」
 

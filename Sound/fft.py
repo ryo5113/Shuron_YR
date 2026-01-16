@@ -19,11 +19,13 @@ except ImportError as e:
 
 # ========= ユーザー設定 =========
 AUDIO_FILES = [
-    r"word/10times_02/sa/cleaned_audio_chunks/voiced2/sakana.wav",
-    r"word/10times_02/sha/cleaned_audio_chunks/voiced2/shakana.wav",
-    r"word/10times_02/tha/cleaned_audio_chunks/voiced2/thakana.wav",
-    r"word/10times_02/tya/cleaned_audio_chunks/voiced2/tyakana.wav",
-    r"word/10times_02/ta/cleaned_audio_chunks/voiced2/takana.wav",
+    # r"word/10times_02/sa/cleaned_audio_chunks/voiced2/sakana.wav",
+    # r"word/10times_02/sha/cleaned_audio_chunks/voiced2/shakana.wav",
+    # r"word/10times_02/tha/cleaned_audio_chunks/voiced2/thakana.wav",
+    # r"word/10times_02/tya/cleaned_audio_chunks/voiced2/tyakana.wav",
+    r"word/10times_01/sakana1/cleaned_audio_chunks/voiced3/sakana.wav",
+    r"word/10times_01/tyakana1/cleaned_audio_chunks/voiced3/tyakana.wav",
+    r"word/Clone/sakana/tts_output2_chunks/voiced/sakana(Clone).wav",
 ]
 
 PLOT_MAX_HZ = 8000  # 描画上限周波数 [Hz]
@@ -115,12 +117,15 @@ def main():
         else:
             plt.plot(freq[mask], mag[mask], label=f"{path.name} (fs={fs}Hz)")
 
+
     plt.xlim(0, PLOT_MAX_HZ)
-    plt.xlabel("Frequency [Hz]", fontsize=18)
-    plt.ylabel("Magnitude [dB]" if USE_DB else "Amplitude", fontsize=18)
-    plt.title("FFT Spectrum", fontsize=18)
+    plt.xlabel("Frequency [Hz]", fontsize=25)
+    plt.ylabel("Magnitude [dB]" if USE_DB else "Amplitude", fontsize=25)
+    plt.xticks(fontsize=25)
+    plt.yticks(fontsize=25)
+    plt.title("FFT Spectrum", fontsize=25)
     plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    plt.legend(fontsize=18)
+    plt.legend(fontsize=25)
     plt.tight_layout()
     plt.show()
 

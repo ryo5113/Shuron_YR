@@ -1,0 +1,12 @@
+[audio] word_Ex1/10times_Ex1_C_Clone/sakana/tts_output.wav
+[language] ja
+[detect_nonsilent] count=5 min_silence_len_ms=250 silence_thresh_dbfs=-62.0
+[postprocess] refined_count=5 target_count=10
+[keep_silence_ms] 100
+
+[segments]
+01	0.58-1.36	さかな
+02	2.03-2.85	さかな
+03	3.61-4.43	さから
+04	5.06-5.76	さかな
+05	6.17-6.97	さかな

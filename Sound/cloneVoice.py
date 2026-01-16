@@ -9,10 +9,11 @@ from cartesia import Cartesia
 # =========================
 # 設定（ここだけ編集）
 # =========================
-CARTESIA_API_KEY = "sk_car_BUNMtmrNUmhTgeMVXZpLJ2"  # 環境変数推奨 
-INPUT_WAV = Path(r"word/10times_02/sa/re/cleaned_audio.wav")          # 入力（PCM WAV想定）
+CARTESIA_API_KEY = "sk_car_jMNn4FZ7LEHDcuCoT1BMbq"  # 環境変数推奨 
+#INPUT_WAV = Path(r"word_Ex1/10times_Ex1_A/tyakana1/cleaned_audio.wav")
+INPUT_WAV = Path(r"word/10times_04/sakana1/cleaned_audio.wav")          # 入力（PCM WAV想定）
 START_SEC = 2.0                         # 切り出し開始秒
-MAX_CLIP_SECONDS = 10.0                  # Clone推奨は約5秒 
+MAX_CLIP_SECONDS = 5.0                  # Clone推奨は約5秒 
 
 VOICE_NAME = "my_instant_clone"
 VOICE_DESCRIPTION = "created by python"
@@ -20,8 +21,9 @@ LANGUAGE = "ja"
 CLONE_MODE = "similarity"               # PyPI例: "similarity" or "stability" 
 ENHANCE = False                         # PyPI例
 
-TTS_TEXT = "さかな。"
-OUTPUT_WAV = Path(r"word/10times_02/sa/re/tts_output.wav")
+TTS_TEXT = "さかな。さかな。さかな。さかな。さかな。"  # TTSテキスト
+#OUTPUT_WAV = Path(r"word_Ex1/10times_Ex1_A_Clone/sakana/tts_output3.wav")
+OUTPUT_WAV = Path(r"word/Clone/sakana/tts_output12.wav")
 TTS_MODEL_ID = "sonic-3"                
 OUT_SAMPLE_RATE = 48000
 OUT_ENCODING = "pcm_s16le"              # 例（SDK/Docsで利用されるencodingの一つ）
