@@ -1,0 +1,2 @@
+path,pred_label,pct_sakana,pct_shakana,pct_takana,pct_thakana,pct_tyakana
+word\Clone\sakana\tts_output6_chunks\voiced\chunkI_03.wav,tyakana,0.6,20.9,1.7,8.2,68.5

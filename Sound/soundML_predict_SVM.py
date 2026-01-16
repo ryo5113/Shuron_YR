@@ -176,8 +176,8 @@ def main():
         "--out_csv",
         type=str,
         #default="word_Ex1/10times_Ex1_D/svm_wav_dataset_D/trained_D_svm_model_band/BEST_band_035Hz/predictions_svm_word6.csv",
-        default="word/trained_clone_svm_model_band/clone/BEST_band_020Hz/predictions_svm_word6.csv",
-        #default="word_Ex1/trained_all_svm_model_band/sum73/BEST_band_020Hz/predictions_svm_word6.csv",
+        default="word/trained_clone_svm_model_band/clone/BEST_band_020Hz/predictions_svm_word8.csv",
+        #default="word_Ex1/trained_all_svm_model_band/sum73/BEST_band_020Hz/predictions_svm_word10.csv",
         help="推論結果CSV",
     )
     args = parser.parse_args()

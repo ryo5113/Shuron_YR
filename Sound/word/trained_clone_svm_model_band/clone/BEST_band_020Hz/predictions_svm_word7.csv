@@ -1,0 +1,2 @@
+path,pred_label,pct_sakana,pct_shakana,pct_takana,pct_thakana,pct_tyakana
+word\10times_pre\pre\cleaned_audio_chunks\voiced\chunkJ_01.wav,shakana,0.9,45.0,1.7,19.1,33.3

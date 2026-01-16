@@ -28,7 +28,7 @@ AUDIO_FILES = [
     r"word/Clone/sakana/tts_output2_chunks/voiced/sakana(Clone).wav",
 ]
 
-PLOT_MAX_HZ = 8000  # 描画上限周波数 [Hz]
+PLOT_MAX_HZ = 1500  # 描画上限周波数 [Hz]
 START_SEC = 0.0       # 解析開始位置 [s]
 DURATION_SEC = None   # 解析時間 [s]（Noneなら全区間）
 N_FFT = 65536          # Noneなら信号長に合わせる（必要なら 2**15 などを指定）
@@ -125,7 +125,7 @@ def main():
     plt.yticks(fontsize=25)
     plt.title("FFT Spectrum", fontsize=25)
     plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    plt.legend(fontsize=25)
+    #plt.legend(fontsize=25)
     plt.tight_layout()
     plt.show()
 
