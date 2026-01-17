@@ -1,5 +1,5 @@
 {
-  "wav_root": "word\\SVM_wav_dataset_clone",
+  "wav_root": "word\\SVM_wav_dataset_clone2",
   "n_samples": 250,
   "labels": [
     "sakana",
@@ -39,6 +39,6 @@
     "class_weight": "balanced",
     "probability": true
   },
-  "cv_best_mean_accuracy": 0.8457142857142858,
+  "cv_best_mean_accuracy": 0.8285714285714286,
   "test_accuracy": 0.8933333333333333
 }

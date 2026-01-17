@@ -43,8 +43,12 @@ INPUT_FILES = [
     # Path(r"word/Clone/sakana/tts_output9.wav"),
     # Path(r"word/Clone/sakana/tts_output10.wav"),
     # Path(r"word/Clone/sakana/tts_output11.wav"),
-    # Path(r"word/Clone/sakana/tts_output12.wav"),
-    Path(r"word/10times_pre/pre/cleaned_audio.wav"),
+    Path(r"word/Clone/sakana(Clone)/tts_output16.wav"),
+    Path(r"word/Clone/sakana(Clone)/tts_output17.wav"),
+    Path(r"word/Clone/sakana(Clone)/tts_output18.wav"),
+    Path(r"word/Clone/sakana(Clone)/tts_output19.wav"),
+    Path(r"word/Clone/sakana(Clone)/tts_output20.wav"),
+    # Path(r"word/10times_pre/pre/cleaned_audio.wav"),
 ]
 # ===============
 

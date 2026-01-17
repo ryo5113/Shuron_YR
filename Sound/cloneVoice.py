@@ -21,9 +21,9 @@ LANGUAGE = "ja"
 CLONE_MODE = "similarity"               # PyPI例: "similarity" or "stability" 
 ENHANCE = False                         # PyPI例
 
-TTS_TEXT = "さかな。さかな。さかな。さかな。さかな。"  # TTSテキスト
+TTS_TEXT = "さかな。さかな。さかな。さかな。さかな。さかな。"  # TTSテキスト
 #OUTPUT_WAV = Path(r"word_Ex1/10times_Ex1_A_Clone/sakana/tts_output3.wav")
-OUTPUT_WAV = Path(r"word/Clone/sakana/tts_output12.wav")
+OUTPUT_WAV = Path(r"word/Clone/sakana(Clone)/tts_output20.wav")
 TTS_MODEL_ID = "sonic-3"                
 OUT_SAMPLE_RATE = 48000
 OUT_ENCODING = "pcm_s16le"              # 例（SDK/Docsで利用されるencodingの一つ）
