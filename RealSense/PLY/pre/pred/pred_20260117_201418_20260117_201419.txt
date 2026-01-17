@@ -1,0 +1,10 @@
+capture_id: 20260117_201418
+selected_camera_index: 0
+pred_label: A
+pred_percent: 43.96
+class_percent:
+  A: 43.96
+  I: 1.55
+  U: 26.13
+  E: 2.85
+  O: 25.51
