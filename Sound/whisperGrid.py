@@ -1,42 +1,61 @@
-# -*- coding: utf-8 -*-
-import os, re, glob, unicodedata
+"""
+- 既存の *_segmented_pydub.txt から、
+  (A) 大分類（5ラベル + 無反応 + 魚系想定外 + 文脈外）の行列画像
+  (B) 魚系想定外 / 文脈外 の詳細（上位K）画像
+  (C) 推定規則（P(label|transcript) の経験分布）を JSON に保存
+"""
+
+import os, re, glob, json, unicodedata
 from collections import Counter, defaultdict
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 # =========================
-# ここだけ編集（入力指定）
+# 設定（スクリプト内で指定）
 # =========================
 ROOT_GLOBS = [
-    # r"word_Ex1\10times_Ex1_A\**\*_segmented_pydub.txt",
-    # r"word_Ex1\10times_Ex1_B\**\*_segmented_pydub.txt",
-    # r"word_Ex1\10times_Ex1_C\**\*_segmented_pydub.txt",
-    # r"word_Ex1\10times_Ex1_D\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_A\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_B\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_C\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_D\**\*_segmented_pydub.txt",
     r"word\10times_01\**\*_segmented_pydub.txt",
     r"word\10times_02\**\*_segmented_pydub.txt",
     r"word\10times_03\**\*_segmented_pydub.txt",
     r"word\10times_04\**\*_segmented_pydub.txt",
     r"word\10times_05\**\*_segmented_pydub.txt",
 ]
-USE_NUMS = {1, 2, 3, 4, 5}  # 例：1〜5だけ使う
-TOPK_ERRORS = 10           # 各ラベルで誤り上位K件を表示
-OUT_CSV = "whisper_transcript_table_all.csv"
-OUT_PNG = "whisper_transcript_matrix_YR.png"
-SHOW_COUNTS_TEXT = True  # セル内に数値を描くか
+USE_NUMS = {1, 2, 3, 4, 5}
 
-# 正しい文字おこし（あなたの確定）
-correct_text = {
+# 画像出力
+OUT_DIR = "./whisperGrid_output"
+OUT_MAIN_PNG = os.path.join(OUT_DIR, "whisper_group_matrix.png")
+OUT_FISH_DETAIL_PNG = os.path.join(OUT_DIR, "whisper_fish_detail.png")
+OUT_OOC_DETAIL_PNG  = os.path.join(OUT_DIR, "whisper_ooc_detail.png")
+
+# 詳細図に載せる誤り文字列の列数（上位K）
+TOPK_DETAIL = 20
+
+# 規則ファイル
+OUT_RULE_JSON = os.path.join(OUT_DIR, "whisper_rule.json")
+
+# 日本語フォント（環境により変えてください）
+# 文字化けする場合はここを変更（例: "Meiryo", "MS Gothic" など）
+PREFERRED_FONTS = ["Meiryo", "MS Gothic", "IPAexGothic", "Noto Sans CJK JP"]
+# =========================
+
+
+# ===== ラベルと正解文字列（あなたの確定） =====
+LABELS = ["sakana", "shakana", "thakana", "tyakana", "takana"]
+CORRECT_TEXT = {
     "sakana":  "さかな",
     "shakana": "しゃかな",
     "thakana": "すぁかな",
     "tyakana": "ちゃかな",
     "takana":  "たかな",
 }
-# =========================
 
-# ===== whisperSVM.py と同等の前提 =====
-LABELS = ["sakana", "shakana", "thakana", "tyakana", "takana"]  # :contentReference[oaicite:4]{index=4}
-
+# ===== whisperGrid.py と同系統の抽出・正規化（崩さない想定） =====
 NORMALIZE_NFKC = True
 STRIP_TRAILING_PUNCT = True
 STRIP_SURROUNDING_QUOTES = True
@@ -54,6 +73,15 @@ NUM_FROM_DIR_RE = re.compile(
     re.IGNORECASE
 )
 
+def _set_jp_font():
+    # 使えるフォントがあれば設定（なければデフォルト）
+    for f in PREFERRED_FONTS:
+        try:
+            plt.rcParams["font.family"] = f
+            return
+        except Exception:
+            pass
+
 def kata_to_hira(s: str) -> str:
     res = []
     for ch in s:
@@ -68,16 +96,20 @@ def normalize_text(text: str) -> str:
     s = text.strip()
     if NORMALIZE_NFKC:
         s = unicodedata.normalize("NFKC", s)
+
     if STRIP_SURROUNDING_QUOTES:
         while True:
             new_s = SURROUNDING_QUOTES_RE.sub("", s).strip()
             if new_s == s:
                 break
             s = new_s
+
     if STRIP_TRAILING_PUNCT:
         s = TRAILING_PUNCT_RE.sub("", s)
+
     if UNIFY_KANA:
         s = kata_to_hira(s)
+
     return s
 
 def extract_label_from_filename(path: str) -> str:
@@ -123,97 +155,99 @@ def collect_paths():
         uniq.append(p)
     return sorted(uniq)
 
-def main():
-    paths = collect_paths()
-    if not paths:
-        print("[ERROR] 対象ファイルがありません。ROOT_GLOBS / USE_NUMS を確認してください。")
-        return
+# ===== 大分類（あなたの定義） =====
+CORRECT_NORM = {lab: normalize_text(txt) for lab, txt in CORRECT_TEXT.items()}
 
-    # 集計：true_label -> Counter(transcript_norm)
-    counts = {lab: Counter() for lab in LABELS}
-    total_by_label = Counter()
+def is_fish_unexpected(tr_norm: str) -> bool:
+    """
+    魚系想定外誤認識の判定ルール（ユーザー指定）:
+    - 語末が「かな」
+    - または「ー」を除去すると5ラベルのいずれかに一致（=長音混入）
+    ※ただし完全一致（5ラベル）は先に除外して使う想定
+    """
+    if not tr_norm:
+        return False
 
-    # 先に集計する（ここが重要）
-    for p in paths:
-        true_label = extract_label_from_filename(p)
-        if not true_label:
-            continue
+    if tr_norm.endswith("かな"):
+        return True
 
-        in_segments = False
-        with open(p, "r", encoding="utf-8") as f:
-            for raw in f:
-                line = raw.rstrip("\n")
-                if line.strip() == "[segments]":
-                    in_segments = True
-                    continue
-                if not in_segments or not line.strip():
-                    continue
+    tr_no_bar = tr_norm.replace("ー", "")
+    if tr_no_bar != tr_norm:
+        if tr_no_bar in set(CORRECT_NORM.values()):
+            return True
 
-                tr_raw = extract_transcript_from_segment_line(line)
-                if not tr_raw:
-                    continue
+    return False
 
-                tr = normalize_text(tr_raw)
-                counts[true_label][tr] += 1
-                total_by_label[true_label] += 1
+def classify_bucket(tr_norm: str):
+    """
+    戻り値:
+      - bucket: one of
+        "sakana|shakana|thakana|tyakana|takana|fish_unexpected|out_of_context|no_response"
+      - fine: 具体文字列（詳細表用）
+    """
+    if tr_norm == "":
+        return "no_response", tr_norm
 
-    # 正規化後の正解文字列
-    correct_norm = {lab: normalize_text(txt) for lab, txt in correct_text.items()}
+    # 5ラベル完全一致（正しい/他ラベルへの誤認識 どちらもここに入る）
+    for lab, corr in CORRECT_NORM.items():
+        if tr_norm == corr:
+            return lab, tr_norm
 
-    # (1) 列（transcript）を作る：全ラベルの「正解」＋「誤り上位K」をユニオン
-    columns = []
-    seen = set()
+    if is_fish_unexpected(tr_norm):
+        return "fish_unexpected", tr_norm
 
-    def add_col(s: str):
-        if s not in seen:
-            seen.add(s)
-            columns.append(s)
+    return "out_of_context", tr_norm
 
-    for lab in LABELS:
-        add_col(correct_norm[lab])
-
-    for lab in LABELS:
-        errs = [(t, c) for (t, c) in counts[lab].most_common() if t != correct_norm[lab]]
-        for t, _ in errs[:TOPK_ERRORS]:
-            add_col(t)
-
-    # (2) 行列を作る：rows=true_label, cols=transcript
-    mat = np.zeros((len(LABELS), len(columns)), dtype=int)
-    for i, lab in enumerate(LABELS):
-        for j, tr in enumerate(columns):
-            mat[i, j] = counts[lab][tr]
-
-    # (3) 画像化（ヒートマップ）
-    plt.rcParams["font.family"] = "MS Gothic"  # 日本語対応
-    plt.rcParams["font.size"] = 12
-    fig_w = max(10, 0.6 * len(columns))
+def plot_matrix(mat, row_labels, col_labels, out_png, title, show_text=True):
+    _set_jp_font()
+    fig_w = max(10, 0.7 * len(col_labels))
     fig_h = 6
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     im = ax.imshow(mat, aspect="auto")
 
-    ax.set_yticks(range(len(LABELS)))
-    ax.set_yticklabels(LABELS)
-    ax.set_xticks(range(len(columns)))
-    ax.set_xticklabels(columns, rotation=45, ha="right")
-    ax.set_xlabel("Whisper transcript")
-    ax.set_ylabel("True label")
-    ax.set_title("Whisper transcript matrix")
+    ax.set_yticks(range(len(row_labels)))
+    ax.set_yticklabels(row_labels)
 
-    if SHOW_COUNTS_TEXT:
+    ax.set_xticks(range(len(col_labels)))
+    ax.set_xticklabels(col_labels, rotation=45, ha="right")
+
+    ax.set_title(title)
+    ax.set_xlabel("Transcript Result")
+    ax.set_ylabel("True label")
+
+    if show_text:
         for i in range(mat.shape[0]):
             for j in range(mat.shape[1]):
-                v = mat[i, j]
+                v = int(mat[i, j])
                 if v != 0:
                     ax.text(j, i, str(v), ha="center", va="center", fontsize=8)
 
     fig.colorbar(im, ax=ax)
     plt.tight_layout()
-    plt.savefig(OUT_PNG, dpi=200)
+    plt.savefig(out_png, dpi=200)
     plt.close(fig)
-    print(f"[OK] saved: {OUT_PNG}")
+    print(f"[OK] saved: {out_png}")
 
-    # ロング表（CSV用）
-    rows = []  # (true_label, transcript_norm, count, is_correct)
+def main():
+    paths = collect_paths()
+    if not paths:
+        print("[ERROR] 対象ファイルがありません。ROOT_GLOBS/USE_NUMSを確認してください。")
+        return
+    
+    os.makedirs(OUT_DIR, exist_ok=True)
+
+    # (1) まず全文字列カウント（経験分布の基礎）
+    counts_true_trans = {lab: Counter() for lab in LABELS}  # true_label -> Counter(tr_norm)
+    total_true = Counter()
+
+    # (2) 大分類カウント（5行×8列）
+    buckets = ["sakana", "shakana", "thakana", "tyakana", "takana",
+               "fish_unexpected", "out_of_context", "no_response"]
+    group_mat = np.zeros((len(LABELS), len(buckets)), dtype=int)
+
+    # (3) 詳細用（魚系/文脈外の “真ラベル×具体文字列”）
+    fish_detail = {lab: Counter() for lab in LABELS}
+    ooc_detail  = {lab: Counter() for lab in LABELS}
 
     for p in paths:
         true_label = extract_label_from_filename(p)
@@ -232,39 +266,92 @@ def main():
 
                 tr_raw = extract_transcript_from_segment_line(line)
                 if not tr_raw:
+                    # 抽出できない行は無反応扱いにしたいならここを bucket=no_response にする等
                     continue
 
-                tr = normalize_text(tr_raw)
-                counts[true_label][tr] += 1
-                total_by_label[true_label] += 1
+                tr_norm = normalize_text(tr_raw)
+                counts_true_trans[true_label][tr_norm] += 1
+                total_true[true_label] += 1
 
+                bucket, fine = classify_bucket(tr_norm)
+                j = buckets.index(bucket)
+                i = LABELS.index(true_label)
+                group_mat[i, j] += 1
+
+                if bucket == "fish_unexpected":
+                    fish_detail[true_label][fine] += 1
+                elif bucket == "out_of_context":
+                    ooc_detail[true_label][fine] += 1
+
+    # ---- 画像(A): 大分類行列 ----
+    plot_matrix(
+        group_mat,
+        row_labels=LABELS,
+        col_labels=buckets,
+        out_png=OUT_MAIN_PNG,
+        title="Whisper grouped matrix",
+        show_text=True
+    )
+
+    # ---- 画像(B): 魚系詳細（上位K列）----
+    fish_cols = []
+    seen = set()
     for lab in LABELS:
-        for tr, c in counts[lab].most_common():
-            is_correct = (tr == normalize_text(correct_text[lab]))
-            rows.append((lab, tr, c, is_correct))
+        for t, _ in fish_detail[lab].most_common(TOPK_DETAIL):
+            if t not in seen:
+                seen.add(t)
+                fish_cols.append(t)
 
-    # 表示（各ラベル：正解カウント＋誤り上位）
-    print("=== Whisper transcript summary (per true label) ===")
+    if fish_cols:
+        mat = np.zeros((len(LABELS), len(fish_cols)), dtype=int)
+        for i, lab in enumerate(LABELS):
+            for j, t in enumerate(fish_cols):
+                mat[i, j] = fish_detail[lab][t]
+        plot_matrix(mat, LABELS, fish_cols, OUT_FISH_DETAIL_PNG,
+                    "Fish-unexpected detail", show_text=True)
+    else:
+        print("[i] fish_unexpected detail is empty -> skip image")
+
+    # ---- 画像(C): 文脈外詳細（上位K列）----
+    ooc_cols = []
+    seen = set()
     for lab in LABELS:
-        corr = normalize_text(correct_text[lab])
-        corr_count = counts[lab][corr]
-        print(f"\n[{lab}] total={total_by_label[lab]}  correct('{corr}')={corr_count}")
+        for t, _ in ooc_detail[lab].most_common(TOPK_DETAIL):
+            if t not in seen:
+                seen.add(t)
+                ooc_cols.append(t)
 
-        # 誤り一覧
-        errs = [(t, c) for (t, c) in counts[lab].most_common() if t != corr]
-        if not errs:
-            print("  errors: none")
-        else:
-            print(f"  errors(top{TOPK_ERRORS}):")
-            for t, c in errs[:TOPK_ERRORS]:
-                print(f"    {t}: {c}")
+    if ooc_cols:
+        mat = np.zeros((len(LABELS), len(ooc_cols)), dtype=int)
+        for i, lab in enumerate(LABELS):
+            for j, t in enumerate(ooc_cols):
+                mat[i, j] = ooc_detail[lab][t]
+        plot_matrix(mat, LABELS, ooc_cols, OUT_OOC_DETAIL_PNG,
+                    "Out-of-context detail", show_text=True)
+    else:
+        print("[i] out_of_context detail is empty -> skip image")
 
-    # CSV保存（1つの表として扱いやすい）
-    with open(OUT_CSV, "w", encoding="utf-8") as wf:
-        wf.write("true_label,transcript_norm,count,is_correct\n")
-        for lab, tr, c, is_correct in rows:
-            wf.write(f"{lab},{tr},{c},{int(is_correct)}\n")
-    print(f"\n[OK] saved: {OUT_CSV}")
+    # ---- 規則(JSON): P(label|transcript) の経験分布を保存 ----
+    # transcriptごとに各ラベルの出現回数
+    trans_to_label_counts = defaultdict(lambda: Counter())
+    for lab in LABELS:
+        for t, c in counts_true_trans[lab].items():
+            trans_to_label_counts[t][lab] += c
+
+    rule = {
+        "labels": LABELS,
+        "correct_text_norm": CORRECT_NORM,
+        "transcript_to_label_counts": {t: dict(cnt) for t, cnt in trans_to_label_counts.items()},
+        "true_label_totals": dict(total_true),
+        "note": {
+            "fish_unexpected_rule": "endswith('かな') OR remove 'ー' matches one of 5 correct strings; others are out_of_context; empty is no_response"
+        }
+    }
+
+    with open(OUT_RULE_JSON, "w", encoding="utf-8") as f:
+        json.dump(rule, f, ensure_ascii=False, indent=2)
+
+    print(f"[OK] saved: {OUT_RULE_JSON}")
 
 if __name__ == "__main__":
     main()

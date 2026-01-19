@@ -25,8 +25,8 @@ from sklearn.metrics import (
 # =========================
 # 設定（ここだけ編集）
 # =========================
-DATA_ROOT = Path(r"./PLY_dataset_YR")  # ラベル別フォルダを含むルート
-GRID = 15 # 占有グリッドサイズ
+DATA_ROOT = Path(r"./PLY_dataset_3v2")  # ラベル別フォルダを含むルート
+GRID = 100 # 占有グリッドサイズ
 TEST_SIZE = 0.3
 SEED = 42
 
@@ -34,7 +34,7 @@ SEED = 42
 LABEL_ORDER = ["A", "I", "U", "E", "O"]
 
 # 出力
-OUT_DIR = Path(r"./PLY_dataset_YR")
+OUT_DIR = Path(r"./PLY_dataset_3v2")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 OUT_MODEL = OUT_DIR / "ply_svm_model.joblib"
 OUT_CM_PNG = OUT_DIR / "confusion_matrix.png"

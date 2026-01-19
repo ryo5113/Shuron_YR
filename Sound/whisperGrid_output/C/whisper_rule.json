@@ -1,0 +1,170 @@
+{
+  "labels": [
+    "sakana",
+    "shakana",
+    "thakana",
+    "tyakana",
+    "takana"
+  ],
+  "correct_text_norm": {
+    "sakana": "さかな",
+    "shakana": "しゃかな",
+    "thakana": "すぁかな",
+    "tyakana": "ちゃかな",
+    "takana": "たかな"
+  },
+  "transcript_to_label_counts": {
+    "さかな": {
+      "sakana": 30,
+      "shakana": 12,
+      "thakana": 36,
+      "tyakana": 6,
+      "takana": 4
+    },
+    "そこの": {
+      "sakana": 1
+    },
+    "たかな": {
+      "sakana": 9,
+      "takana": 11
+    },
+    "だからな": {
+      "sakana": 5,
+      "thakana": 1,
+      "takana": 2
+    },
+    "あかんな": {
+      "sakana": 2
+    },
+    "だから": {
+      "sakana": 2,
+      "thakana": 1,
+      "tyakana": 6,
+      "takana": 28
+    },
+    "ばかな": {
+      "sakana": 1
+    },
+    "しゃかな": {
+      "shakana": 29
+    },
+    "じゃかな": {
+      "shakana": 5,
+      "tyakana": 8
+    },
+    "しゃかんだ": {
+      "shakana": 1
+    },
+    "じゃあ": {
+      "shakana": 1,
+      "tyakana": 2
+    },
+    "ちゃかな": {
+      "shakana": 1,
+      "tyakana": 3
+    },
+    "しゃかぬ": {
+      "shakana": 1
+    },
+    "ちゃかんだ": {
+      "shakana": 1
+    },
+    "さあ、さあな": {
+      "thakana": 1
+    },
+    "さよなら": {
+      "thakana": 1
+    },
+    "さかんな": {
+      "thakana": 3
+    },
+    "さあ、かんな": {
+      "thakana": 1
+    },
+    "かな": {
+      "thakana": 1
+    },
+    "さかんだ": {
+      "thakana": 1
+    },
+    "はな": {
+      "thakana": 1
+    },
+    "さあ、まあな": {
+      "thakana": 1
+    },
+    "さようなら": {
+      "thakana": 1
+    },
+    "さから": {
+      "thakana": 1
+    },
+    "ちゃかざ": {
+      "tyakana": 1
+    },
+    "じゃあ、かな": {
+      "tyakana": 3
+    },
+    "じゃあかな": {
+      "tyakana": 6
+    },
+    "じゃあ、かんたん": {
+      "tyakana": 1
+    },
+    "じゃあ、かな?": {
+      "tyakana": 6
+    },
+    "じゃあ、かーど": {
+      "tyakana": 3
+    },
+    "ちゃかーな": {
+      "tyakana": 1
+    },
+    "さかざ": {
+      "tyakana": 2
+    },
+    "ありがとうございました": {
+      "tyakana": 1
+    },
+    "じゃあ、かんざー": {
+      "tyakana": 1
+    },
+    "じゃあかーてんの": {
+      "tyakana": 1
+    },
+    "じゃあ、かんな": {
+      "tyakana": 1
+    },
+    "じゃ、かんが": {
+      "tyakana": 1
+    },
+    "たかぬ": {
+      "takana": 1
+    },
+    "たかんだ": {
+      "takana": 1
+    },
+    "はい": {
+      "takana": 2
+    },
+    "だからね": {
+      "takana": 1
+    },
+    "たかの": {
+      "takana": 1
+    },
+    "さかなう": {
+      "takana": 1
+    }
+  },
+  "true_label_totals": {
+    "sakana": 50,
+    "shakana": 51,
+    "takana": 52,
+    "thakana": 50,
+    "tyakana": 53
+  },
+  "note": {
+    "fish_unexpected_rule": "endswith('かな') OR remove 'ー' matches one of 5 correct strings; others are out_of_context; empty is no_response"
+  }
+}

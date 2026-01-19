@@ -1,0 +1,106 @@
+{
+  "labels": [
+    "sakana",
+    "shakana",
+    "thakana",
+    "tyakana",
+    "takana"
+  ],
+  "correct_text_norm": {
+    "sakana": "さかな",
+    "shakana": "しゃかな",
+    "thakana": "すぁかな",
+    "tyakana": "ちゃかな",
+    "takana": "たかな"
+  },
+  "transcript_to_label_counts": {
+    "さかな": {
+      "sakana": 50,
+      "shakana": 1,
+      "thakana": 29,
+      "takana": 2
+    },
+    "しゃかな": {
+      "shakana": 43
+    },
+    "しゃかーな": {
+      "shakana": 4
+    },
+    "しゃっぱーな": {
+      "shakana": 1
+    },
+    "しゃかま": {
+      "shakana": 1
+    },
+    "そかな": {
+      "thakana": 9
+    },
+    "わからない": {
+      "thakana": 1
+    },
+    "そうかな": {
+      "thakana": 8
+    },
+    "ありがとうございました": {
+      "thakana": 1
+    },
+    "そのかま": {
+      "thakana": 1
+    },
+    "すまかーな": {
+      "thakana": 1
+    },
+    "すのーかーな": {
+      "thakana": 1
+    },
+    "ちゃったーな": {
+      "tyakana": 1
+    },
+    "ちゃかな": {
+      "tyakana": 38
+    },
+    "じゃかな": {
+      "tyakana": 2
+    },
+    "ちゃかーな": {
+      "tyakana": 1
+    },
+    "ちゃぱーな": {
+      "tyakana": 1
+    },
+    "ちょかな": {
+      "tyakana": 4
+    },
+    "ちょかーな": {
+      "tyakana": 1
+    },
+    "きゃかな": {
+      "tyakana": 1
+    },
+    "ちゃかんな": {
+      "tyakana": 1
+    },
+    "かたな": {
+      "takana": 1
+    },
+    "たかな": {
+      "takana": 45
+    },
+    "かっぱーな": {
+      "takana": 1
+    },
+    "かかな": {
+      "takana": 1
+    }
+  },
+  "true_label_totals": {
+    "sakana": 50,
+    "shakana": 50,
+    "takana": 50,
+    "thakana": 51,
+    "tyakana": 50
+  },
+  "note": {
+    "fish_unexpected_rule": "endswith('かな') OR remove 'ー' matches one of 5 correct strings; others are out_of_context; empty is no_response"
+  }
+}
