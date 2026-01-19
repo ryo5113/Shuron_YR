@@ -17,6 +17,8 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
+import matplotlib
+matplotlib.use("Agg")  # GUI(Tk)を使わずPNG保存するため
 import matplotlib.pyplot as plt
 
 import numpy as np
@@ -27,7 +29,6 @@ from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearc
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
-
 
 # ===========================
 # 実験設定（スクリプト内で編集）
@@ -64,12 +65,10 @@ GAMMA_GRID = ["scale"]  # 必要なら ["scale","auto"] などにする
 CLASS_WEIGHT = "balanced"
 PROBABILITY = True
 
-
 @dataclass
 class Sample:
     path: Path
     label: str
-
 
 def make_window(n: int, name: str) -> np.ndarray:
     name = name.lower()
@@ -80,7 +79,6 @@ def make_window(n: int, name: str) -> np.ndarray:
     if name == "rect":
         return np.ones(n, dtype=np.float32)
     raise ValueError(f"Unknown window: {name}")
-
 
 def collect_labeled_wavs(wav_root: Path) -> List[Sample]:
     """wav_root/label/*.wav を収集（label=サブフォルダ名）"""
@@ -97,7 +95,6 @@ def collect_labeled_wavs(wav_root: Path) -> List[Sample]:
         raise RuntimeError(f"No wav files found under: {wav_root}")
 
     return samples
-
 
 def read_wav_mono_float32(wav_path: Path) -> Tuple[np.ndarray, int]:
     """
@@ -125,7 +122,6 @@ def read_wav_mono_float32(wav_path: Path) -> Tuple[np.ndarray, int]:
 
     return x.astype(np.float32), int(sr)
 
-
 def wav_to_fft_mag(wav_path: Path, nfft: int, sr: int) -> np.ndarray:
     """
     wav全区間から rFFT 振幅(mag) を作る（nfft固定）
@@ -149,7 +145,6 @@ def wav_to_fft_mag(wav_path: Path, nfft: int, sr: int) -> np.ndarray:
     X = np.fft.rfft(x_pad * w, n=nfft)
     mag = np.abs(X).astype(np.float32)
     return mag
-
 
 def mag_to_equal_band_features_sum(
     mag: np.ndarray,
@@ -183,7 +178,6 @@ def mag_to_equal_band_features_sum(
 
     return feat
 
-
 def build_pipeline() -> Pipeline:
     """StandardScaler + poly-SVM（パラメータはGridSearchで上書き）"""
     return Pipeline([
@@ -196,7 +190,6 @@ def build_pipeline() -> Pipeline:
             break_ties=True,
         )),
     ])
-
 
 def save_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -231,9 +224,9 @@ def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: List[str]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--wav_root", type=str, default="word/SVM_wav_dataset_clone2",
+    parser.add_argument("--wav_root", type=str, default="word_Ex1/svm_wav_dataset_all",
                         help="ラベル別にwavが入っているルートフォルダ")
-    parser.add_argument("--model_dir", type=str, default="word/trained_clone_svm_model_band",
+    parser.add_argument("--model_dir", type=str, default="word_Ex1//trained_all_svm_model_band",
                         help="出力先フォルダ")
     args = parser.parse_args()
 
@@ -270,10 +263,7 @@ def main():
     for s in samples:
         mags.append(wav_to_fft_mag(s.path, nfft=nfft, sr=sr))
 
-    # 4) band_hz ごとに
-    #    - 特徴量作成
-    #    - train側のみでGridSearchCV（内側CV）
-    #    - CVスコアで band_hz を比較
+    # 4) band_hz ごとに特徴量作成train側のみでGridSearchCV（内側CV）CVスコアで band_hz を比較
     cv = StratifiedKFold(n_splits=CV_SPLITS, shuffle=CV_SHUFFLE, random_state=RANDOM_STATE)
 
     param_grid = {
@@ -284,6 +274,7 @@ def main():
 
     sweep_rows: List[Dict[str, Any]] = []
     best_overall = None  # (band_hz, best_cv_score, grid_obj, feature_dim)
+    band_results = {} 
 
     for band_hz in BAND_HZ_LIST:
         feats = []
@@ -339,6 +330,14 @@ def main():
             "test_accuracy": test_acc_band,
             "best_params": best_params,
         })
+        band_results[float(band_hz)] = {
+            "grid": grid,                 # GridSearchCV（best_estimator_を含む）
+            "feature_dim": feat_dim,
+            "cv_mean_accuracy": best_cv,
+            "test_accuracy": test_acc_band,
+            "best_params": best_params,
+            "X_te": X_te,                 # テスト評価・混同行列作成用
+        }
 
         if (best_overall is None) or (best_cv > best_overall["cv_mean_accuracy"]):
             best_overall = {
@@ -354,6 +353,127 @@ def main():
         print(f"[band_hz={band_hz:>5}] CV(best)={best_cv:.4f} TEST={test_acc_band:.4f} feat_dim={feat_dim} params={best_params}")
 
     assert best_overall is not None
+
+    def save_model_bundle(
+        out_dir: Path,
+        grid_obj: GridSearchCV,
+        band_hz: float,
+        feature_dim: int,
+        cv_mean_accuracy: float,
+        test_accuracy: float,
+        best_params: Dict[str, Any],
+        X_te_local: np.ndarray,
+        reasons: List[str],
+    ) -> None:
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # 推論用モデル保存
+        joblib.dump(
+            {"model": grid_obj.best_estimator_, "label_names": label_names},
+            out_dir / "model.joblib"
+        )
+
+        # テストでのレポート・混同行列
+        y_pred_local = grid_obj.predict(X_te_local)
+        cm_local = confusion_matrix(y_te, y_pred_local)
+        report_local = classification_report(y_te, y_pred_local, target_names=label_names, digits=4)
+
+        save_text(out_dir / "report.txt", report_local)
+
+        try:
+            plt.rcParams["font.size"] = 18
+            disp = ConfusionMatrixDisplay(cm_local, display_labels=label_names)
+            disp.plot(values_format="d")
+            plt.tight_layout()
+            plt.savefig(out_dir / "confusion_matrix.png", dpi=200)
+            plt.close()
+        except Exception as e:
+            save_text(out_dir / "confusion_matrix_error.txt", str(e))
+
+        meta_local = {
+            "wav_root": str(wav_root),
+            "n_samples": int(len(samples)),
+            "labels": label_names,
+            "outer_holdout": {
+                "test_size": float(TEST_SIZE),
+                "random_state": int(RANDOM_STATE),
+            },
+            "inner_cv": {
+                "cv_splits": int(CV_SPLITS),
+                "shuffle": bool(CV_SHUFFLE),
+                "random_state": int(RANDOM_STATE),
+                "scoring": "accuracy",
+            },
+            "fft": {
+                "sr": int(sr),
+                "nfft": int(nfft),
+                "fmin": float(FMIN),
+                "fmax": float(FMAX),
+                "window": WINDOW,
+                "zero_mean": bool(ZERO_MEAN),
+                "use_log1p": bool(USE_LOG1P),
+            },
+            "feature": {
+                "band_hz": float(band_hz),
+                "aggregation": "sum(|X_k|) over bins in band",
+                "feature_dim": int(feature_dim),
+            },
+            "svm": {
+                "kernel": SVM_KERNEL,
+                **best_params,
+                "class_weight": CLASS_WEIGHT,
+                "probability": bool(PROBABILITY),
+            },
+            "cv_mean_accuracy": float(cv_mean_accuracy),
+            "test_accuracy": float(test_accuracy),
+            "export_reasons": reasons,
+        }
+        save_json(out_dir / "meta.json", meta_local)
+
+    # 60Hzは必ず出力
+    MUST_EXPORT_BAND = 60.0
+
+    # sweep_rows から上位3を抽出（同値は band_hz が小さい方を先にする）
+    top_cv = sorted(sweep_rows, key=lambda r: (-r["cv_mean_accuracy"], r["band_hz"]))[:3]
+    top_te = sorted(sweep_rows, key=lambda r: (-r["test_accuracy"], r["band_hz"]))[:3]
+
+    export_reasons = {}  # band_hz -> reasons(list)
+    def add_reason(b: float, reason: str):
+        export_reasons.setdefault(float(b), [])
+        if reason not in export_reasons[float(b)]:
+            export_reasons[float(b)].append(reason)
+
+    add_reason(MUST_EXPORT_BAND, "must_export_60Hz")
+    for r in top_cv:
+        add_reason(r["band_hz"], "top3_cv_mean_accuracy")
+    for r in top_te:
+        add_reason(r["band_hz"], "top3_test_accuracy")
+
+    export_bands = sorted(export_reasons.keys())
+
+    export_root = out_root / "EXPORTED_models"
+    export_root.mkdir(parents=True, exist_ok=True)
+
+    for b in export_bands:
+        if b not in band_results:
+            print(f"[WARN] band_results not found for band_hz={b}")
+            continue
+
+        info = band_results[b]
+        out_dir = export_root / f"band_{int(b):03d}Hz"
+        save_model_bundle(
+            out_dir=out_dir,
+            grid_obj=info["grid"],
+            band_hz=b,
+            feature_dim=info["feature_dim"],
+            cv_mean_accuracy=info["cv_mean_accuracy"],
+            test_accuracy=info["test_accuracy"],
+            best_params=info["best_params"],
+            X_te_local=info["X_te"],
+            reasons=export_reasons[b],
+        )
+
+    print(f"[EXPORT] saved {len(export_bands)} models under: {export_root}")
 
     # 5) CVで選ばれた band_hz & params のモデルを、テストで1回だけ評価
     best_band = best_overall["band_hz"]

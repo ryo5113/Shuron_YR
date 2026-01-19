@@ -1,0 +1,47 @@
+{
+  "wav_root": "word_Ex1\\10times_Ex1_D\\svm_wav_dataset_D",
+  "n_samples": 250,
+  "labels": [
+    "sakana",
+    "shakana",
+    "takana",
+    "thakana",
+    "tyakana"
+  ],
+  "outer_holdout": {
+    "test_size": 0.3,
+    "random_state": 42
+  },
+  "inner_cv": {
+    "cv_splits": 5,
+    "shuffle": true,
+    "random_state": 42,
+    "scoring": "accuracy"
+  },
+  "fft": {
+    "sr": 48000,
+    "nfft": 65536,
+    "fmin": 0.0,
+    "fmax": 8000.0,
+    "window": "hann",
+    "zero_mean": true,
+    "use_log1p": true
+  },
+  "feature": {
+    "band_hz": 35.0,
+    "aggregation": "sum(|X_k|) over bins in band",
+    "feature_dim": 229
+  },
+  "svm": {
+    "kernel": "rbf",
+    "svm__C": 5.0,
+    "svm__gamma": "scale",
+    "class_weight": "balanced",
+    "probability": true
+  },
+  "cv_mean_accuracy": 0.96,
+  "test_accuracy": 0.96,
+  "export_reasons": [
+    "top3_cv_mean_accuracy"
+  ]
+}
