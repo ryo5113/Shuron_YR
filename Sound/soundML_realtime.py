@@ -27,12 +27,13 @@ import voiceCutting  # 既存のものを利用
 
 
 # ========= ユーザー指定 =========
-MODEL_JOBLIB_PATH = Path("word_Ex1/trained_all_svm_model_band/EXPORTED_models/band_060Hz/model.joblib")  # 必要なら実パスに変更
+#MODEL_JOBLIB_PATH = Path("word_Ex1/trained_all_svm_model_band/EXPORTED_models/band_060Hz/model.joblib")  # 必要なら実パスに変更
+MODEL_JOBLIB_PATH = Path("word/trained_Y_svm_model_band/EXPORTED_models/band_060Hz/model.joblib")  # 必要なら実パスに変更
 
 # ========= 録音設定（fletSound系を踏襲） =========
 SAMPLE_RATE = 48000
 CHANNELS = 1
-DTYPE = "float32"
+DTYPE = "int16"
 
 # 分割保存先の最大数（必要なら増やせますが、ここでは「分割された数だけ推論」を優先）
 TARGET_COUNT = 100
@@ -72,16 +73,17 @@ def get_next_index(out_dir: Path) -> int:
             pass
     return max_n + 1
 
-
 def denoise_wav_to_path(in_wav: Path, out_wav: Path) -> tuple[np.ndarray, int]:
     # fletSound系の流れ（librosa load → zero-mean → noisereduce → write）
     y, fs = librosa.load(str(in_wav), sr=None, mono=True)
     y = y.astype(np.float32)
     y = y - np.mean(y)
     y_deno = nr.reduce_noise(y=y, sr=int(fs), stationary=False)
-    sf.write(str(out_wav), y_deno, int(fs))
-    return y_deno, int(fs)
+    y_deno = np.clip(y_deno, -1.0, 1.0).astype(np.float32)
+    y_i16 = (y_deno * 32767.0).astype(np.int16)
+    sf.write(str(out_wav), y_i16, int(fs), subtype="PCM_16")
 
+    return y_deno, int(fs)
 
 def split_cleaned_wav_to_folder(
     cleaned_wav: Path,
@@ -135,28 +137,11 @@ def make_window(n: int, name: str) -> np.ndarray:
         return np.ones(n, dtype=np.float32)
     raise ValueError(f"Unknown window: {name}")
 
-
 def read_wav_mono_float32(wav_path: Path) -> tuple[np.ndarray, int]:
-    import wave
-    with wave.open(str(wav_path), "rb") as wf:
-        n_channels = wf.getnchannels()
-        sampwidth = wf.getsampwidth()
-        sr = wf.getframerate()
-        n_frames = wf.getnframes()
-        raw = wf.readframes(n_frames)
-
-    if sampwidth == 2:
-        x = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
-    elif sampwidth == 4:
-        x = np.frombuffer(raw, dtype=np.int32).astype(np.float32) / 2147483648.0
-    else:
-        raise ValueError(f"Unsupported sample width: {sampwidth} bytes (file={wav_path})")
-
-    if n_channels > 1:
-        x = x.reshape(-1, n_channels).mean(axis=1)
-
+    # soundfileで読み込み（PCM16/PCM32/float WAV等を吸収）
+    x, sr = sf.read(str(wav_path), dtype="float32", always_2d=True)  # shape: (N, C)
+    x = x.mean(axis=1)  # モノラル化
     return x.astype(np.float32), int(sr)
-
 
 def wav_to_fft_mag(
     wav_path: Path,
@@ -403,7 +388,7 @@ def main(page: ft.Page):
 
         try:
             audio = np.concatenate(state.frames, axis=0)
-            sf.write(str(raw_wav), audio, SAMPLE_RATE)
+            sf.write(str(raw_wav), audio, SAMPLE_RATE, subtype="PCM_16")
             state.last_raw_wav = raw_wav
             set_status(f"録音保存: {raw_wav.name} → 後処理＆推論中…")
             set_paths()

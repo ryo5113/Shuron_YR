@@ -57,12 +57,14 @@ def safe_subject_name(name: str) -> str:
 def now_stamp() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
-def get_next_index(out_dir: Path) -> int:
+def get_next_index(out_dir: Path, prefix: str) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     max_n = 0
-    for p in out_dir.glob("*.ply"):
+    for p in out_dir.glob(f"{prefix}_*.ply"):
+        # 例: prefix_12.ply → "12" を読む
+        last = p.stem.rsplit("_", 1)[-1]
         try:
-            n = int(p.stem)
+            n = int(last)
             if n > max_n:
                 max_n = n
         except ValueError:
@@ -81,6 +83,7 @@ def capture_and_process_3cams_to_dirs(
     raw_dir: Path,
     mouth_dir: Path,
     mpimg_dir: Path,
+    subject_prefix: str,
 ):
     """
     core.capture_and_process_3cams() をベースに、
@@ -282,9 +285,9 @@ def capture_and_process_3cams_to_dirs(
     if mouth_pcd_tag.has_colors():
         mouth_out.colors = mouth_pcd_tag.colors
 
-    mouth_path = mouth_dir / f"mouth_{int(pitch_label_deg)}deg_{timestamp}.ply"
+    idx = get_next_index(mouth_dir, subject_prefix)
+    mouth_path = mouth_dir / f"{subject_prefix}_{idx}.ply"
     o3d.io.write_point_cloud(str(mouth_path), mouth_out)
-
 
 # -------------------------
 # プロトコル本体（別スレッド）
@@ -401,6 +404,7 @@ def protocol_worker(page, state, set_status_threadsafe, preview, capture_event, 
                             raw_dir=raw_dir_label,
                             mouth_dir=mouth_dir_label,
                             mpimg_dir=mpimg_dir_label,
+                            subject_prefix=state.subject_dir.name,
                         )
                         set_status_threadsafe(f"保存しました（pitch={pitch_deg_smooth:.2f}deg）")
                     except Exception as e:

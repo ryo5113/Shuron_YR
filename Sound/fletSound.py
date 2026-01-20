@@ -25,7 +25,7 @@ import voiceCutting  # 添付 voiceCutting.py と同じフォルダに置く想�
 # ========= 設定 =========
 SAMPLE_RATE = 48000
 CHANNELS = 1
-DTYPE = "float32"
+DTYPE = "int16"
 
 TARGET_COUNT = 10
 
@@ -74,9 +74,11 @@ def denoise_wav_to_path(in_wav: Path, out_wav: Path) -> tuple[np.ndarray, int]:
     y, fs = librosa.load(str(in_wav), sr=None, mono=True)
     y = y.astype(np.float32)
     y = y - np.mean(y)  # ZERO_MEAN 相当
-
     y_deno = nr.reduce_noise(y=y, sr=fs, stationary=False)
-    sf.write(str(out_wav), y_deno, int(fs))
+    y_deno = np.clip(y_deno, -1.0, 1.0).astype(np.float32)
+    y_i16 = (y_deno * 32767.0).astype(np.int16)
+    sf.write(str(out_wav), y_i16, int(fs), subtype="PCM_16")
+
     return y_deno, int(fs)
 
 def split_cleaned_wav_to_folder(cleaned_wav: Path, out_dir: Path, target_count: int = 10, start_index: int = 1) -> int:
@@ -112,7 +114,7 @@ def split_cleaned_wav_to_folder(cleaned_wav: Path, out_dir: Path, target_count: 
             saved += 1
             file_index = start_index + saved - 1
             out_path = out_dir / f"{file_index}.wav"
-            chunk.export(str(out_path), format="wav")
+            chunk.export(str(out_path), format="wav", parameters=["-ac", "1", "-ar", "48000", "-acodec", "pcm_s16le"])
             if saved >= target_count:
                 break
 
@@ -230,7 +232,7 @@ def main(page: ft.Page):
 
         try:
             audio = np.concatenate(state.frames, axis=0)
-            sf.write(str(raw_wav), audio, SAMPLE_RATE)
+            sf.write(str(raw_wav), audio, SAMPLE_RATE, subtype="PCM_16")
             state.last_raw_wav = raw_wav
             set_status(f"録音保存: {raw_wav.name}（ラベル={state.current_label}）")
             set_paths()

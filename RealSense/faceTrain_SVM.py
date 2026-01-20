@@ -26,7 +26,7 @@ from sklearn.metrics import (
 # 設定（ここだけ編集）
 # =========================
 DATA_ROOT = Path(r"./PLY_dataset_3v2")  # ラベル別フォルダを含むルート
-GRID = 100 # 占有グリッドサイズ
+GRID = 65 # 占有グリッドサイズ
 TEST_SIZE = 0.3
 SEED = 42
 

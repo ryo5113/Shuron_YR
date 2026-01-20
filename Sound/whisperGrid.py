@@ -15,10 +15,10 @@ import matplotlib.pyplot as plt
 # 設定（スクリプト内で指定）
 # =========================
 ROOT_GLOBS = [
-    r"word_Ex1\10times_Ex1_A\**\*_segmented_pydub.txt",
-    r"word_Ex1\10times_Ex1_B\**\*_segmented_pydub.txt",
-    r"word_Ex1\10times_Ex1_C\**\*_segmented_pydub.txt",
-    r"word_Ex1\10times_Ex1_D\**\*_segmented_pydub.txt",
+    # r"word_Ex1\10times_Ex1_A\**\*_segmented_pydub.txt",
+    # r"word_Ex1\10times_Ex1_B\**\*_segmented_pydub.txt",
+    # r"word_Ex1\10times_Ex1_C\**\*_segmented_pydub.txt",
+    # r"word_Ex1\10times_Ex1_D\**\*_segmented_pydub.txt",
     r"word\10times_01\**\*_segmented_pydub.txt",
     r"word\10times_02\**\*_segmented_pydub.txt",
     r"word\10times_03\**\*_segmented_pydub.txt",
@@ -182,11 +182,9 @@ def classify_bucket(tr_norm: str):
     """
     戻り値:
       - bucket: one of
-        "sakana|shakana|thakana|tyakana|takana|fish_unexpected|out_of_context|no_response"
+        "sakana|shakana|thakana|tyakana|takana|fish_unexpected|out_of_context"
       - fine: 具体文字列（詳細表用）
     """
-    if tr_norm == "":
-        return "no_response", tr_norm
 
     # 5ラベル完全一致（正しい/他ラベルへの誤認識 どちらもここに入る）
     for lab, corr in CORRECT_NORM.items():
@@ -240,9 +238,9 @@ def main():
     counts_true_trans = {lab: Counter() for lab in LABELS}  # true_label -> Counter(tr_norm)
     total_true = Counter()
 
-    # (2) 大分類カウント（5行×8列）
+    # (2) 大分類カウント（5行×7列）
     buckets = ["sakana", "shakana", "thakana", "tyakana", "takana",
-               "fish_unexpected", "out_of_context", "no_response"]
+               "fish_unexpected", "out_of_context"]
     group_mat = np.zeros((len(LABELS), len(buckets)), dtype=int)
 
     # (3) 詳細用（魚系/文脈外の “真ラベル×具体文字列”）
@@ -344,7 +342,7 @@ def main():
         "transcript_to_label_counts": {t: dict(cnt) for t, cnt in trans_to_label_counts.items()},
         "true_label_totals": dict(total_true),
         "note": {
-            "fish_unexpected_rule": "endswith('かな') OR remove 'ー' matches one of 5 correct strings; others are out_of_context; empty is no_response"
+            "fish_unexpected_rule": "endswith('かな') OR remove 'ー' matches one of 5 correct strings; others are out_of_context;"
         }
     }
 

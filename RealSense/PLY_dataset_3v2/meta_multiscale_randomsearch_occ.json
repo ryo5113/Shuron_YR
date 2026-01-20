@@ -1,0 +1,27 @@
+{
+  "mode": "occ",
+  "label_order": [
+    "A",
+    "I",
+    "U",
+    "E",
+    "O"
+  ],
+  "best_grids": [
+    10,
+    40
+  ],
+  "feature_dim": 65000,
+  "best_params": {
+    "svc__C": 5,
+    "svc__gamma": "auto"
+  },
+  "best_cv_score": 0.6,
+  "test_accuracy": 0.6666666666666666,
+  "outputs": {
+    "model": "PLY_dataset_3v2\\ply_svm_model_multiscale_randomsearch_occ.joblib",
+    "confusion_matrix_png": "PLY_dataset_3v2\\confusion_matrix_multiscale_randomsearch_occ.png",
+    "sweep_json": "PLY_dataset_3v2\\grid_combo_sweep_randomsearch_occ.json",
+    "sweep_png": "PLY_dataset_3v2\\grid_combo_sweep_randomsearch_occ.png"
+  }
+}

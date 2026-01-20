@@ -90,18 +90,7 @@ def occupancy_grid_features(points: np.ndarray, grid: int) -> np.ndarray:
     counts = np.zeros((grid, grid, grid), dtype=np.float64)
     np.add.at(counts, (idx[:, 0], idx[:, 1], idx[:, 2]), 1.0)
 
-    # (1) 相対密度化：総点数で割る（L1正規化）
-    N = float(len(points))
-    if N > 0:
-        counts /= N
-
-    # flatten
-    feat = counts.reshape(-1)
-
-    # (2) 総点数Nを別特徴として追加（スケール差を抑えるならlog1p推奨）
-    feat = np.concatenate([feat, np.array([np.log1p(N)], dtype=np.float64)])
-
-    return feat
+    return counts.reshape(-1)
 
 def collect_dataset_fixed_order(data_root: Path, grid: int, label_order: list[str]):
     """
