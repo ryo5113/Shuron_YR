@@ -69,8 +69,8 @@ def main():
     axes[2].tick_params(axis="both", labelsize=20); axes[2].grid(alpha=0.2)
 
     # 重ね描き対象が複数のため凡例を表示（重なる場合は適宜調整してください）
-    for ax in axes:
-        ax.legend(fontsize=10, loc="best")
+    # for ax in axes:
+    #     ax.legend(fontsize=10, loc="best")
 
     plt.tight_layout()
     plt.show()

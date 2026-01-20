@@ -220,13 +220,14 @@ def plot_results(results_by_subject: dict, grids: list[int], out_png: Path):
         mean_ys.append(float(np.mean(vals)) if len(vals) > 0 else np.nan)
 
     plt.plot(grids, mean_ys, marker="o", linewidth=3)
-    plt.rcParams["font.size"] = 18
 
-    plt.xlabel("GRID size")
-    plt.ylabel("Test Accuracy")
-    plt.title("Grid Sweep Accuracy")
+    plt.xlabel("GRID size", fontsize=30)
+    plt.ylabel("Test Accuracy", fontsize=30)
+    plt.title("Grid Sweep Accuracy", fontsize=30)
+    plt.xticks(fontsize=25)
+    plt.yticks(fontsize=25)
     plt.grid(alpha=0.3)
-    plt.legend()
+    #plt.legend()
     plt.tight_layout()
     plt.savefig(out_png, dpi=200)
     plt.close()

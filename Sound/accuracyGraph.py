@@ -35,7 +35,7 @@ def plot_range(title: str, out_png: str, lo: float, hi: float | None):
     lo <= band_hz <= hi でプロット（hi=Noneなら band_hz > lo をプロット）
     """
     plt.figure(figsize=(20,6))
-    plt.rcParams["font.size"] = 25
+    plt.rcParams["font.size"] = 26
     any_plotted = False
 
     for label, csv_path in zip(labels, CSV_LIST):
@@ -59,11 +59,11 @@ def plot_range(title: str, out_png: str, lo: float, hi: float | None):
         plt.plot(dff["band_hz"], dff["test_accuracy"] * 100.0, marker="o", label=label)
         any_plotted = True
 
-    plt.xlabel("band_hz [Hz]")
-    plt.ylabel("test_accuracy [%]")
-    plt.title(title)
+    plt.xlabel("band_hz [Hz]", fontsize=30)
+    plt.ylabel("test_accuracy [%]", fontsize=30)
+    plt.title(title,  fontsize=30)
     plt.grid(True)
-    #plt.legend()
+    plt.legend(bbox_to_anchor=(1, 1), loc='upper left')
     plt.tight_layout()
 
     if any_plotted:
@@ -77,7 +77,7 @@ def plot_range(title: str, out_png: str, lo: float, hi: float | None):
 
 # 1) 0〜100Hz
 plot_range(
-    title="Test accuracy vs band_hz (0-100Hz)",
+    title="Test accuracy(0-100Hz)",
     out_png="band_test_accuracy_0_100.png",
     lo=0.0,
     hi=100.0,
@@ -85,7 +85,7 @@ plot_range(
 
 # 2) 100Hzより大きい
 plot_range(
-    title="Test accuracy vs band_hz (>100Hz)",
+    title="Test accuracy(>100Hz)",
     out_png="band_test_accuracy_over_100.png",
     lo=100.0,
     hi=None,
@@ -93,7 +93,7 @@ plot_range(
 
 # ===== 描画 =====
 plt.figure(figsize=(20,6))
-plt.rcParams["font.size"] = 25
+plt.rcParams["font.size"] = 30
 
 for label, csv_path in zip(labels, CSV_LIST):
     csv_path = csv_path.replace("￥", "\\")  # 念のため全角￥を吸収
@@ -112,9 +112,9 @@ for label, csv_path in zip(labels, CSV_LIST):
 
 plt.xlabel("band_hz [Hz]")
 plt.ylabel("test_accuracy [%]")
-plt.title("Test accuracy vs band_hz")
+plt.title("Test accuracy(all)")
 plt.grid(True)
-plt.legend()
+plt.legend(bbox_to_anchor=(1, 1), loc='upper left')
 plt.tight_layout()
 
 out_png = Path("band_test_accuracy_compare.png")
