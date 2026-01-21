@@ -31,10 +31,10 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 CM_DPI = 200
 
 # --- 比較したい特徴モード ---
-FEATURE_MODES = ["dens", "occ"]   # 片方だけなら ["dens"] など
+FEATURE_MODES = ["dens"]   # 片方だけなら ["dens"] など
 
 # --- マルチスケール探索条件（全列挙） ---
-GRID_CANDIDATES = list(range(10, 61, 5))  # 10..60 step 5（11候補）
+GRID_CANDIDATES = list(range(20, 76, 5))  # 10..60 step 5（11候補）
 SCALE_CHOICES = [2, 3]                   # 2スケール/3スケール
 TOPK_FOR_REFINED_SEARCH = 5              # 上位K個だけ精密化
 PLOT_TOPK = 30                           # グラフに出す上位K（test精度）
@@ -212,6 +212,48 @@ def plot_topk_test_accuracy(path: Path, rows_sorted: list[dict], title: str, top
     plt.savefig(path, dpi=200)
     plt.close()
 
+def save_rank_csv(path: Path, rows_sorted: list[dict]):
+    with path.open("w", encoding="utf-8") as f:
+        f.write("rank,test_acc_fast,cv_acc_fast,feature_dim,grids\n")
+        for i, r in enumerate(rows_sorted, start=1):
+            grids_str = "+".join(map(str, r["grids"]))
+            f.write(f"{i},{r['test_acc_fast']:.6f},{r['cv_acc_fast']:.6f},{r['feature_dim']},{grids_str}\n")
+
+def plot_test_accuracy_hist(path: Path, rows_sorted: list[dict], title: str):
+    ys = [r["test_acc_fast"] for r in rows_sorted]
+    plt.rcParams["font.size"] = 18
+    plt.figure(figsize=(20, 8))
+    plt.hist(ys, bins=20)
+    plt.xlabel("Test accuracy")
+    plt.ylabel("Count (number of grid-combos)")
+    plt.title(title)
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(path, dpi=200)
+    plt.close()
+
+def plot_topk_test_accuracy_hbar(path: Path, rows_sorted: list[dict], title: str, topk: int = 10):
+    top = rows_sorted[:min(topk, len(rows_sorted))]
+    labels = ["+".join(map(str, r["grids"])) for r in top]
+    ys = [r["test_acc_fast"] for r in top]
+
+    # 横棒：ラベルが潰れにくい
+    plt.rcParams["font.size"] = 18
+    plt.figure(figsize=(10, max(4, 0.45 * len(top))))
+    plt.barh(range(len(top)), ys)
+    plt.yticks(range(len(top)), labels)
+    plt.gca().invert_yaxis()  # 上位が上にくる
+    plt.xlabel("Test accuracy")
+    plt.title(title)
+
+    # 上位の値を棒の右に表示
+    for i, v in enumerate(ys):
+        plt.text(v, i, f" {v:.3f}", va="center")
+
+    plt.grid(axis="x", alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(path, dpi=200)
+    plt.close()
 
 def all_grid_combos() -> list[list[int]]:
     combos = []
@@ -220,12 +262,8 @@ def all_grid_combos() -> list[list[int]]:
             combos.append(list(c))
     return combos  # 55 + 165 = 220 通り
 
-
 def run_one_mode(mode: str):
-    OUT_MODEL = OUT_DIR / f"ply_svm_model_multiscale_fullscan_{mode}.joblib"
     OUT_CM_PNG = OUT_DIR / f"confusion_matrix_multiscale_fullscan_{mode}.png"
-    OUT_META_JSON = OUT_DIR / f"meta_multiscale_fullscan_{mode}.json"
-    OUT_SWEEP_JSON = OUT_DIR / f"grid_combo_sweep_fullscan_{mode}.json"
     OUT_SWEEP_PNG = OUT_DIR / f"grid_combo_sweep_fullscan_{mode}.png"
 
     # train/test 分割を固定するため、最初にyを作る（特徴はダミーで良い）
@@ -276,16 +314,6 @@ def run_one_mode(mode: str):
     sweep_rows_sorted = sorted(sweep_rows, key=lambda r: r["test_acc_fast"], reverse=True)
     top_rows = sweep_rows_sorted[:max(1, TOPK_FOR_REFINED_SEARCH)]
 
-    OUT_SWEEP_JSON.write_text(json.dumps({
-        "mode": mode,
-        "data_root": str(DATA_ROOT),
-        "grid_candidates": GRID_CANDIDATES,
-        "scale_choices": SCALE_CHOICES,
-        "n_combos": len(combos),
-        "fast_eval": {"C": FAST_C, "gamma": FAST_GAMMA, "cv_splits": FAST_CV_SPLITS},
-        "rows_sorted_by_test": sweep_rows_sorted,
-    }, ensure_ascii=False, indent=2), encoding="utf-8")
-
     plot_topk_test_accuracy(OUT_SWEEP_PNG, sweep_rows_sorted, title=f"Top-{PLOT_TOPK} test accuracy (fast) [{mode}]", topk=PLOT_TOPK)
 
     print(f"\n=== [{mode}] Top combos by test_acc_fast ===")
@@ -332,6 +360,26 @@ def run_one_mode(mode: str):
 
     best_model = best["model"]
     best_grids = best["grids"]
+    best = sweep_rows_sorted[0]
+    best_grids = best["grids"]
+    best_acc = best["test_acc_fast"]
+
+    print(f"[{mode}] BEST (fast test) grids={best_grids}, test_acc_fast={best_acc:.4f}")
+
+    # 追加出力ファイル（mode別）
+    OUT_HIST = OUT_DIR / f"testacc_hist_{mode}.png"
+    OUT_TOPK = OUT_DIR / f"testacc_top10_{mode}.png"
+    OUT_DIMSCAT = OUT_DIR / f"dim_vs_testacc_{mode}.png"
+    OUT_RANKCSV = OUT_DIR / f"rank_testacc_{mode}.csv"
+
+    save_rank_csv(OUT_RANKCSV, sweep_rows_sorted)
+    plot_test_accuracy_hist(OUT_HIST, sweep_rows_sorted, title=f"Test accuracy distribution (all 220) [{mode}]")
+    plot_topk_test_accuracy_hbar(OUT_TOPK, sweep_rows_sorted, title=f"Top-10 by test accuracy [{mode}]", topk=10)
+
+    print(f"[{mode}] saved: {OUT_RANKCSV}")
+    print(f"[{mode}] saved: {OUT_HIST}")
+    print(f"[{mode}] saved: {OUT_TOPK}")
+    print(f"[{mode}] saved: {OUT_DIMSCAT}")
 
     # confusion matrix / report
     X_best, y_str_best = collect_dataset_fixed_order(DATA_ROOT, grids=best_grids, label_order=LABEL_ORDER, mode=mode)
@@ -357,45 +405,6 @@ def run_one_mode(mode: str):
     print(report)
 
     save_confusion_matrix_png(OUT_CM_PNG, cm, LABEL_ORDER, dpi=CM_DPI)
-
-    payload = {
-        "model": best_model,
-        "label_order": LABEL_ORDER,
-        "grids": best_grids,
-        "mode": mode,
-        "best_params": best["best_params"],
-        "best_cv_score": float(best["best_cv_score"]),
-        "test_accuracy": float(best["test_accuracy"]),
-        "search": {
-            "grid_candidates": GRID_CANDIDATES,
-            "scale_choices": SCALE_CHOICES,
-            "n_combos": len(combos),
-            "fast_eval": {"C": FAST_C, "gamma": FAST_GAMMA, "cv_splits": FAST_CV_SPLITS},
-            "topk_refine": TOPK_FOR_REFINED_SEARCH,
-            "refine_svm_params": REFINE_SVM_PARAMS,
-            "plot_topk": PLOT_TOPK,
-        }
-    }
-    joblib.dump(payload, OUT_MODEL)
-
-    meta = {
-        "mode": mode,
-        "label_order": LABEL_ORDER,
-        "best_grids": best_grids,
-        "feature_dim": best["feature_dim"],
-        "best_params": best["best_params"],
-        "best_cv_score": float(best["best_cv_score"]),
-        "test_accuracy": float(best["test_accuracy"]),
-        "outputs": {
-            "model": str(OUT_MODEL),
-            "confusion_matrix_png": str(OUT_CM_PNG),
-            "sweep_json": str(OUT_SWEEP_JSON),
-            "sweep_png": str(OUT_SWEEP_PNG),
-        }
-    }
-    OUT_META_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    return meta
 
 
 def main():

@@ -15,10 +15,10 @@ import matplotlib.pyplot as plt
 # 設定（スクリプト内で指定）
 # =========================
 ROOT_GLOBS = [
-    # r"word_Ex1\10times_Ex1_A\**\*_segmented_pydub.txt",
-    # r"word_Ex1\10times_Ex1_B\**\*_segmented_pydub.txt",
-    # r"word_Ex1\10times_Ex1_C\**\*_segmented_pydub.txt",
-    # r"word_Ex1\10times_Ex1_D\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_A\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_B\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_C\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_D\**\*_segmented_pydub.txt",
     r"word\10times_01\**\*_segmented_pydub.txt",
     r"word\10times_02\**\*_segmented_pydub.txt",
     r"word\10times_03\**\*_segmented_pydub.txt",
@@ -199,6 +199,7 @@ def classify_bucket(tr_norm: str):
 def plot_matrix(mat, row_labels, col_labels, out_png, title, show_text=True):
     _set_jp_font()
     fig_w = max(10, 0.7 * len(col_labels))
+    plt.rcParams["font.size"] = 16
     fig_h = 6
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     im = ax.imshow(mat, aspect="auto")

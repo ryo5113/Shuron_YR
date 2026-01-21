@@ -143,6 +143,6 @@
     "tyakana": 51
   },
   "note": {
-    "fish_unexpected_rule": "endswith('かな') OR remove 'ー' matches one of 5 correct strings; others are out_of_context; empty is no_response"
+    "fish_unexpected_rule": "endswith('かな') OR remove 'ー' matches one of 5 correct strings; others are out_of_context;"
   }
 }

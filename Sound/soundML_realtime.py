@@ -27,8 +27,8 @@ import voiceCutting  # 既存のものを利用
 
 
 # ========= ユーザー指定 =========
-#MODEL_JOBLIB_PATH = Path("word_Ex1/trained_all_svm_model_band/EXPORTED_models/band_060Hz/model.joblib")  # 必要なら実パスに変更
-MODEL_JOBLIB_PATH = Path("word/trained_Y_svm_model_band/EXPORTED_models/band_060Hz/model.joblib")  # 必要なら実パスに変更
+MODEL_JOBLIB_PATH = Path("word_Ex1/trained_all_svm_model_band/EXPORTED_models/band_060Hz/model.joblib")  # 必要なら実パスに変更
+#MODEL_JOBLIB_PATH = Path("word/trained_Y_svm_model_band/EXPORTED_models/band_060Hz/model.joblib")  # 必要なら実パスに変更
 
 # ========= 録音設定（fletSound系を踏襲） =========
 SAMPLE_RATE = 48000
@@ -290,6 +290,17 @@ def main(page: ft.Page):
         ],
         rows=[],
     )
+    results_panel = ft.Container(
+        content=ft.ListView(
+            controls=[
+                ft.Row([results_table], scroll=ft.ScrollMode.AUTO)  # 横スクロール
+            ],
+            expand=True,                      # 縦スクロール領域を確保
+            spacing=0,
+            padding=0,
+        ),
+        expand=True,                          # 親Column内で残り領域を使う
+    )
 
     def set_status(msg: str):
         status.value = msg
@@ -483,7 +494,7 @@ def main(page: ft.Page):
                 paths_view,
                 ft.Divider(),
                 ft.Text("推論結果（推定ラベル / 確率%）:"),
-                results_table,
+                results_panel,
             ],
             spacing=10,
         )

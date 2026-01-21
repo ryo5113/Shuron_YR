@@ -274,7 +274,7 @@ def main(page: ft.Page):
     for lbl in LABELS:
         label_buttons.append(
             ft.Button(
-                content=f"{lbl} 録音開始",
+                content=ft.Text(f"{lbl} 録音開始"),
                 on_click=lambda e, l=lbl: start_recording_for_label(l),
             )
         )
@@ -284,11 +284,11 @@ def main(page: ft.Page):
             [
                 ft.Text("① 被験者フォルダ作成 → ② ラベル選択して録音Start → Stop（保存→③処理）", size=18, weight=ft.FontWeight.BOLD),
                 subject_name,
-                ft.Row([ft.Button("① フォルダ作成", on_click=on_create_folder)]),
+                ft.Row([ft.Button(content=ft.Text("① フォルダ作成"), on_click=on_create_folder)]),
                 ft.Divider(),
                 ft.Text("② ラベル別 録音Start"),
                 ft.Row(label_buttons, wrap=True, spacing=8),
-                ft.Row([ft.Button("Stop（保存→③処理開始）", on_click=stop_recording)]),
+                ft.Row([ft.Button(content=ft.Text("Stop（保存→③処理開始）"), on_click=stop_recording)]),
                 ft.Divider(),
                 ft.Text("状態:"),
                 status,
