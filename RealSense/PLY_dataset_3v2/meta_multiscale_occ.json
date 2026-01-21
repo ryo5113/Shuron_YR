@@ -1,0 +1,17 @@
+{
+  "mode": "occ",
+  "best_grids": [
+    10,
+    40
+  ],
+  "test_accuracy": 0.6666666666666666,
+  "outputs": {
+    "sweep_json": "PLY_dataset_3v2\\grid_combo_sweep_fullscan_occ.json",
+    "cv_hist_png": "PLY_dataset_3v2\\cvacc_hist_occ.png",
+    "topk_test_png": "PLY_dataset_3v2\\top10_testacc_occ.png",
+    "rank_all_by_cv_csv": "PLY_dataset_3v2\\rank_all_by_cv_occ.csv",
+    "rank_top_by_test_csv": "PLY_dataset_3v2\\rank_top_by_test_occ.csv",
+    "confusion_matrix_png": "PLY_dataset_3v2\\confusion_matrix_multiscale_occ.png",
+    "model_joblib": "PLY_dataset_3v2\\ply_svm_model_multiscale_occ.joblib"
+  }
+}

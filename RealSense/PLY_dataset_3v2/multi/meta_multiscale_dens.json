@@ -1,0 +1,17 @@
+{
+  "mode": "dens",
+  "best_grids": [
+    35,
+    45
+  ],
+  "test_accuracy": 0.8,
+  "outputs": {
+    "sweep_json": "PLY_dataset_3v2\\grid_combo_sweep_fullscan_dens.json",
+    "cv_hist_png": "PLY_dataset_3v2\\cvacc_hist_dens.png",
+    "topk_test_png": "PLY_dataset_3v2\\top10_testacc_dens.png",
+    "rank_all_by_cv_csv": "PLY_dataset_3v2\\rank_all_by_cv_dens.csv",
+    "rank_top_by_test_csv": "PLY_dataset_3v2\\rank_top_by_test_dens.csv",
+    "confusion_matrix_png": "PLY_dataset_3v2\\confusion_matrix_multiscale_dens.png",
+    "model_joblib": "PLY_dataset_3v2\\ply_svm_model_multiscale_dens.joblib"
+  }
+}

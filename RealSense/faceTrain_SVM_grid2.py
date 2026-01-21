@@ -1,10 +1,21 @@
+# faceTrain_SVM_grid2_fixed_full.py
+# 目的:
 # - 全組合せ(2スケール/3スケール)を完全走査
-# - sweep_rows に test_acc_fast を追加（評価データ精度）
-# - グラフは test_acc_fast の上位Kを「グリッド組合せラベル付き」で表示
+# - 探索(順位付け)はCV精度で実施
+# - CV上位Kに対してのみ評価データ(test)精度を算出・可視化（= CV後にtestで評価）
+# - 最終モデルは「上位Kの中で(必要ならSVMパラメータもCVで最適化した上で) test精度最大」を採用
+#
+# 修正点（元スクリプトからの主な修正）:
+# - OUT_SWEEP_JSON の未定義を解消
+# - sweep_rows.append の二重化を解消（全comboはCVのみ1行）
+# - best の上書きを解消（best_refined / best_fast を分離）
+# - グラフ/CSVは test を持つ top_rows を対象（全comboにtestを要求しない）
+# - run_one_mode() が meta を return（main() が落ちない）
 
 from pathlib import Path
 import json
 import itertools
+import math
 import numpy as np
 import trimesh
 import matplotlib.pyplot as plt
@@ -31,18 +42,19 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 CM_DPI = 200
 
 # --- 比較したい特徴モード ---
-FEATURE_MODES = ["dens"]   # 片方だけなら ["dens"] など
+FEATURE_MODES = ["occ"]   # 例: ["dens", "occ"] にすると両方回せる
 
 # --- マルチスケール探索条件（全列挙） ---
-GRID_CANDIDATES = list(range(20, 76, 5))  # 10..60 step 5（11候補）
+GRID_CANDIDATES = list(range(10, 61, 5))  # 20..75 step 5（候補数=12）
 SCALE_CHOICES = [2, 3]                   # 2スケール/3スケール
-TOPK_FOR_REFINED_SEARCH = 5              # 上位K個だけ精密化
-PLOT_TOPK = 30                           # グラフに出す上位K（test精度）
+TOPK_FOR_TEST_EVAL = 30                  # CV上位Kに対してのみ test 精度を算出（表示・CSVもこの範囲）
+TOPK_FOR_REFINED_SEARCH = 5              # さらにその中から上位Kを精密化（SVMのC/gammaをCVで最適化）して最終決定
+PLOT_TOPK = 10                           # TopKの棒グラフ表示件数（test精度）
 
-# --- (A) まずは安く評価するための固定SVM設定（候補探索用） ---
+# --- (A) 安価な探索用SVM設定（CVスコア算出用） ---
 FAST_C = 10.0
 FAST_GAMMA = "scale"
-FAST_CV_SPLITS = 3  # CVも保存するが、主に test_acc_fast を使う
+FAST_CV_SPLITS = 3
 
 # --- (B) 上位候補だけ精密化（必要なら） ---
 REFINE_SVM_PARAMS = True
@@ -151,7 +163,6 @@ def cv_score_on_train(X_tr: np.ndarray, y_tr: np.ndarray, C_value: float, gamma_
         pipe.fit(X_tr[tr_idx], y_tr[tr_idx])
         pred = pipe.predict(X_tr[va_idx])
         scores.append(accuracy_score(y_tr[va_idx], pred))
-
     return float(np.mean(scores))
 
 
@@ -195,36 +206,35 @@ def combo_to_str(combo: list[int]) -> str:
     return "+".join(str(g) for g in combo)
 
 
-def plot_topk_test_accuracy(path: Path, rows_sorted: list[dict], title: str, topk: int):
-    top = rows_sorted[:min(topk, len(rows_sorted))]
-    labels = [combo_to_str(r["grids"]) for r in top]
-    ys = [r["test_acc_fast"] for r in top]
+def all_grid_combos() -> list[list[int]]:
+    combos = []
+    for k in SCALE_CHOICES:
+        for c in itertools.combinations(GRID_CANDIDATES, k):
+            combos.append(list(c))
+    return combos
 
-    plt.rcParams["font.size"] = 12
-    plt.figure(figsize=(max(10, int(len(top) * 0.5)), 6))
-    plt.bar(range(len(top)), ys)
-    plt.xticks(range(len(top)), labels, rotation=60, ha="right")
-    plt.xlabel("Grid combo (multi-scale)")
-    plt.ylabel("Test accuracy (fast model)")
-    plt.title(title)
-    plt.grid(axis="y", alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(path, dpi=200)
-    plt.close()
 
-def save_rank_csv(path: Path, rows_sorted: list[dict]):
+def save_rank_csv(path: Path, rows: list[dict], include_test: bool):
     with path.open("w", encoding="utf-8") as f:
-        f.write("rank,test_acc_fast,cv_acc_fast,feature_dim,grids\n")
-        for i, r in enumerate(rows_sorted, start=1):
-            grids_str = "+".join(map(str, r["grids"]))
-            f.write(f"{i},{r['test_acc_fast']:.6f},{r['cv_acc_fast']:.6f},{r['feature_dim']},{grids_str}\n")
+        if include_test:
+            f.write("rank,cv_acc_fast,test_acc_fast,feature_dim,grids\n")
+        else:
+            f.write("rank,cv_acc_fast,feature_dim,grids\n")
 
-def plot_test_accuracy_hist(path: Path, rows_sorted: list[dict], title: str):
-    ys = [r["test_acc_fast"] for r in rows_sorted]
+        for i, r in enumerate(rows, start=1):
+            grids_str = combo_to_str(r["grids"])
+            if include_test:
+                f.write(f"{i},{r['cv_acc_fast']:.6f},{r['test_acc_fast']:.6f},{r['feature_dim']},{grids_str}\n")
+            else:
+                f.write(f"{i},{r['cv_acc_fast']:.6f},{r['feature_dim']},{grids_str}\n")
+
+
+def plot_cv_hist(path: Path, rows_all: list[dict], title: str):
+    ys = [r["cv_acc_fast"] for r in rows_all]
     plt.rcParams["font.size"] = 18
-    plt.figure(figsize=(20, 8))
+    plt.figure(figsize=(10, 6))
     plt.hist(ys, bins=20)
-    plt.xlabel("Test accuracy")
+    plt.xlabel("CV accuracy (fast)")
     plt.ylabel("Count (number of grid-combos)")
     plt.title(title)
     plt.grid(alpha=0.3)
@@ -232,21 +242,20 @@ def plot_test_accuracy_hist(path: Path, rows_sorted: list[dict], title: str):
     plt.savefig(path, dpi=200)
     plt.close()
 
-def plot_topk_test_accuracy_hbar(path: Path, rows_sorted: list[dict], title: str, topk: int = 10):
-    top = rows_sorted[:min(topk, len(rows_sorted))]
-    labels = ["+".join(map(str, r["grids"])) for r in top]
+
+def plot_topk_test_accuracy_hbar(path: Path, rows_with_test_sorted: list[dict], title: str, topk: int = 10):
+    top = rows_with_test_sorted[:min(topk, len(rows_with_test_sorted))]
+    labels = [combo_to_str(r["grids"]) for r in top]
     ys = [r["test_acc_fast"] for r in top]
 
-    # 横棒：ラベルが潰れにくい
     plt.rcParams["font.size"] = 18
-    plt.figure(figsize=(10, max(4, 0.45 * len(top))))
+    plt.figure(figsize=(12, max(4, 0.55 * len(top))))
     plt.barh(range(len(top)), ys)
     plt.yticks(range(len(top)), labels)
-    plt.gca().invert_yaxis()  # 上位が上にくる
-    plt.xlabel("Test accuracy")
+    plt.gca().invert_yaxis()
+    plt.xlabel("Test accuracy (fast model)")
     plt.title(title)
 
-    # 上位の値を棒の右に表示
     for i, v in enumerate(ys):
         plt.text(v, i, f" {v:.3f}", va="center")
 
@@ -255,16 +264,18 @@ def plot_topk_test_accuracy_hbar(path: Path, rows_sorted: list[dict], title: str
     plt.savefig(path, dpi=200)
     plt.close()
 
-def all_grid_combos() -> list[list[int]]:
-    combos = []
-    for k in SCALE_CHOICES:
-        for c in itertools.combinations(GRID_CANDIDATES, k):
-            combos.append(list(c))
-    return combos  # 55 + 165 = 220 通り
 
 def run_one_mode(mode: str):
-    OUT_CM_PNG = OUT_DIR / f"confusion_matrix_multiscale_fullscan_{mode}.png"
-    OUT_SWEEP_PNG = OUT_DIR / f"grid_combo_sweep_fullscan_{mode}.png"
+    # 出力（mode別）
+    OUT_SWEEP_JSON = OUT_DIR / f"grid_combo_sweep_fullscan_{mode}.json"
+    OUT_CV_HIST = OUT_DIR / f"cvacc_hist_{mode}.png"
+    OUT_TOPK_TEST = OUT_DIR / f"top{PLOT_TOPK}_testacc_{mode}.png"
+    OUT_RANK_CV_ALL = OUT_DIR / f"rank_all_by_cv_{mode}.csv"
+    OUT_RANK_TOP_TEST = OUT_DIR / f"rank_top_by_test_{mode}.csv"
+
+    OUT_MODEL = OUT_DIR / f"ply_svm_model_multiscale_{mode}.joblib"
+    OUT_CM_PNG = OUT_DIR / f"confusion_matrix_multiscale_{mode}.png"
+    OUT_META_JSON = OUT_DIR / f"meta_multiscale_{mode}.json"
 
     # train/test 分割を固定するため、最初にyを作る（特徴はダミーで良い）
     X0, y_str0 = collect_dataset_fixed_order(DATA_ROOT, grids=[GRID_CANDIDATES[0]], label_order=LABEL_ORDER, mode=mode)
@@ -280,48 +291,94 @@ def run_one_mode(mode: str):
     )
 
     combos = all_grid_combos()
-    print(f"[{mode}] total combos = {len(combos)} (should be 220)")
+    n = len(GRID_CANDIDATES)
+    expected = sum(math.comb(n, k) for k in SCALE_CHOICES)
+    print(f"[{mode}] total combos = {len(combos)} (expected {expected}; candidates={n})")
 
+    # ------------------------------------------------------------
+    # (1) 全combo: CV精度のみ計算（探索はCVで実施）
+    # ------------------------------------------------------------
     sweep_rows = []
-
     for i, combo in enumerate(combos):
         X, y_str = collect_dataset_fixed_order(DATA_ROOT, grids=combo, label_order=LABEL_ORDER, mode=mode)
         y = np.array([label_to_id[s] for s in y_str], dtype=np.int64)
+        X_tr, X_te = X[idx_tr], X[idx_te]  # X_teはここでは使わない（testは後段）
 
-        X_tr, X_te = X[idx_tr], X[idx_te]
-
-        # (A) fast CV（参考値）
         cv_acc = cv_score_on_train(X_tr, y_tr, C_value=FAST_C, gamma_value=FAST_GAMMA, cv_splits=FAST_CV_SPLITS)
-
-        # (A) fast test accuracy（あなたの要望：評価データ精度）
-        fast_model = build_pipeline(FAST_C, FAST_GAMMA)
-        fast_model.fit(X_tr, y_tr)
-        y_pred_fast = fast_model.predict(X_te)
-        test_acc_fast = float(accuracy_score(y_te, y_pred_fast))
 
         sweep_rows.append({
             "idx": int(i),
             "grids": combo,
             "feature_dim": int(sum([g ** 3 for g in combo])),
             "cv_acc_fast": float(cv_acc),
-            "test_acc_fast": float(test_acc_fast),
         })
 
         if (i % 20) == 0:
-            print(f"[{mode} {i:03d}/{len(combos)}] grids={combo} test_acc_fast={test_acc_fast:.4f} cv_acc_fast={cv_acc:.4f}")
+            print(f"[{mode} {i:03d}/{len(combos)}] grids={combo} cv_acc_fast={cv_acc:.4f}")
 
-    # test精度でソート（グラフもこれ）
-    sweep_rows_sorted = sorted(sweep_rows, key=lambda r: r["test_acc_fast"], reverse=True)
-    top_rows = sweep_rows_sorted[:max(1, TOPK_FOR_REFINED_SEARCH)]
+    # CVでソート（探索結果）
+    sweep_rows_sorted = sorted(sweep_rows, key=lambda r: r["cv_acc_fast"], reverse=True)
 
-    plot_topk_test_accuracy(OUT_SWEEP_PNG, sweep_rows_sorted, title=f"Top-{PLOT_TOPK} test accuracy (fast) [{mode}]", topk=PLOT_TOPK)
+    # 全件のCVランキングCSV + CV分布ヒストグラム
+    save_rank_csv(OUT_RANK_CV_ALL, sweep_rows_sorted, include_test=False)
+    plot_cv_hist(OUT_CV_HIST, sweep_rows_sorted, title=f"CV accuracy distribution (all combos) [{mode}]")
 
-    print(f"\n=== [{mode}] Top combos by test_acc_fast ===")
-    for r in top_rows:
-        print(f"grids={r['grids']}  test_acc_fast={r['test_acc_fast']:.4f}  cv_acc_fast={r['cv_acc_fast']:.4f}  dim={r['feature_dim']}")
+    # JSON（全comboはCVのみ）
+    OUT_SWEEP_JSON.write_text(json.dumps({
+        "mode": mode,
+        "data_root": str(DATA_ROOT),
+        "grid_candidates": GRID_CANDIDATES,
+        "scale_choices": SCALE_CHOICES,
+        "n_combos": len(combos),
+        "expected_combos": expected,
+        "fast_eval": {"C": FAST_C, "gamma": FAST_GAMMA, "cv_splits": FAST_CV_SPLITS},
+        "rows_sorted_by_cv": sweep_rows_sorted,
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # (B) 上位候補だけ精密化（任意）
-    best = None
+    # ------------------------------------------------------------
+    # (2) CV上位Kに対してのみ test 精度を算出（= CV後にtestで評価）
+    # ------------------------------------------------------------
+    top_for_test = sweep_rows_sorted[:max(1, TOPK_FOR_TEST_EVAL)]
+
+    rows_with_test = []
+    for r in top_for_test:
+        combo = r["grids"]
+        X, y_str = collect_dataset_fixed_order(DATA_ROOT, grids=combo, label_order=LABEL_ORDER, mode=mode)
+        y = np.array([label_to_id[s] for s in y_str], dtype=np.int64)
+        X_tr, X_te = X[idx_tr], X[idx_te]
+
+        fast_model = build_pipeline(FAST_C, FAST_GAMMA)
+        fast_model.fit(X_tr, y_tr)
+        y_pred_fast = fast_model.predict(X_te)
+        test_acc_fast = float(accuracy_score(y_te, y_pred_fast))
+
+        rr = dict(r)  # cv情報を保持
+        rr["test_acc_fast"] = test_acc_fast
+        rows_with_test.append(rr)
+
+    # testでソート（CV上位Kの中での比較）
+    rows_with_test_sorted = sorted(rows_with_test, key=lambda r: r["test_acc_fast"], reverse=True)
+
+    # TopのtestランキングCSV + 上位PLOT_TOPKを可視化
+    save_rank_csv(OUT_RANK_TOP_TEST, rows_with_test_sorted, include_test=True)
+    plot_topk_test_accuracy_hbar(
+        OUT_TOPK_TEST,
+        rows_with_test_sorted,
+        title=f"Top-{PLOT_TOPK} by TEST accuracy (evaluated after CV) [{mode}]",
+        topk=PLOT_TOPK
+    )
+
+    best_fast = rows_with_test_sorted[0]
+    print(f"[{mode}] BEST (fast model among CV top-{len(rows_with_test_sorted)}): grids={best_fast['grids']}, "
+          f"cv={best_fast['cv_acc_fast']:.4f}, test={best_fast['test_acc_fast']:.4f}")
+
+    # ------------------------------------------------------------
+    # (3) さらに上位候補だけ精密化（SVMのC/gammaをCVで最適化）して最終モデル決定
+    #     ※候補は「CV上位Kにtestを付けた集合」から、さらに上位Kを使う
+    # ------------------------------------------------------------
+    top_rows = rows_with_test_sorted[:max(1, TOPK_FOR_REFINED_SEARCH)]
+
+    best_refined = None
     for rank, r in enumerate(top_rows):
         combo = r["grids"]
         X, y_str = collect_dataset_fixed_order(DATA_ROOT, grids=combo, label_order=LABEL_ORDER, mode=mode)
@@ -343,7 +400,7 @@ def run_one_mode(mode: str):
         test_acc = float(accuracy_score(y_te, y_pred))
 
         cand = {
-            "rank_in_top": int(rank),
+            "rank_in_refine_pool": int(rank),
             "grids": combo,
             "feature_dim": int(sum([g ** 3 for g in combo])),
             "best_cv_score": best_cv,
@@ -353,35 +410,18 @@ def run_one_mode(mode: str):
         }
 
         print(f"\n[{mode} refine {rank}] grids={combo}")
-        print(f"  best_cv_score={best_cv:.4f}  test_acc={test_acc:.4f}  best_params={best_params}")
+        print(f"  refined_cv={best_cv:.4f}  refined_test={test_acc:.4f}  best_params={best_params}")
 
-        if (best is None) or (cand["test_accuracy"] > best["test_accuracy"]):
-            best = cand
+        if (best_refined is None) or (cand["test_accuracy"] > best_refined["test_accuracy"]):
+            best_refined = cand
 
-    best_model = best["model"]
-    best_grids = best["grids"]
-    best = sweep_rows_sorted[0]
-    best_grids = best["grids"]
-    best_acc = best["test_acc_fast"]
+    # ------------------------------------------------------------
+    # (4) 最終モデル出力（混同行列/レポート/モデル保存）
+    # ------------------------------------------------------------
+    best_model = best_refined["model"]
+    best_grids = best_refined["grids"]
+    best_test_acc = best_refined["test_accuracy"]
 
-    print(f"[{mode}] BEST (fast test) grids={best_grids}, test_acc_fast={best_acc:.4f}")
-
-    # 追加出力ファイル（mode別）
-    OUT_HIST = OUT_DIR / f"testacc_hist_{mode}.png"
-    OUT_TOPK = OUT_DIR / f"testacc_top10_{mode}.png"
-    OUT_DIMSCAT = OUT_DIR / f"dim_vs_testacc_{mode}.png"
-    OUT_RANKCSV = OUT_DIR / f"rank_testacc_{mode}.csv"
-
-    save_rank_csv(OUT_RANKCSV, sweep_rows_sorted)
-    plot_test_accuracy_hist(OUT_HIST, sweep_rows_sorted, title=f"Test accuracy distribution (all 220) [{mode}]")
-    plot_topk_test_accuracy_hbar(OUT_TOPK, sweep_rows_sorted, title=f"Top-10 by test accuracy [{mode}]", topk=10)
-
-    print(f"[{mode}] saved: {OUT_RANKCSV}")
-    print(f"[{mode}] saved: {OUT_HIST}")
-    print(f"[{mode}] saved: {OUT_TOPK}")
-    print(f"[{mode}] saved: {OUT_DIMSCAT}")
-
-    # confusion matrix / report
     X_best, y_str_best = collect_dataset_fixed_order(DATA_ROOT, grids=best_grids, label_order=LABEL_ORDER, mode=mode)
     y_best = np.array([label_to_id[s] for s in y_str_best], dtype=np.int64)
     X_tr_best, X_te_best = X_best[idx_tr], X_best[idx_te]
@@ -398,13 +438,53 @@ def run_one_mode(mode: str):
 
     print(f"\n=== FINAL BEST ({mode}) ===")
     print(f"BEST_GRIDS: {best_grids}")
-    print(f"feature_dim: {best['feature_dim']}")
-    print(f"best_cv_score: {best['best_cv_score']:.4f}")
-    print(f"best_params: {best['best_params']}")
-    print(f"test_accuracy: {best['test_accuracy']:.4f}")
+    print(f"feature_dim: {best_refined['feature_dim']}")
+    print(f"best_cv_score: {best_refined['best_cv_score']:.4f}")
+    print(f"best_params: {best_refined['best_params']}")
+    print(f"test_accuracy: {best_test_acc:.4f}")
     print(report)
 
     save_confusion_matrix_png(OUT_CM_PNG, cm, LABEL_ORDER, dpi=CM_DPI)
+
+    # 保存（モデル）
+    payload = {
+        "model": best_model,
+        "label_order": LABEL_ORDER,
+        "grids": best_grids,
+        "mode": mode,
+        "best_params": best_refined["best_params"],
+        "best_cv_score": float(best_refined["best_cv_score"]),
+        "test_accuracy": float(best_test_acc),
+        "search": {
+            "grid_candidates": GRID_CANDIDATES,
+            "scale_choices": SCALE_CHOICES,
+            "n_combos": len(combos),
+            "expected_combos": expected,
+            "fast_eval": {"C": FAST_C, "gamma": FAST_GAMMA, "cv_splits": FAST_CV_SPLITS},
+            "topk_for_test_eval": TOPK_FOR_TEST_EVAL,
+            "topk_for_refined_search": TOPK_FOR_REFINED_SEARCH,
+            "refine_svm_params": REFINE_SVM_PARAMS,
+        }
+    }
+    joblib.dump(payload, OUT_MODEL)
+
+    meta = {
+        "mode": mode,
+        "best_grids": best_grids,
+        "test_accuracy": float(best_test_acc),
+        "outputs": {
+            "sweep_json": str(OUT_SWEEP_JSON),
+            "cv_hist_png": str(OUT_CV_HIST),
+            "topk_test_png": str(OUT_TOPK_TEST),
+            "rank_all_by_cv_csv": str(OUT_RANK_CV_ALL),
+            "rank_top_by_test_csv": str(OUT_RANK_TOP_TEST),
+            "confusion_matrix_png": str(OUT_CM_PNG),
+            "model_joblib": str(OUT_MODEL),
+        }
+    }
+    OUT_META_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return meta
 
 
 def main():
@@ -416,7 +496,12 @@ def main():
     for s in summaries:
         print(f"mode={s['mode']} best_grids={s['best_grids']} test_acc={s['test_accuracy']:.4f}")
         print(f"  sweep_json={s['outputs']['sweep_json']}")
-        print(f"  sweep_png ={s['outputs']['sweep_png']}")
+        print(f"  cv_hist  ={s['outputs']['cv_hist_png']}")
+        print(f"  topk_test={s['outputs']['topk_test_png']}")
+        print(f"  rank_cv  ={s['outputs']['rank_all_by_cv_csv']}")
+        print(f"  rank_test={s['outputs']['rank_top_by_test_csv']}")
+        print(f"  cm_png   ={s['outputs']['confusion_matrix_png']}")
+        print(f"  model    ={s['outputs']['model_joblib']}")
 
 
 if __name__ == "__main__":
