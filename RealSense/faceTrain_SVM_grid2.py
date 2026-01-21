@@ -1,9 +1,10 @@
-# - FEATURE_MODES = ["dens","occ"] のように指定して、同じ探索条件で比較できる
-# - mode="dens": ボクセル内点数カウント
-# - mode="occ" : ボクセル占有(0/1)
+# - 全組合せ(2スケール/3スケール)を完全走査
+# - sweep_rows に test_acc_fast を追加（評価データ精度）
+# - グラフは test_acc_fast の上位Kを「グリッド組合せラベル付き」で表示
 
 from pathlib import Path
 import json
+import itertools
 import numpy as np
 import trimesh
 import matplotlib.pyplot as plt
@@ -30,20 +31,18 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 CM_DPI = 200
 
 # --- 比較したい特徴モード ---
-# "dens": 点数カウント
-# "occ" : 占有(0/1)
-FEATURE_MODES = ["dens", "occ"]   # 片方だけなら ["dens"] のようにする
+FEATURE_MODES = ["dens", "occ"]   # 片方だけなら ["dens"] など
 
-# --- マルチスケール探索条件 ---
-GRID_CANDIDATES = list(range(10, 61, 5))    # 10..60 step 5
-SCALE_CHOICES = [2, 3]                      # 2スケール/3スケール両方
-N_TRIALS = 150                               # ランダム試行回数
-TOPK_FOR_REFINED_SEARCH = 5                 # 上位K個に対してだけ、SVMの( C, gamma )を再探索
+# --- マルチスケール探索条件（全列挙） ---
+GRID_CANDIDATES = list(range(10, 61, 5))  # 10..60 step 5（11候補）
+SCALE_CHOICES = [2, 3]                   # 2スケール/3スケール
+TOPK_FOR_REFINED_SEARCH = 5              # 上位K個だけ精密化
+PLOT_TOPK = 30                           # グラフに出す上位K（test精度）
 
 # --- (A) まずは安く評価するための固定SVM設定（候補探索用） ---
 FAST_C = 10.0
 FAST_GAMMA = "scale"
-FAST_CV_SPLITS = 3  # 5より軽い
+FAST_CV_SPLITS = 3  # CVも保存するが、主に test_acc_fast を使う
 
 # --- (B) 上位候補だけ精密化（必要なら） ---
 REFINE_SVM_PARAMS = True
@@ -74,7 +73,6 @@ def load_points_from_ply(ply_path: Path) -> np.ndarray:
 
 
 def normalize_points_to_unit(points: np.ndarray) -> np.ndarray:
-    # 元スクリプトの手順（center -> scale -> clip）を踏襲
     pts = points.astype(np.float64, copy=True)
     pts -= pts.mean(axis=0, keepdims=True)
     max_abs = np.max(np.abs(pts))
@@ -85,11 +83,6 @@ def normalize_points_to_unit(points: np.ndarray) -> np.ndarray:
 
 
 def voxel_features_from_unit(pts_unit: np.ndarray, grid: int, mode: str) -> np.ndarray:
-    """
-    mode:
-      - "dens": ボクセル内点数カウント
-      - "occ" : 占有(0/1)
-    """
     idx = ((pts_unit + 1.0) * 0.5 * grid).astype(np.int64)
     idx = np.clip(idx, 0, grid - 1)
 
@@ -149,13 +142,6 @@ def build_pipeline(C_value: float, gamma_value) -> Pipeline:
     ])
 
 
-def sample_grid_combo(rng: np.random.Generator) -> list[int]:
-    k = int(rng.choice(SCALE_CHOICES))
-    combo = rng.choice(GRID_CANDIDATES, size=k, replace=False)
-    combo = sorted(int(x) for x in combo)
-    return combo
-
-
 def cv_score_on_train(X_tr: np.ndarray, y_tr: np.ndarray, C_value: float, gamma_value, cv_splits: int) -> float:
     cv = StratifiedKFold(n_splits=cv_splits, shuffle=True, random_state=SEED)
     pipe = build_pipeline(C_value, gamma_value)
@@ -205,33 +191,44 @@ def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: list[str]
     plt.close(disp.figure_)
 
 
-def plot_sweep_results(path: Path, sweep_rows: list[dict], title: str):
-    xs = list(range(len(sweep_rows)))
-    ys = [r["cv_acc_fast"] for r in sweep_rows]
+def combo_to_str(combo: list[int]) -> str:
+    return "+".join(str(g) for g in combo)
 
-    plt.rcParams["font.size"] = 18
-    plt.figure(figsize=(10, 5))
-    plt.plot(xs, ys, marker="o", linewidth=1)
-    plt.xlabel("trial")
-    plt.ylabel("CV accuracy")
+
+def plot_topk_test_accuracy(path: Path, rows_sorted: list[dict], title: str, topk: int):
+    top = rows_sorted[:min(topk, len(rows_sorted))]
+    labels = [combo_to_str(r["grids"]) for r in top]
+    ys = [r["test_acc_fast"] for r in top]
+
+    plt.rcParams["font.size"] = 12
+    plt.figure(figsize=(max(10, int(len(top) * 0.5)), 6))
+    plt.bar(range(len(top)), ys)
+    plt.xticks(range(len(top)), labels, rotation=60, ha="right")
+    plt.xlabel("Grid combo (multi-scale)")
+    plt.ylabel("Test accuracy (fast model)")
     plt.title(title)
-    plt.grid(alpha=0.3)
+    plt.grid(axis="y", alpha=0.3)
     plt.tight_layout()
     plt.savefig(path, dpi=200)
     plt.close()
 
 
+def all_grid_combos() -> list[list[int]]:
+    combos = []
+    for k in SCALE_CHOICES:
+        for c in itertools.combinations(GRID_CANDIDATES, k):
+            combos.append(list(c))
+    return combos  # 55 + 165 = 220 通り
+
+
 def run_one_mode(mode: str):
-    rng = np.random.default_rng(SEED)
+    OUT_MODEL = OUT_DIR / f"ply_svm_model_multiscale_fullscan_{mode}.joblib"
+    OUT_CM_PNG = OUT_DIR / f"confusion_matrix_multiscale_fullscan_{mode}.png"
+    OUT_META_JSON = OUT_DIR / f"meta_multiscale_fullscan_{mode}.json"
+    OUT_SWEEP_JSON = OUT_DIR / f"grid_combo_sweep_fullscan_{mode}.json"
+    OUT_SWEEP_PNG = OUT_DIR / f"grid_combo_sweep_fullscan_{mode}.png"
 
-    # 出力ファイル（mode別に分ける）
-    OUT_MODEL = OUT_DIR / f"ply_svm_model_multiscale_randomsearch_{mode}.joblib"
-    OUT_CM_PNG = OUT_DIR / f"confusion_matrix_multiscale_randomsearch_{mode}.png"
-    OUT_META_JSON = OUT_DIR / f"meta_multiscale_randomsearch_{mode}.json"
-    OUT_SWEEP_JSON = OUT_DIR / f"grid_combo_sweep_randomsearch_{mode}.json"
-    OUT_SWEEP_PNG = OUT_DIR / f"grid_combo_sweep_randomsearch_{mode}.png"
-
-    # train/test 分割を固定するため、最初に y を作る（特徴はダミーで良い）
+    # train/test 分割を固定するため、最初にyを作る（特徴はダミーで良い）
     X0, y_str0 = collect_dataset_fixed_order(DATA_ROOT, grids=[GRID_CANDIDATES[0]], label_order=LABEL_ORDER, mode=mode)
     label_to_id = {lab: i for i, lab in enumerate(LABEL_ORDER)}
     y0 = np.array([label_to_id[s] for s in y_str0], dtype=np.int64)
@@ -244,42 +241,39 @@ def run_one_mode(mode: str):
         stratify=y0
     )
 
-    # ランダム探索
-    seen = set()
+    combos = all_grid_combos()
+    print(f"[{mode}] total combos = {len(combos)} (should be 220)")
+
     sweep_rows = []
 
-    for _ in range(N_TRIALS):
-        combo = sample_grid_combo(rng)
-        key = tuple(combo)
-        if key in seen:
-            continue
-        seen.add(key)
-
+    for i, combo in enumerate(combos):
         X, y_str = collect_dataset_fixed_order(DATA_ROOT, grids=combo, label_order=LABEL_ORDER, mode=mode)
         y = np.array([label_to_id[s] for s in y_str], dtype=np.int64)
 
         X_tr, X_te = X[idx_tr], X[idx_te]
 
-        cv_acc = cv_score_on_train(
-            X_tr, y_tr,
-            C_value=FAST_C,
-            gamma_value=FAST_GAMMA,
-            cv_splits=FAST_CV_SPLITS
-        )
+        # (A) fast CV（参考値）
+        cv_acc = cv_score_on_train(X_tr, y_tr, C_value=FAST_C, gamma_value=FAST_GAMMA, cv_splits=FAST_CV_SPLITS)
+
+        # (A) fast test accuracy（あなたの要望：評価データ精度）
+        fast_model = build_pipeline(FAST_C, FAST_GAMMA)
+        fast_model.fit(X_tr, y_tr)
+        y_pred_fast = fast_model.predict(X_te)
+        test_acc_fast = float(accuracy_score(y_te, y_pred_fast))
 
         sweep_rows.append({
-            "trial": int(len(sweep_rows)),
+            "idx": int(i),
             "grids": combo,
             "feature_dim": int(sum([g ** 3 for g in combo])),
             "cv_acc_fast": float(cv_acc),
+            "test_acc_fast": float(test_acc_fast),
         })
 
-        print(f"[{mode} trial {len(sweep_rows)-1:03d}] grids={combo} dim={sweep_rows[-1]['feature_dim']} cv_acc_fast={cv_acc:.4f}")
+        if (i % 20) == 0:
+            print(f"[{mode} {i:03d}/{len(combos)}] grids={combo} test_acc_fast={test_acc_fast:.4f} cv_acc_fast={cv_acc:.4f}")
 
-    if len(sweep_rows) == 0:
-        raise RuntimeError("No trials executed (all duplicates?). Increase N_TRIALS.")
-
-    sweep_rows_sorted = sorted(sweep_rows, key=lambda r: r["cv_acc_fast"], reverse=True)
+    # test精度でソート（グラフもこれ）
+    sweep_rows_sorted = sorted(sweep_rows, key=lambda r: r["test_acc_fast"], reverse=True)
     top_rows = sweep_rows_sorted[:max(1, TOPK_FOR_REFINED_SEARCH)]
 
     OUT_SWEEP_JSON.write_text(json.dumps({
@@ -287,18 +281,19 @@ def run_one_mode(mode: str):
         "data_root": str(DATA_ROOT),
         "grid_candidates": GRID_CANDIDATES,
         "scale_choices": SCALE_CHOICES,
-        "n_trials_executed": len(sweep_rows),
+        "n_combos": len(combos),
         "fast_eval": {"C": FAST_C, "gamma": FAST_GAMMA, "cv_splits": FAST_CV_SPLITS},
-        "rows": sweep_rows_sorted,
+        "rows_sorted_by_test": sweep_rows_sorted,
     }, ensure_ascii=False, indent=2), encoding="utf-8")
-    plot_sweep_results(OUT_SWEEP_PNG, sweep_rows_sorted, title=f"Random search multi-scale ({mode})")
 
-    print(f"\n=== [{mode}] Top combos by fast CV ===")
+    plot_topk_test_accuracy(OUT_SWEEP_PNG, sweep_rows_sorted, title=f"Top-{PLOT_TOPK} test accuracy (fast) [{mode}]", topk=PLOT_TOPK)
+
+    print(f"\n=== [{mode}] Top combos by test_acc_fast ===")
     for r in top_rows:
-        print(f"grids={r['grids']}  cv_acc_fast={r['cv_acc_fast']:.4f}  dim={r['feature_dim']}")
+        print(f"grids={r['grids']}  test_acc_fast={r['test_acc_fast']:.4f}  cv_acc_fast={r['cv_acc_fast']:.4f}  dim={r['feature_dim']}")
 
+    # (B) 上位候補だけ精密化（任意）
     best = None
-
     for rank, r in enumerate(top_rows):
         combo = r["grids"]
         X, y_str = collect_dataset_fixed_order(DATA_ROOT, grids=combo, label_order=LABEL_ORDER, mode=mode)
@@ -307,13 +302,13 @@ def run_one_mode(mode: str):
 
         if REFINE_SVM_PARAMS:
             gs = refined_svm_search(X_tr, y_tr)
-            best_cv = float(gs.best_score_)
             model = gs.best_estimator_
+            best_cv = float(gs.best_score_)
             best_params = gs.best_params_
         else:
             model = build_pipeline(FAST_C, FAST_GAMMA)
             model.fit(X_tr, y_tr)
-            best_cv = cv_score_on_train(X_tr, y_tr, FAST_C, FAST_GAMMA, FAST_CV_SPLITS)
+            best_cv = float(r["cv_acc_fast"])
             best_params = {"svc__C": FAST_C, "svc__gamma": FAST_GAMMA}
 
         y_pred = model.predict(X_te)
@@ -332,7 +327,7 @@ def run_one_mode(mode: str):
         print(f"\n[{mode} refine {rank}] grids={combo}")
         print(f"  best_cv_score={best_cv:.4f}  test_acc={test_acc:.4f}  best_params={best_params}")
 
-        if (best is None) or (cand["best_cv_score"] > best["best_cv_score"]):
+        if (best is None) or (cand["test_accuracy"] > best["test_accuracy"]):
             best = cand
 
     best_model = best["model"]
@@ -359,11 +354,9 @@ def run_one_mode(mode: str):
     print(f"best_cv_score: {best['best_cv_score']:.4f}")
     print(f"best_params: {best['best_params']}")
     print(f"test_accuracy: {best['test_accuracy']:.4f}")
-    print("classification_report:")
     print(report)
 
     save_confusion_matrix_png(OUT_CM_PNG, cm, LABEL_ORDER, dpi=CM_DPI)
-    print(f"saved confusion matrix: {OUT_CM_PNG}")
 
     payload = {
         "model": best_model,
@@ -376,14 +369,14 @@ def run_one_mode(mode: str):
         "search": {
             "grid_candidates": GRID_CANDIDATES,
             "scale_choices": SCALE_CHOICES,
-            "n_trials_executed": len(sweep_rows),
+            "n_combos": len(combos),
             "fast_eval": {"C": FAST_C, "gamma": FAST_GAMMA, "cv_splits": FAST_CV_SPLITS},
             "topk_refine": TOPK_FOR_REFINED_SEARCH,
             "refine_svm_params": REFINE_SVM_PARAMS,
+            "plot_topk": PLOT_TOPK,
         }
     }
     joblib.dump(payload, OUT_MODEL)
-    print(f"saved model: {OUT_MODEL}")
 
     meta = {
         "mode": mode,
@@ -401,15 +394,8 @@ def run_one_mode(mode: str):
         }
     }
     OUT_META_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"saved meta: {OUT_META_JSON}")
 
-    return {
-        "mode": mode,
-        "best_grids": best_grids,
-        "best_cv_score": float(best["best_cv_score"]),
-        "test_accuracy": float(best["test_accuracy"]),
-        "meta_json": str(OUT_META_JSON),
-    }
+    return meta
 
 
 def main():
@@ -419,8 +405,9 @@ def main():
 
     print("\n=== SUMMARY ===")
     for s in summaries:
-        print(f"mode={s['mode']}: best_grids={s['best_grids']}, best_cv={s['best_cv_score']:.4f}, test_acc={s['test_accuracy']:.4f}")
-        print(f"  meta: {s['meta_json']}")
+        print(f"mode={s['mode']} best_grids={s['best_grids']} test_acc={s['test_accuracy']:.4f}")
+        print(f"  sweep_json={s['outputs']['sweep_json']}")
+        print(f"  sweep_png ={s['outputs']['sweep_png']}")
 
 
 if __name__ == "__main__":
