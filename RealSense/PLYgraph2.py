@@ -7,12 +7,31 @@ from pathlib import Path
 # ここに重ねて表示したい PLY を列挙してください
 # ==========================
 PLY_PATHS = [
-    "PLY_dataset_YR/O/mouth_4deg_20260110_185616.ply",
-    "PLY_dataset_1/O/mouth_3deg_20260110_151242.ply",
-    "PLY_dataset_2/O/mouth_-1deg_20260112_133619.ply",
-    "PLY_dataset_3v2/O/mouth_2deg_20260113_175707.ply",
+    # "PLY_dataset_YR/A/mouth_3deg_20260110_183612.ply",
+    # "PLY_dataset_1/A/mouth_5deg_20260110_144746.ply",
+    # "PLY_dataset_2/A/mouth_-2deg_20260112_130908.ply",
+    # "PLY_dataset_3v2/A/mouth_3deg_20260113_173246.ply",
+    "PLY_dataset_4/A/mouth_-3deg_20260113_131032.ply",
+    # "PLY_dataset_YR/I/mouth_3deg_20260110_184650.ply",
+    # "PLY_dataset_1/I/mouth_3deg_20260110_145120.ply",
+    # "PLY_dataset_2/I/mouth_-2deg_20260112_131635.ply",
+    # "PLY_dataset_3v2/I/mouth_0deg_20260113_173949.ply",
+    "PLY_dataset_4/I/mouth_4deg_20260113_132138.ply",
+    # "PLY_dataset_YR/U/mouth_2deg_20260110_181941.ply",
+    # "PLY_dataset_1/U/mouth_3deg_20260110_145616.ply",
+    # "PLY_dataset_2/U/mouth_-1deg_20260112_132225.ply",
+    # "PLY_dataset_3v2/U/mouth_1deg_20260113_174609.ply",
+    "PLY_dataset_4/U/mouth_-3deg_20260113_132739.ply",
+    # "PLY_dataset_YR/E/mouth_3deg_20260110_184953.ply",
+    # "PLY_dataset_1/E/mouth_3deg_20260110_150635.ply",
+    # "PLY_dataset_2/E/mouth_-1deg_20260112_133031.ply",
+    # "PLY_dataset_3v2/E/mouth_3deg_20260113_175148.ply",
+    "PLY_dataset_4/E/mouth_-3deg_20260113_133820.ply",
+    # "PLY_dataset_YR/O/mouth_4deg_20260110_185616.ply",
+    # "PLY_dataset_1/O/mouth_3deg_20260110_151242.ply",
+    # "PLY_dataset_2/O/mouth_-1deg_20260112_133619.ply",
+    # "PLY_dataset_3v2/O/mouth_2deg_20260113_175707.ply",
     "PLY_dataset_4/O/mouth_-3deg_20260113_134548.ply",
-    #"PLY_dataset_3v2/E/mouth_3deg_20260113_175148.ply",
 ]
 
 # 3投影の表示範囲（元スクリプトの値を踏襲）
@@ -33,13 +52,23 @@ def main():
     cmap = plt.get_cmap("tab10")
 
     plotted_any = False
+    all_points = []
 
     for i, ply_path in enumerate(PLY_PATHS):
         points = load_points(ply_path)
+        mins = points.min(axis=0)          # [minX, minY, minZ]
+        maxs = points.max(axis=0)          # [maxX, maxY, maxZ]
+        diffs = maxs - mins                # [rangeX, rangeY, rangeZ]
+
+        print(f"  X: min={mins[0]:.6f}, max={maxs[0]:.6f}, diff={diffs[0]:.6f}")
+        print(f"  Y: min={mins[1]:.6f}, max={maxs[1]:.6f}, diff={diffs[1]:.6f}")
+        print(f"  Z: min={mins[2]:.6f}, max={maxs[2]:.6f}, diff={diffs[2]:.6f}")
 
         if points.size == 0:
             print(f"[skip] 点群が空です: {ply_path}")
             continue
+
+        all_points.append(points)
 
         plotted_any = True
         label = Path(ply_path).name
@@ -55,6 +84,21 @@ def main():
     if not plotted_any:
         print("有効な点群が1つも読み込めませんでした。PLY_PATHS とファイル内容を確認してください。")
         return
+    
+    if len(all_points) == 0:
+        print("有効な点群が1つも読み込めませんでした。")
+        return
+
+    all_points = np.vstack(all_points)  # (sumN, 3)
+
+    mins = all_points.min(axis=0)   # [minX, minY, minZ]
+    maxs = all_points.max(axis=0)   # [maxX, maxY, maxZ]
+    diffs = maxs - mins             # [rangeX, rangeY, rangeZ]
+
+    print("[全点群の範囲]")
+    print(f"  X: min={mins[0]:.6f}, max={maxs[0]:.6f}, diff={diffs[0]:.6f}")
+    print(f"  Y: min={mins[1]:.6f}, max={maxs[1]:.6f}, diff={diffs[1]:.6f}")
+    print(f"  Z: min={mins[2]:.6f}, max={maxs[2]:.6f}, diff={diffs[2]:.6f}")
 
     # 軸設定（元スクリプト踏襲）
     axes[0].set_xlim(XLIM); axes[0].set_ylim(YLIM)
@@ -74,7 +118,7 @@ def main():
 
     # 重ね描き対象が複数のため凡例を表示（重なる場合は適宜調整してください）
     for ax in axes:
-        ax.legend(fontsize=18, loc="best", labels=["A", "B", "C", "D", "E"])
+        ax.legend(fontsize=18, loc="best", labels=["A", "I", "U", "E", "O"], markerscale=10)
 
     plt.tight_layout()
     plt.show()
