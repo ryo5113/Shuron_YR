@@ -16,7 +16,8 @@ from collections import deque, defaultdict
 import mediapipe as mp
 
 # === 追加: SVM推論（faceTrain_SVM.py の保存形式を読む想定）===
-SVM_MODEL_PATH = r"./PLY_dataset_all/ply_svm_model.joblib"  # あなたのモデルパスに合わせる
+#SVM_MODEL_PATH = r"./PLY_dataset_YR/25dens/ply_svm_model.joblib"  # あなたのモデルパスに合わせる
+SVM_MODEL_PATH = r"./AA/ply_svm_model.joblib"  # あなたのモデルパスに合わせる
 SVM_PAYLOAD = None
 
 def occupancy_grid_features(points: np.ndarray, grid: int) -> np.ndarray:

@@ -1,5 +1,3 @@
-# fletSound_TrainInfer_Views.py
-# Flet 0.28.3 前提：home/train/infer の画面切り替えは fletMouthPredect.py と同じ構成（page.controls.clear()）で実装
 # 学習View: 録音→ノイズ処理→分割→(60Hzのみ)学習→モデル保存
 # 推論View: モデル選択→録音→ノイズ処理→分割→推論（確率%表示）
 
@@ -333,11 +331,44 @@ class AppState:
 def main(page: ft.Page):
     page.title = "音声GUI（学習/推論）"
     page.window_width = 1080
-    page.window_height = 760
+    page.window_height = 720
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
     state = AppState()
 
     status = ft.Text(value="READY", selectable=True)
+
+    all_buttons = []
+
+    def reg_button(btn: ft.ElevatedButton):
+        all_buttons.append(btn)
+        return btn
+
+    def apply_responsive_layout(w: float, h: float):
+        # コンテンツ幅（広すぎる場合は上限）
+        content_w = min(int(w * 0.95), 1400)
+
+        # TextField類（画面幅に追従）
+        tfw = max(320, int(content_w * 0.60))
+        subject_name.width = tfw
+        labels_field.width = tfw
+        model_parent.width = content_w  # 推論のモデル親フォルダは長くなりがちなので広め
+
+        # ボタン幅
+        bw = max(140, int(w * 0.12))
+        for b in all_buttons:
+            b.width = bw
+
+        # 推論結果の表示領域：画面高さに応じて確保（小さい画面で見切れ対策）
+        results_panel.height = max(200, int(h * 0.35))
+
+        page.update()
+
+    def on_resize(e: ft.PageResizeEvent):
+        apply_responsive_layout(e.width, e.height)
+
+    page.on_resize = on_resize
+
 
     def set_status(msg: str):
         status.value = msg
@@ -528,26 +559,27 @@ def main(page: ft.Page):
         labels = [s.strip() for s in (labels_field.value or "").split(",") if s.strip()]
         return ft.Column(
             [
-                ft.Row([ft.ElevatedButton("戻る", on_click=lambda _: show_home())]),
+                ft.Row([reg_button(ft.ElevatedButton("戻る", on_click=lambda _: show_home()))]),
                 ft.Text("学習（録音→ノイズ処理→分割→学習→モデル保存）", size=18),
                 subject_name,
                 labels_field,
                 ft.Row([
-                    ft.ElevatedButton(text="親フォルダ作成", on_click=on_create_train_folder),
-                    ft.ElevatedButton(text="録音停止（保存→分割）", on_click=on_stop_train_record),
-                    ft.ElevatedButton(text="再録音（直近データ削除）", on_click=on_rerecord_delete_last),
-                    ft.ElevatedButton(text="学習開始（モデル保存）", on_click=on_train_start),
-                ]),
+                    reg_button(ft.ElevatedButton(text="親フォルダ作成", on_click=on_create_train_folder)),
+                    reg_button(ft.ElevatedButton(text="録音停止（保存→分割）", on_click=on_stop_train_record)),
+                    reg_button(ft.ElevatedButton(text="再録音（直近データ削除）", on_click=on_rerecord_delete_last)),
+                    reg_button(ft.ElevatedButton(text="学習開始（モデル保存）", on_click=on_train_start)),
+                ], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Text("録音開始（ラベル別）"),
                 ft.Row([
-                    ft.ElevatedButton(text=f"{lab} 録音開始", on_click=lambda e, l=lab: start_record_for_label(l))
+                    reg_button(ft.ElevatedButton(text=f"{lab} 録音開始", on_click=lambda e, l=lab: start_record_for_label(l)))
                     for lab in labels
-                ]),
+                ], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Divider(),
                 status,
                 train_paths,
             ],
-            spacing=10
+            spacing=10,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
     # =========================
@@ -568,13 +600,14 @@ def main(page: ft.Page):
     results_panel = ft.Container(
         content=ft.ListView(
             controls=[
-                ft.Row([results_table], scroll=ft.ScrollMode.AUTO)  # 横スクロール
+                ft.Row([results_table], alignment=ft.MainAxisAlignment.CENTER, scroll=ft.ScrollMode.AUTO)  # 横スクロール
             ],
             expand=True,                      # 縦スクロール領域を確保
             spacing=0,
             padding=0,
         ),
-        expand=True,                          # 親Column内で残り領域を使う
+        expand=True, 
+        alignment=ft.alignment.center,                     # 親Column内で残り領域を使う
     )
 
     def update_infer_paths():
@@ -728,17 +761,17 @@ def main(page: ft.Page):
     def build_infer_page():
         return ft.Column(
             [
-                ft.Row([ft.ElevatedButton("戻る", on_click=lambda _: show_home())]),
+                ft.Row([reg_button(ft.ElevatedButton("戻る", on_click=lambda _: show_home()))]),
                 ft.Text("推論（モデル選択→録音→分割→推論）", size=18),
                 model_parent,
                 ft.Row([
-                    ft.ElevatedButton(text="推論フォルダ作成", on_click=on_create_infer_folder),
-                ]),
+                    reg_button(ft.ElevatedButton(text="推論フォルダ作成", on_click=on_create_infer_folder)),
+                ], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Divider(),
                 ft.Row([
-                    ft.ElevatedButton(text="録音Start", on_click=start_infer_record),
-                    ft.ElevatedButton(text="Stop（保存→分割→推論）", on_click=stop_and_infer),
-                ]),
+                    reg_button(ft.ElevatedButton(text="録音Start", on_click=start_infer_record)),
+                    reg_button(ft.ElevatedButton(text="Stop（保存→分割→推論）", on_click=stop_and_infer)),
+                ], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Divider(),
                 status,
                 infer_paths,
@@ -747,7 +780,7 @@ def main(page: ft.Page):
                 results_panel,
             ],
             spacing=10,
-            expand=True,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
     # =========================
@@ -759,14 +792,14 @@ def main(page: ft.Page):
                 ft.Text("モード選択", size=20),
                 ft.Row(
                     [
-                        ft.ElevatedButton("学習へ", on_click=lambda _: show_train()),
-                        ft.ElevatedButton("推論へ", on_click=lambda _: show_infer()),
-                    ]
+                        reg_button(ft.ElevatedButton("学習へ", on_click=lambda _: show_train())),
+                        reg_button(ft.ElevatedButton("推論へ", on_click=lambda _: show_infer())),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
                 ),
                 ft.Divider(),
                 status,
             ],
-            alignment=ft.alignment.center,
             spacing=10
         )
 
@@ -774,16 +807,19 @@ def main(page: ft.Page):
         page.controls.clear()
         page.add(build_home_page())
         page.update()
+        apply_responsive_layout(page.width, page.height)
 
     def show_train():
         page.controls.clear()
         page.add(build_train_page())
         page.update()
+        apply_responsive_layout(page.width, page.height)
 
     def show_infer():
         page.controls.clear()
         page.add(build_infer_page())
         page.update()
+        apply_responsive_layout(page.width, page.height)
 
     # 起動時
     show_home()

@@ -1,0 +1,10 @@
+pitch_label_deg: 8.410626453341784
+camera_index(lip source): 0
+pred_label: I
+pred_percent: 32.43
+class_percent:
+  A: 13.83
+  I: 32.43
+  U: 13.36
+  E: 18.77
+  O: 21.61
