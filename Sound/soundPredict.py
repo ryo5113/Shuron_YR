@@ -360,7 +360,7 @@ def main(page: ft.Page):
             b.width = bw
 
         # 推論結果の表示領域：画面高さに応じて確保（小さい画面で見切れ対策）
-        results_panel.height = max(200, int(h * 0.35))
+        #results_panel.height = max(200, int(h * 0.35))
 
         page.update()
 
@@ -373,6 +373,15 @@ def main(page: ft.Page):
     def set_status(msg: str):
         status.value = msg
         page.update()
+
+    def centered_cell(text: str):
+        return ft.DataCell(
+            ft.Container(
+                content=ft.Text(text),
+                alignment=ft.alignment.center,
+                expand=True,
+            )
+        )
 
     # =========================
     # 学習View UI & handlers
@@ -600,9 +609,9 @@ def main(page: ft.Page):
     results_panel = ft.Container(
         content=ft.ListView(
             controls=[
-                ft.Row([results_table], alignment=ft.MainAxisAlignment.CENTER, scroll=ft.ScrollMode.AUTO)  # 横スクロール
+                ft.Row([results_table], alignment=ft.MainAxisAlignment.CENTER)
             ],
-            expand=True,                      # 縦スクロール領域を確保
+            expand=False,                      # 縦スクロール領域を確保
             spacing=0,
             padding=0,
         ),
@@ -729,10 +738,10 @@ def main(page: ft.Page):
                         rows.append(
                             ft.DataRow(
                                 cells=[
-                                    ft.DataCell(ft.Text(str(i))),
-                                    ft.DataCell(ft.Text(pred_label)),
-                                    ft.DataCell(ft.Text(f"{pred_pct:.1f}")),
-                                    ft.DataCell(ft.Text(wp.name)),
+                                    centered_cell(str(i)),
+                                    centered_cell(pred_label),
+                                    centered_cell(f"{pred_pct:.1f}"),
+                                    centered_cell(f"{wp.name}"),
                                 ]
                             )
                         )
@@ -740,10 +749,10 @@ def main(page: ft.Page):
                         rows.append(
                             ft.DataRow(
                                 cells=[
-                                    ft.DataCell(ft.Text(str(i))),
-                                    ft.DataCell(ft.Text("ERROR")),
-                                    ft.DataCell(ft.Text("-")),
-                                    ft.DataCell(ft.Text(f"{wp.name} / {e}")),
+                                    centered_cell(str(i)),
+                                    centered_cell("ERROR"),
+                                    centered_cell("-"),
+                                    centered_cell(f"{wp.name}"),
                                 ]
                             )
                         )
