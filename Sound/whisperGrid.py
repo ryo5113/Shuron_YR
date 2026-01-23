@@ -15,10 +15,10 @@ import matplotlib.pyplot as plt
 # 設定（スクリプト内で指定）
 # =========================
 ROOT_GLOBS = [
-    # r"word_Ex1\10times_Ex1_A\**\*_segmented_pydub.txt",
-    # r"word_Ex1\10times_Ex1_B\**\*_segmented_pydub.txt",
-    # r"word_Ex1\10times_Ex1_C\**\*_segmented_pydub.txt",
-    # r"word_Ex1\10times_Ex1_D\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_A\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_B\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_C\**\*_segmented_pydub.txt",
+    r"word_Ex1\10times_Ex1_D\**\*_segmented_pydub.txt",
     r"word\10times_01\**\*_segmented_pydub.txt",
     r"word\10times_02\**\*_segmented_pydub.txt",
     r"word\10times_03\**\*_segmented_pydub.txt",
@@ -198,34 +198,48 @@ def classify_bucket(tr_norm: str):
 
 def plot_matrix(mat, row_labels, col_labels, out_png, title, show_text=True):
     _set_jp_font()
-    fig_w = max(10, 0.7 * len(col_labels))
-    plt.rcParams["font.size"] = 20
-    fig_h = 6
-    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+
+    # ---- 追加: 体裁パラメータ（予稿向けに調整しやすくする） ----
+    BASE_FIG_W = 7.0
+    PER_COL_W  = 0.35     # 小さめ（列が増えても横長になりにくい）
+    FIG_H      = 4.2
+    TICK_FONTSIZE = 16    # 軸ラベル（小さめ）
+    TITLE_FONTSIZE = 16
+    AXIS_LABEL_FONTSIZE = 16
+    CELL_FONTSIZE = 16     # ★ セル内数値だけ大きく
+    ROTATION = 30          # 45→30（余白を減らす）
+
+    fig_w = max(BASE_FIG_W, PER_COL_W * len(col_labels))
+    fig, ax = plt.subplots(figsize=(fig_w, FIG_H))
     im = ax.imshow(mat, aspect="auto")
 
     ax.set_yticks(range(len(row_labels)))
-    ax.set_yticklabels(row_labels)
+    ax.set_yticklabels(row_labels, fontsize=TICK_FONTSIZE)
 
     ax.set_xticks(range(len(col_labels)))
-    ax.set_xticklabels(col_labels, rotation=45, ha="right")
+    ax.set_xticklabels(col_labels, rotation=ROTATION, ha="right", fontsize=TICK_FONTSIZE)
 
-    ax.set_title(title)
-    ax.set_xlabel("Transcript Result")
-    ax.set_ylabel("True label")
+    ax.set_title(title, fontsize=TITLE_FONTSIZE)
+    ax.set_xlabel("Transcript Result", fontsize=AXIS_LABEL_FONTSIZE)
+    ax.set_ylabel("True label", fontsize=AXIS_LABEL_FONTSIZE)
 
+    # セル内数値（頻度）を大きく
     if show_text:
         for i in range(mat.shape[0]):
             for j in range(mat.shape[1]):
                 v = int(mat[i, j])
                 if v != 0:
-                    ax.text(j, i, str(v), ha="center", va="center", fontsize=8)
+                    ax.text(j, i, str(v), ha="center", va="center", fontsize=CELL_FONTSIZE)
 
-    fig.colorbar(im, ax=ax)
-    plt.tight_layout()
-    plt.savefig(out_png, dpi=200)
+    # カラーバーは小さめに（幅を取りすぎない）
+    cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
+    cbar.ax.tick_params(labelsize=TICK_FONTSIZE)
+
+    # 余白を削って保存（予稿向け）
+    plt.savefig(out_png, dpi=300, bbox_inches="tight", pad_inches=0.02)
     plt.close(fig)
     print(f"[OK] saved: {out_png}")
+
 
 def main():
     paths = collect_paths()

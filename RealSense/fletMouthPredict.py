@@ -287,7 +287,7 @@ def capture_and_process_3cams_to_dirs_save(
             selected = lip_results[idx]
             break
     if selected is None or not selected.get("ok"):
-        return
+        return False
 
     pts = selected["points_cam0"]
 
@@ -326,11 +326,11 @@ def capture_and_process_3cams_to_dirs_save(
         mask_dilate_px=0,
     )
     if mouth_pcd is None or len(mouth_pcd.points) == 0:
-        return
+        return False
 
     mouth_pcd = core.keep_largest_cluster_dbscan(mouth_pcd, eps=0.006, min_points=30)
     if mouth_pcd is None or len(mouth_pcd.points) == 0:
-        return
+        return False
 
     def transform_pcd_points(pcd, T):
         pts0 = np.asarray(pcd.points)
@@ -368,6 +368,7 @@ def capture_and_process_3cams_to_dirs_save(
     idx = get_next_index(mouth_dir, subject_prefix)
     mouth_path = mouth_dir / f"{subject_prefix}_{idx}.ply"
     o3d.io.write_point_cloud(str(mouth_path), mouth_out)
+    return True
 
 # -------------------------
 # 推論用収録（保存せず mouth_out を返す）
@@ -558,6 +559,7 @@ class AppState:
     is_running_capture: bool = False
     stop_event: threading.Event | None = None
     worker_thread: threading.Thread | None = None
+    capture_count : int = 0
 
     # 推論
     infer_parent_dir: Path | None = None
@@ -574,9 +576,11 @@ def protocol_worker_capture(
     page: ft.Page,
     state: AppState,
     set_status_threadsafe,
+    set_count_threadsafe,
     preview: ft.Image,
     capture_event: threading.Event,
     quit_event: threading.Event,
+    train_root: ft.Container,
 ):
     pipelines = []
     profiles = []
@@ -649,6 +653,8 @@ def protocol_worker_capture(
                 break
 
             capture_ready = matched_any
+            new_color = ft.Colors.RED_100 if not capture_ready else ft.Colors.WHITE
+            page.run_thread(lambda c=new_color: setattr(train_root, "bgcolor", c))
 
             cv2.putText(
                 frame_vis, f"CAPTURE: {'READY' if capture_ready else 'NG'}",
@@ -678,7 +684,7 @@ def protocol_worker_capture(
                 if capture_ready and (not is_processing) and (R_tag is not None) and (t_tag is not None):
                     is_processing = True
                     try:
-                        capture_and_process_3cams_to_dirs_save(
+                        saved = capture_and_process_3cams_to_dirs_save(
                             pipelines, profiles,
                             pitch_label_deg=pitch_deg_smooth,
                             tag_R=R_tag, tag_t=t_tag,
@@ -687,7 +693,13 @@ def protocol_worker_capture(
                             mpimg_dir=mpimg_dir_label,
                             subject_prefix=state.subject_dir.name,
                         )
-                        set_status_threadsafe(f"保存しました（pitch={pitch_deg_smooth:.2f}deg）")
+                        if saved:
+                            state.capture_count += 1
+                            # count_view を更新（後述の set_count_threadsafe を使う）
+                            set_count_threadsafe(state.capture_count)
+                            set_status_threadsafe(f"保存しました（COUNT={state.capture_count}, pitch={pitch_deg_smooth:.2f}deg）")
+                        else:
+                            set_status_threadsafe("保存失敗（口検出/切り出し失敗など）")
                     except Exception as e:
                         set_status_threadsafe(f"保存処理でエラー: {e}")
                     finally:
@@ -960,6 +972,7 @@ def main(page: ft.Page):
     preview = ft.Image(src_base64=DUMMY_PNG_B64, fit=ft.ImageFit.CONTAIN,)
 
     status = ft.Text(value="READY", selectable=True)
+    count_view = ft.Text(value="COUNT: 0", size=24, weight=ft.FontWeight.BOLD)
     paths_view = ft.Text(value="", selectable=True)
     pred_view = ft.Text(value="PRED: --", selectable=True, size=30)
 
@@ -1012,6 +1025,13 @@ def main(page: ft.Page):
             quit_event.set()
 
     page.on_keyboard_event = on_key
+
+    def set_count(n: int):
+        count_view.value = f"COUNT: {n}"
+        page.update()
+
+    def set_count_threadsafe(n: int):
+        page.run_thread(lambda n=n: set_count(n))
 
     def set_status(msg: str):
         status.value = msg
@@ -1076,6 +1096,8 @@ def main(page: ft.Page):
 
         capture_event.clear()
         quit_event.clear()
+        state.capture_count = 0
+        set_count(0)
 
         state.current_label = label
         state.stop_event = threading.Event()
@@ -1083,7 +1105,7 @@ def main(page: ft.Page):
 
         t = threading.Thread(
             target=protocol_worker_capture,
-            args=(page, state, set_status_threadsafe, preview, capture_event, quit_event),
+            args=(page, state, set_status_threadsafe, set_count_threadsafe, preview, capture_event, quit_event, train_root),
             daemon=True
         )
         state.worker_thread = t
@@ -1098,6 +1120,9 @@ def main(page: ft.Page):
             return
         state.stop_event.set()
         state.is_running_capture = False
+        state.capture_count = 0
+        count_view.value = "COUNT: 0"
+        page.update()
         set_status("停止要求を出しました。")
         set_paths()
 
@@ -1167,7 +1192,7 @@ def main(page: ft.Page):
         set_status("推論：停止要求を出しました。")
         set_paths()
 
-    def build_train_page():
+    def build_train_content():
         return ft.Column(
             [
                 ft.Row([ft.ElevatedButton("戻る", on_click=lambda _: show_home())]),
@@ -1186,6 +1211,7 @@ def main(page: ft.Page):
                 ft.Text("プレビュー（共通）"),
                 preview,
                 ft.Divider(),
+                count_view,
                 status,
                 paths_view,
                 ft.Text("※Flet画面にフォーカスして 'c'（ARマーカー検出時のみ） / 'q'で停止要求", size=12),
@@ -1193,6 +1219,14 @@ def main(page: ft.Page):
             spacing=10,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
+    train_root = ft.Container(
+        bgcolor=ft.Colors.WHITE,
+        content=build_train_content(),
+        padding=10
+    )
+
+    def build_train_page():
+        return train_root
 
     def build_infer_page():
         return ft.Column(
