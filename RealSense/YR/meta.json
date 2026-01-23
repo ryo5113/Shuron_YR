@@ -8,9 +8,9 @@
   ],
   "grid": 25,
   "best_params": {
-    "svc__C": 3,
+    "svc__C": 10,
     "svc__gamma": "auto"
   },
-  "best_cv_score": 0.7857142857142858,
-  "test_accuracy": 0.8333333333333334
+  "best_cv_score": 0.8514285714285714,
+  "test_accuracy": 0.8266666666666667
 }

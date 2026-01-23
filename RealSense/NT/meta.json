@@ -11,6 +11,6 @@
     "svc__C": 3,
     "svc__gamma": "auto"
   },
-  "best_cv_score": 0.9409672830725462,
-  "test_accuracy": 0.9125
+  "best_cv_score": 0.9371428571428572,
+  "test_accuracy": 0.9066666666666666
 }
