@@ -12,10 +12,10 @@
     "band_hz": 60.0
   },
   "best_params": {
-    "svc__C": 3.0,
+    "svc__C": 1.0,
     "svc__gamma": "scale"
   },
-  "cv_best_score": 0.9542857142857143,
+  "cv_best_score": 0.9657142857142856,
   "label_names": [
     "sakana",
     "shakana",
@@ -23,5 +23,5 @@
     "thakana",
     "tyakana"
   ],
-  "test_accuracy": 0.92
+  "test_accuracy": 0.9333333333333333
 }
