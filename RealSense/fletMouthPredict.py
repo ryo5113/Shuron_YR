@@ -188,6 +188,11 @@ def capture_and_process_3cams_to_dirs_save(
     mouth_dir.mkdir(parents=True, exist_ok=True)
     mpimg_dir.mkdir(parents=True, exist_ok=True)
 
+    base = raw_dir.parent.parent
+    all_root = base / "ALL" / "mouth_ply"
+
+    all_root.mkdir(parents=True, exist_ok=True)
+
     color_frames = [None] * len(pipelines)
     depth_frames = [None] * len(pipelines)
     aligns = [rs.align(rs.stream.color) for _ in pipelines]
@@ -367,7 +372,12 @@ def capture_and_process_3cams_to_dirs_save(
 
     idx = get_next_index(mouth_dir, subject_prefix)
     mouth_path = mouth_dir / f"{subject_prefix}_{idx}.ply"
+    all_label_dir = all_root / mouth_dir.name
+    all_label_dir.mkdir(parents=True, exist_ok=True)
+    all_path = all_label_dir / f"{subject_prefix}_{idx}.ply"
+
     o3d.io.write_point_cloud(str(mouth_path), mouth_out)
+    o3d.io.write_point_cloud(str(all_path), mouth_out)
     return True
 
 # -------------------------
