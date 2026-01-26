@@ -25,11 +25,11 @@ from sklearn.metrics import accuracy_score
 
 # 被験者ごとのデータルートを複数指定（例）
 DATA_ROOTS = [
-    Path(r"./PLY_dataset_3v2"),
+    Path(r"./NN/mouth_ply"),
 ]
 
 # 評価したいグリッドサイズを複数指定
-GRIDS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
+GRIDS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
 
 # どちらの特徴で評価するか
 # - "occ": 占有(0/1)  ※ faceTrain_SVM.py 相当

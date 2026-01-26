@@ -188,9 +188,8 @@ def capture_and_process_3cams_to_dirs_save(
     mouth_dir.mkdir(parents=True, exist_ok=True)
     mpimg_dir.mkdir(parents=True, exist_ok=True)
 
-    base = raw_dir.parent.parent
+    base = raw_dir.parent.parent.parent # raw_dir = <base>/<subject>/raw_ply/<label>
     all_root = base / "ALL" / "mouth_ply"
-
     all_root.mkdir(parents=True, exist_ok=True)
 
     color_frames = [None] * len(pipelines)
@@ -372,6 +371,7 @@ def capture_and_process_3cams_to_dirs_save(
 
     idx = get_next_index(mouth_dir, subject_prefix)
     mouth_path = mouth_dir / f"{subject_prefix}_{idx}.ply"
+    
     all_label_dir = all_root / mouth_dir.name
     all_label_dir.mkdir(parents=True, exist_ok=True)
     all_path = all_label_dir / f"{subject_prefix}_{idx}.ply"
