@@ -1,0 +1,16 @@
+{
+  "label_order": [
+    "A",
+    "I",
+    "U",
+    "E",
+    "O"
+  ],
+  "grid": 25,
+  "best_params": {
+    "svc__C": 10,
+    "svc__gamma": "auto"
+  },
+  "best_cv_score": 0.8434285714285714,
+  "test_accuracy": 0.8186666666666667
+}

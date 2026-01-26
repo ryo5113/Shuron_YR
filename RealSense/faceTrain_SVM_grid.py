@@ -25,16 +25,16 @@ from sklearn.metrics import accuracy_score
 
 # 被験者ごとのデータルートを複数指定（例）
 DATA_ROOTS = [
-    Path(r"./NN/mouth_ply"),
+    Path(r"./KH/mouth_ply"),
 ]
 
 # 評価したいグリッドサイズを複数指定
-GRIDS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
+GRIDS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
 
 # どちらの特徴で評価するか
 # - "occ": 占有(0/1)  ※ faceTrain_SVM.py 相当
 # - "dens": 点数カウント(密度) ※ faceTrain_SVM_dens.py 相当（相対密度化やN追加は使わない）
-FEATURE_MODE = "occ"  # "occ" or "dens"
+FEATURE_MODE = "dens"  # "occ" or "dens"
 
 TEST_SIZE = 0.3
 SEED = 42
