@@ -25,8 +25,8 @@ from sklearn.metrics import (
 # =========================
 # 設定（ここだけ編集）
 # =========================
-DATA_ROOT = Path(r"./ALL/mouth_ply")  # ラベル別フォルダを含むルート
-GRID = 25 # 占有グリッドサイズ
+DATA_ROOT = Path(r"./NN/mouth_ply")  # ラベル別フォルダを含むルート
+GRID = 30 # 占有グリッドサイズ
 TEST_SIZE = 0.3
 SEED = 42
 
@@ -34,7 +34,7 @@ SEED = 42
 LABEL_ORDER = ["A", "I", "U", "E", "O"]
 
 # 出力
-OUT_DIR = Path(r"./ALL/mouth_ply")
+OUT_DIR = Path(r"./NN/mouth_ply")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 OUT_MODEL = OUT_DIR / "ply_svm_model.joblib"
 OUT_CM_PNG = OUT_DIR / "confusion_matrix.png"
