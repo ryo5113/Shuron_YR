@@ -15,10 +15,10 @@ import matplotlib.pyplot as plt
 # 設定（スクリプト内で指定）
 # =========================
 ROOT_GLOBS = [
-    r"word_Ex1\10times_Ex1_A\**\*_segmented_pydub.txt",
-    r"word_Ex1\10times_Ex1_B\**\*_segmented_pydub.txt",
-    r"word_Ex1\10times_Ex1_C\**\*_segmented_pydub.txt",
-    r"word_Ex1\10times_Ex1_D\**\*_segmented_pydub.txt",
+    # r"word_Ex1\10times_Ex1_A\**\*_segmented_pydub.txt",
+    # r"word_Ex1\10times_Ex1_B\**\*_segmented_pydub.txt",
+    # r"word_Ex1\10times_Ex1_C\**\*_segmented_pydub.txt",
+    # r"word_Ex1\10times_Ex1_D\**\*_segmented_pydub.txt",
     r"word\10times_01\**\*_segmented_pydub.txt",
     r"word\10times_02\**\*_segmented_pydub.txt",
     r"word\10times_03\**\*_segmented_pydub.txt",
