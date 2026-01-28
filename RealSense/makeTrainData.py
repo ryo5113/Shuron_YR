@@ -86,10 +86,28 @@ def draw_surface_grid(ax, grid: int, lw: float = 0.2):
         ax.plot([0, 0], [i, i], [0, g], linewidth=lw)
         ax.plot([g, g], [i, i], [0, g], linewidth=lw)
 
-def setup_3d_axes(ax, grid: int, title: str):
-    ax.set_title(title)
+def setup_3d_axes(ax, grid: int, title: str,
+                  title_fs=48, label_fs=30, tick_fs=50,
+                  labelpad=22, tickpad=14, ticks=(0, 15, 30)):
+    ax.set_title(title, fontsize=title_fs, pad=18)
+
     ax.set_xlim(0, grid); ax.set_ylim(0, grid); ax.set_zlim(0, grid)
-    ax.set_xlabel("X"); ax.set_ylabel("Y"); ax.set_zlabel("Z")
+
+    # 軸ラベル（値と重ならないよう labelpad を大きく）
+    ax.set_xlabel("X", fontsize=label_fs, labelpad=labelpad)
+    ax.set_ylabel("Y", fontsize=label_fs, labelpad=labelpad)
+    ax.set_zlabel("Z", fontsize=label_fs, labelpad=labelpad)
+
+    # 目盛り数を減らす（fontsize=30でも重なりにくくする）
+    ax.set_xticks(list(ticks))
+    ax.set_yticks(list(ticks))
+    ax.set_zticks(list(ticks))
+
+    # 目盛り（tick label）を大きく＆軸から離す
+    ax.tick_params(axis="x", labelsize=tick_fs, pad=tickpad)
+    ax.tick_params(axis="y", labelsize=tick_fs, pad=tickpad)
+    ax.zaxis.set_tick_params(labelsize=tick_fs, pad=tickpad)
+
     try:
         ax.set_box_aspect((1, 1, 1))
     except Exception:
@@ -119,20 +137,26 @@ def save_voxel_only(occ: np.ndarray, grid: int, out_path: Path):
     plt.close(fig)
 
 def save_side_by_side(pts_grid: np.ndarray, occ: np.ndarray, grid: int, out_path: Path):
-    fig = plt.figure(figsize=(14, 7))
-    plt.rcParams["font.size"] = 25
+    fig = plt.figure(figsize=(24, 12))  # Word貼り付け用に大きめ
+
     ax1 = fig.add_subplot(121, projection="3d")
-    ax1.view_init(elev=20, azim=120)  # 例：既定の向きと逆側になるように調整（azimを180°側へ）
-    setup_3d_axes(ax1, grid, "Point cloud")
+    ax1.view_init(elev=20, azim=120)
+    setup_3d_axes(ax1, grid, "Point Cloud",
+                  title_fs=56, label_fs=45, tick_fs=45,
+                  labelpad=26, tickpad=16, ticks=(0, 10, 20, 30))
     draw_surface_grid(ax1, grid, lw=0.2)
     ax1.scatter(pts_grid[:, 0], pts_grid[:, 1], pts_grid[:, 2], s=1)
 
     ax2 = fig.add_subplot(122, projection="3d")
-    ax2.view_init(elev=20, azim=120)  # 例：既定の向きと逆側になるように調整（azimを180°側へ）
-    setup_3d_axes(ax2, grid, "Occupancy voxels")
+    ax2.view_init(elev=20, azim=120)
+    setup_3d_axes(ax2, grid, "Occupancy Voxels",
+                  title_fs=56, label_fs=45, tick_fs=45,
+                  labelpad=26, tickpad=16, ticks=(0, 10, 20, 30))
     ax2.voxels((occ > 0), edgecolor="k", linewidth=0.2)
 
-    fig.tight_layout()
+    # tight_layout だと3Dは詰まりやすいので、余白を固定で確保
+    fig.subplots_adjust(left=0.02, right=0.98, bottom=0.06, top=0.88, wspace=0.06)
+
     fig.savefig(out_path, dpi=300)
     plt.close(fig)
 
