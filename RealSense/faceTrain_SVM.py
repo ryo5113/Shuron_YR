@@ -25,7 +25,7 @@ from sklearn.metrics import (
 # =========================
 # 設定（ここだけ編集）
 # =========================
-DATA_ROOT = Path(r"./YR/mouth_ply")  # ラベル別フォルダを含むルート
+DATA_ROOT = Path(r"./ALL/mouth_ply")  # ラベル別フォルダを含むルート
 GRID = 30 # 占有グリッドサイズ
 TEST_SIZE = 0.3
 SEED = 42
@@ -34,7 +34,7 @@ SEED = 42
 LABEL_ORDER = ["A", "I", "U", "E", "O"]
 
 # 出力
-OUT_DIR = Path(r"./YR/mouth_ply")
+OUT_DIR = Path(r"./ALL/mouth_ply")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 OUT_MODEL = OUT_DIR / "ply_svm_model.joblib"
 OUT_CM_PNG = OUT_DIR / "confusion_matrix.png"
@@ -134,7 +134,7 @@ def build_pipeline() -> Pipeline:
 
 def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: list[str], dpi: int = 200) -> None:
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=label_names)
-    plt.rcParams["font.size"] = 16
+    plt.rcParams["font.size"] = 20
     disp.plot(values_format="d", xticks_rotation=45)
     disp.figure_.tight_layout()
     disp.figure_.savefig(path, dpi=dpi)

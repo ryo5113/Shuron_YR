@@ -98,6 +98,7 @@ def setup_3d_axes(ax, grid: int, title: str):
 def save_point_only(pts_grid: np.ndarray, grid: int, out_path: Path):
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection="3d")
+    ax.view_init(elev=20, azim=120)  # 例：既定の向きと逆側になるように調整（azimを180°側へ）
     setup_3d_axes(ax, grid, "Point cloud (normalized) + 30x30x30 grid")
     draw_surface_grid(ax, grid, lw=0.2)
     ax.scatter(pts_grid[:, 0], pts_grid[:, 1], pts_grid[:, 2], s=1)
@@ -108,6 +109,7 @@ def save_point_only(pts_grid: np.ndarray, grid: int, out_path: Path):
 def save_voxel_only(occ: np.ndarray, grid: int, out_path: Path):
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection="3d")
+    ax.view_init(elev=20, azim=120)  # 例：既定の向きと逆側になるように調整（azimを180°側へ）
     setup_3d_axes(ax, grid, "Occupancy voxels (30x30x30)")
     filled = (occ > 0)
     # 立方体（voxel）で表示。エッジも描く＝グリッドが見える
@@ -118,12 +120,15 @@ def save_voxel_only(occ: np.ndarray, grid: int, out_path: Path):
 
 def save_side_by_side(pts_grid: np.ndarray, occ: np.ndarray, grid: int, out_path: Path):
     fig = plt.figure(figsize=(14, 7))
+    plt.rcParams["font.size"] = 25
     ax1 = fig.add_subplot(121, projection="3d")
+    ax1.view_init(elev=20, azim=120)  # 例：既定の向きと逆側になるように調整（azimを180°側へ）
     setup_3d_axes(ax1, grid, "Point cloud")
     draw_surface_grid(ax1, grid, lw=0.2)
     ax1.scatter(pts_grid[:, 0], pts_grid[:, 1], pts_grid[:, 2], s=1)
 
     ax2 = fig.add_subplot(122, projection="3d")
+    ax2.view_init(elev=20, azim=120)  # 例：既定の向きと逆側になるように調整（azimを180°側へ）
     setup_3d_axes(ax2, grid, "Occupancy voxels")
     ax2.voxels((occ > 0), edgecolor="k", linewidth=0.2)
 
@@ -135,10 +140,16 @@ def main():
     pts_raw = load_points_from_ply(TARGET_PLY)
     pts_norm, occ = points_to_occ_and_norm(pts_raw, GRID)
     pts_grid = pts_to_grid_coords(pts_norm, GRID)
+    pts_grid_rot = pts_grid.copy()
+    pts_grid_rot[:, 1] = pts_grid[:, 2]              # Y' = Z
+    pts_grid_rot[:, 2] = GRID - pts_grid[:, 1]       # Z' = (GRID - Y)  ※上下反転
 
-    save_point_only(pts_grid, GRID, OUT_DIR / "point_only.png")
-    save_voxel_only(occ, GRID, OUT_DIR / "voxel_only.png")
-    save_side_by_side(pts_grid, occ, GRID, OUT_DIR / "side_by_side.png")
+    occ_rot = np.transpose(occ, (0, 2, 1))           # (X,Y,Z) -> (X,Z,Y)
+    occ_rot = np.flip(occ_rot, axis=2)               # Z' = GRID - Y に対応（上下反転）
+
+    save_point_only(pts_grid_rot, GRID, OUT_DIR / "point_only.png")
+    save_voxel_only(occ_rot, GRID, OUT_DIR / "voxel_only.png")
+    save_side_by_side(pts_grid_rot, occ_rot, GRID, OUT_DIR / "side_by_side.png")
 
     print("saved:", OUT_DIR)
 

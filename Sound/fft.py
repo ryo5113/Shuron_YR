@@ -24,14 +24,13 @@ AUDIO_FILES = [
     # r"word/10times_02/tha/cleaned_audio_chunks/voiced2/thakana.wav",
     # r"word/10times_02/tya/cleaned_audio_chunks/voiced2/tyakana.wav",
     r"word/10times_01/sakana1/cleaned_audio_chunks/voiced3/sakana.wav",
-    #r"word/10times_01/sakana1/cleaned_audio_chunks/voiced3/sakana.wav",
-    # r"word/Clone/sakana/tts_output12_chunks/voiced/sakana(Clone).wav",
-    # r"word/Clone/sakana/tts_output13_chunks/voiced/sakana(Clone2).wav",
-    # r"word/Clone/sakana/tts_output14_chunks/voiced/sakana(Clone3).wav",
-    # r"word/Clone/sakana/tts_output15_chunks/voiced/sakana(Clone4).wav",
+    r"word/10times_01/shakana1/cleaned_audio_chunks/voiced3/shakana.wav",
+    r"word/10times_01/takana1/cleaned_audio_chunks/voiced3/takana.wav",
+    r"word/10times_01/thakana1/cleaned_audio_chunks/voiced3/thakana.wav",
+    r"word/10times_01/tyakana1/cleaned_audio_chunks/voiced3/tyakana.wav",
 ]
 
-PLOT_MAX_HZ = 2000  # 描画上限周波数 [Hz]
+PLOT_MAX_HZ = 8000  # 描画上限周波数 [Hz]
 START_SEC = 0.0       # 解析開始位置 [s]
 DURATION_SEC = None   # 解析時間 [s]（Noneなら全区間）
 N_FFT = 65536          # Noneなら信号長に合わせる（必要なら 2**15 などを指定）
@@ -116,10 +115,14 @@ def main():
         if USE_DB:
             # 0割対策
             mag_db = 20.0 * np.log10(np.maximum(mag, 1e-12))
-            plt.plot(freq[mask], mag_db[mask], label=f"{path.name} (fs={fs}Hz)")
+            plt.plot(freq[mask], mag_db[mask], label=path.stem)
         else:
-            plt.plot(freq[mask], mag[mask], label=f"{path.name} (fs={fs}Hz)")
+            plt.plot(freq[mask], mag[mask], label=path.stem)
 
+    step_hz = 60
+    max_hz = PLOT_MAX_HZ
+    for hz in range(0, int(max_hz) + 1, step_hz):
+        plt.axvline(hz, color="red", linewidth=0.8, alpha=0.4)
 
     plt.xlim(0, PLOT_MAX_HZ)
     plt.xlabel("Frequency [Hz]", fontsize=25)
@@ -128,7 +131,7 @@ def main():
     plt.yticks(fontsize=25)
     plt.title("FFT Spectrum", fontsize=25)
     plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    #plt.legend(fontsize=25)
+    plt.legend(fontsize=25)
     plt.tight_layout()
     plt.show()
 
