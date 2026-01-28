@@ -8,6 +8,7 @@
 
 from pathlib import Path
 import json
+import csv
 import numpy as np
 import trimesh
 import matplotlib.pyplot as plt
@@ -25,7 +26,7 @@ from sklearn.metrics import accuracy_score
 
 # 被験者ごとのデータルートを複数指定（例）
 DATA_ROOTS = [
-    Path(r"./KH/mouth_ply"),
+    Path(r"./ALL/mouth_ply"),
 ]
 
 # 評価したいグリッドサイズを複数指定
@@ -34,7 +35,7 @@ GRIDS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
 # どちらの特徴で評価するか
 # - "occ": 占有(0/1)  ※ faceTrain_SVM.py 相当
 # - "dens": 点数カウント(密度) ※ faceTrain_SVM_dens.py 相当（相対密度化やN追加は使わない）
-FEATURE_MODE = "dens"  # "occ" or "dens"
+FEATURE_MODE = "occ"  # "occ" or "dens"
 
 TEST_SIZE = 0.3
 SEED = 42
@@ -43,17 +44,18 @@ LABEL_ORDER = ["A", "I", "U", "E", "O"]
 
 # SVM + GridSearch（faceTrain_* と同等の設定想定）
 SVM_KERNEL = "rbf"
-C_GRID = [0.1, 1, 3, 5, 10, 30, 100]
+C_GRID = [0.1, 1, 3, 5, 10, 20]
 GAMMA_GRID = ["scale", "auto"]
 CLASS_WEIGHT = None
 PROBABILITY = True
 CV_SPLITS = 5
 
 # 出力
-OUT_DIR = Path("./grid_sweep_results")
+OUT_DIR = Path("./grid_sweep_results_csv")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 OUT_PNG = OUT_DIR / "grid_sweep_accuracy.png"
 OUT_JSON = OUT_DIR / "grid_sweep_accuracy.json"
+OUT_CSV = OUT_DIR / "grid_sweep_accuracy.csv"
 
 # =========================
 
@@ -232,6 +234,28 @@ def plot_results(results_by_subject: dict, grids: list[int], out_png: Path):
     plt.savefig(out_png, dpi=200)
     plt.close()
 
+def save_csv(all_runs: list[dict], out_csv: Path):
+    # 後で「被験者別データ + 全被験者統合データ」で比較しやすいように、
+    # data_rootも出力しておく（後処理で Subject1.. などに置き換え可能）
+    fieldnames = [
+        "data_root",
+        "feature_mode",
+        "grid",
+        "test_accuracy",
+        "best_cv_score",
+        "feature_dim",
+        "samples",
+        "best_params",
+    ]
+    with out_csv.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames)
+        w.writeheader()
+        for r in all_runs:
+            row = dict(r)
+            # best_params は dict なので JSON文字列にしてCSVに入れる
+            row["best_params"] = json.dumps(row["best_params"], ensure_ascii=False)
+            w.writerow(row)
+
 
 def main():
     all_runs = []
@@ -262,6 +286,9 @@ def main():
     OUT_JSON.write_text(json.dumps(out_obj, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Saved json : {OUT_JSON}")
 
+    # ★CSV保存（追加）
+    save_csv(all_runs, OUT_CSV)
+    print(f"Saved csv  : {OUT_CSV}")
 
 if __name__ == "__main__":
     main()

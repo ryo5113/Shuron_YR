@@ -39,11 +39,6 @@
     "class_weight": "balanced",
     "probability": true
   },
-  "cv_mean_accuracy": 0.9542857142857143,
-  "test_accuracy": 0.9466666666666667,
-  "export_reasons": [
-    "must_export_60Hz",
-    "top3_cv_mean_accuracy",
-    "top3_test_accuracy"
-  ]
+  "cv_best_mean_accuracy": 0.9542857142857143,
+  "test_accuracy": 0.9466666666666667
 }

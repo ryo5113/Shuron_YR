@@ -134,7 +134,7 @@ def build_pipeline() -> Pipeline:
 
 def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: list[str], dpi: int = 200) -> None:
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=label_names)
-    plt.rcParams["font.size"] = 20
+    plt.rcParams["font.size"] = 24
     disp.plot(values_format="d", xticks_rotation=45)
     disp.figure_.tight_layout()
     disp.figure_.savefig(path, dpi=dpi)

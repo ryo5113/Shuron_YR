@@ -49,7 +49,8 @@ TARGET_SR = 48000 # サンプリング周波数 [Hz]
 FIXED_NFFT = 65536
 
 # バンド幅候補（band_hz）
-BAND_HZ_LIST = [1, 2, 3, 4, 5, 8, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+# BAND_HZ_LIST = [1, 2, 3, 4, 5, 8, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+BAND_HZ_LIST = [60]
 
 # SVM（poly固定）
 SVM_KERNEL = "rbf"
@@ -204,7 +205,7 @@ def save_json(path: Path, obj: Any) -> None:
 def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: List[str], vmax: int) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        plt.rcParams["font.size"] = 16
+        plt.rcParams["font.size"] = 22
         disp = ConfusionMatrixDisplay(cm, display_labels=label_names)
         disp.plot(values_format="d")
         # ここで色スケールを固定（imshowのclimを固定）
@@ -214,7 +215,7 @@ def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: List[str]
         # 既に作られているcolorbarにも反映（作成済みなら）
         fig = plt.gcf()
         ax = plt.gca()
-        ax.tick_params(axis='x', rotation=45)
+        ax.tick_params(axis='x', rotation=60)
 
         plt.tight_layout(pad=1.2)
         plt.savefig(path, dpi=200)
@@ -226,7 +227,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--wav_root", type=str, default="word_Ex1/svm_wav_dataset_all",
                         help="ラベル別にwavが入っているルートフォルダ")
-    parser.add_argument("--model_dir", type=str, default="word_Ex1//trained_all_svm_model_band",
+    parser.add_argument("--model_dir", type=str, default="word_Ex1/svm_wav_dataset_all/trained_all_svm_model_band",
                         help="出力先フォルダ")
     args = parser.parse_args()
 

@@ -1,6 +1,6 @@
 {
-  "wav_root": "word_Ex1\\10times_Ex1_D\\svm_wav_dataset_D",
-  "n_samples": 250,
+  "wav_root": "word_Ex1\\svm_wav_dataset_all",
+  "n_samples": 1250,
   "labels": [
     "sakana",
     "shakana",
@@ -34,16 +34,11 @@
   },
   "svm": {
     "kernel": "rbf",
-    "svm__C": 3.0,
+    "svm__C": 10.0,
     "svm__gamma": "scale",
     "class_weight": "balanced",
     "probability": true
   },
-  "cv_mean_accuracy": 0.9542857142857143,
-  "test_accuracy": 0.9466666666666667,
-  "export_reasons": [
-    "must_export_60Hz",
-    "top3_cv_mean_accuracy",
-    "top3_test_accuracy"
-  ]
+  "cv_best_mean_accuracy": 0.8297142857142857,
+  "test_accuracy": 0.888
 }
