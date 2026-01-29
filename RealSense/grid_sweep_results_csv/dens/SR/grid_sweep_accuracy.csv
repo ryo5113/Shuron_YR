@@ -1,0 +1,11 @@
+data_root,feature_mode,grid,test_accuracy,best_cv_score,feature_dim,samples,best_params
+SR\mouth_ply,dens,5,0.92,0.9257142857142858,125,250,"{""svc__C"": 10, ""svc__gamma"": ""auto""}"
+SR\mouth_ply,dens,10,0.8533333333333334,0.9028571428571428,1000,250,"{""svc__C"": 20, ""svc__gamma"": ""scale""}"
+SR\mouth_ply,dens,15,0.92,0.8857142857142858,3375,250,"{""svc__C"": 5, ""svc__gamma"": ""auto""}"
+SR\mouth_ply,dens,20,0.9066666666666666,0.8971428571428571,8000,250,"{""svc__C"": 10, ""svc__gamma"": ""auto""}"
+SR\mouth_ply,dens,25,0.88,0.9199999999999999,15625,250,"{""svc__C"": 10, ""svc__gamma"": ""auto""}"
+SR\mouth_ply,dens,30,0.9066666666666666,0.9085714285714286,27000,250,"{""svc__C"": 10, ""svc__gamma"": ""auto""}"
+SR\mouth_ply,dens,35,0.9066666666666666,0.9371428571428572,42875,250,"{""svc__C"": 5, ""svc__gamma"": ""auto""}"
+SR\mouth_ply,dens,40,0.8933333333333333,0.9314285714285715,64000,250,"{""svc__C"": 5, ""svc__gamma"": ""auto""}"
+SR\mouth_ply,dens,45,0.9066666666666666,0.9314285714285715,91125,250,"{""svc__C"": 5, ""svc__gamma"": ""auto""}"
+SR\mouth_ply,dens,50,0.9066666666666666,0.9314285714285715,125000,250,"{""svc__C"": 5, ""svc__gamma"": ""auto""}"

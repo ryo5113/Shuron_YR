@@ -1,0 +1,11 @@
+data_root,feature_mode,grid,test_accuracy,best_cv_score,feature_dim,samples,best_params
+YR\mouth_ply,occ,5,0.8666666666666667,0.8457142857142858,125,250,"{""svc__C"": 3, ""svc__gamma"": ""scale""}"
+YR\mouth_ply,occ,10,0.8666666666666667,0.9199999999999999,1000,250,"{""svc__C"": 10, ""svc__gamma"": ""auto""}"
+YR\mouth_ply,occ,15,0.8666666666666667,0.9085714285714286,3375,250,"{""svc__C"": 3, ""svc__gamma"": ""scale""}"
+YR\mouth_ply,occ,20,0.88,0.9485714285714286,8000,250,"{""svc__C"": 20, ""svc__gamma"": ""auto""}"
+YR\mouth_ply,occ,25,0.92,0.9314285714285713,15625,250,"{""svc__C"": 20, ""svc__gamma"": ""auto""}"
+YR\mouth_ply,occ,30,0.9066666666666666,0.9371428571428572,27000,250,"{""svc__C"": 20, ""svc__gamma"": ""auto""}"
+YR\mouth_ply,occ,35,0.9066666666666666,0.9485714285714286,42875,250,"{""svc__C"": 10, ""svc__gamma"": ""auto""}"
+YR\mouth_ply,occ,40,0.9066666666666666,0.9142857142857144,64000,250,"{""svc__C"": 10, ""svc__gamma"": ""auto""}"
+YR\mouth_ply,occ,45,0.8933333333333333,0.9142857142857143,91125,250,"{""svc__C"": 10, ""svc__gamma"": ""auto""}"
+YR\mouth_ply,occ,50,0.9066666666666666,0.9085714285714286,125000,250,"{""svc__C"": 10, ""svc__gamma"": ""auto""}"
