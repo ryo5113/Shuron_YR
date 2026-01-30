@@ -4,12 +4,12 @@ from pathlib import Path
 
 # (label, csv_path)
 CSV_LIST = [
-    ("Subject1", r"./grid_sweep_results_csv/occ/NN/grid_sweep_accuracy.csv"),
-    ("Subject2", r"./grid_sweep_results_csv/occ/NT/grid_sweep_accuracy.csv"),
-    ("Subject3", r"./grid_sweep_results_csv/occ/KH/grid_sweep_accuracy.csv"),
-    ("Subject4", r"./grid_sweep_results_csv/occ/SR/grid_sweep_accuracy.csv"),
-    ("Subject5", r"./grid_sweep_results_csv/occ/YR/grid_sweep_accuracy.csv"),
-    ("All",      r"./grid_sweep_results_csv/occ/ALL/grid_sweep_accuracy.csv"),
+    ("Subject1", r"./grid_sweep_results_csv/dens/NN/grid_sweep_accuracy.csv"),
+    ("Subject2", r"./grid_sweep_results_csv/dens/NT/grid_sweep_accuracy.csv"),
+    ("Subject3", r"./grid_sweep_results_csv/dens/KH/grid_sweep_accuracy.csv"),
+    ("Subject4", r"./grid_sweep_results_csv/dens/SR/grid_sweep_accuracy.csv"),
+    ("Subject5", r"./grid_sweep_results_csv/dens/YR/grid_sweep_accuracy.csv"),
+    ("All",      r"./grid_sweep_results_csv/dens/ALL/grid_sweep_accuracy.csv"),
 ]
 
 OUT_DIR = Path("./plots_from_multi_csv")

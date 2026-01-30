@@ -26,7 +26,7 @@ from sklearn.metrics import accuracy_score
 
 # 被験者ごとのデータルートを複数指定（例）
 DATA_ROOTS = [
-    Path(r"./KH/mouth_ply"),
+    Path(r"./ALL/mouth_ply"),
 ]
 
 # 評価したいグリッドサイズを複数指定

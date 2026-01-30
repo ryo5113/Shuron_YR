@@ -42,6 +42,8 @@
   "cv_mean_accuracy": 0.8685714285714285,
   "test_accuracy": 0.8933333333333333,
   "export_reasons": [
-    "must_export_60Hz"
+    "must_export_60Hz",
+    "top3_cv_mean_accuracy",
+    "top3_test_accuracy"
   ]
 }

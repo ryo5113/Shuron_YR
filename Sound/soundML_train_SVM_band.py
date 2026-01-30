@@ -225,9 +225,9 @@ def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: List[str]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--wav_root", type=str, default="word_Ex1/svm_wav_dataset_all",
+    parser.add_argument("--wav_root", type=str, default="word_Ex1/SVM_wav_dataset_Y",
                         help="ラベル別にwavが入っているルートフォルダ")
-    parser.add_argument("--model_dir", type=str, default="word_Ex1/svm_wav_dataset_all/trained_all_svm_model_band",
+    parser.add_argument("--model_dir", type=str, default="word_Ex1/SVM_wav_dataset_Y/trained_A_svm_model_band",
                         help="出力先フォルダ")
     args = parser.parse_args()
 

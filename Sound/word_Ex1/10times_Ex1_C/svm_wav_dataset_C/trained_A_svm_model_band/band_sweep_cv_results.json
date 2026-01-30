@@ -1,0 +1,12 @@
+[
+  {
+    "band_hz": 60.0,
+    "feature_dim": 134,
+    "cv_mean_accuracy": 0.9314285714285713,
+    "test_accuracy": 0.9733333333333334,
+    "best_params": {
+      "svm__C": 1.0,
+      "svm__gamma": "scale"
+    }
+  }
+]
