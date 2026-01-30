@@ -11,6 +11,7 @@ from datetime import datetime
 import traceback
 import base64
 import json
+import time
 
 import flet as ft
 import cv2
@@ -20,6 +21,7 @@ import open3d as o3d
 import joblib
 import trimesh
 import matplotlib.pyplot as plt
+import shutil
 
 from sklearn.model_selection import train_test_split, StratifiedKFold, GridSearchCV
 from sklearn.pipeline import Pipeline
@@ -85,6 +87,29 @@ def occupancy_grid_features_count(points: np.ndarray, grid: int) -> np.ndarray:
 
     return counts.reshape(-1)
 
+def occupancy_grid_features_occ(points: np.ndarray, grid: int) -> np.ndarray:
+    pts = points.astype(np.float64, copy=True)
+
+    # center
+    pts -= pts.mean(axis=0, keepdims=True)
+
+    # scale
+    max_abs = np.max(np.abs(pts))
+    if max_abs > 0:
+        pts /= max_abs
+
+    # clip
+    pts = np.clip(pts, -1.0, 1.0)
+
+    # [-1,1] -> [0, grid-1]
+    idx = ((pts + 1.0) * 0.5 * grid).astype(np.int64)
+    idx = np.clip(idx, 0, grid - 1)
+
+    occ = np.zeros((grid, grid, grid), dtype=np.uint8)
+    occ[idx[:, 0], idx[:, 1], idx[:, 2]] = 1
+
+    return occ.reshape(-1).astype(np.float64)
+
 def load_points_from_ply(ply_path: Path) -> np.ndarray:
     geom = trimesh.load(str(ply_path), process=False)
 
@@ -101,7 +126,15 @@ def load_points_from_ply(ply_path: Path) -> np.ndarray:
         raise ValueError(f"No valid points in {ply_path}")
     return pts
 
-def collect_dataset_fixed_order(data_root: Path, grid: int, label_order: list[str]):
+def extract_features(points: np.ndarray, grid: int, feature_mode: str) -> np.ndarray:
+    if feature_mode == "occ":
+        return occupancy_grid_features_occ(points, grid=grid)
+    elif feature_mode == "count":
+        return occupancy_grid_features_count(points, grid=grid)  # 既存をそのまま使用
+    else:
+        raise ValueError(f"Unknown feature_mode: {feature_mode}")
+
+def collect_dataset_fixed_order(data_root: Path, grid: int, label_order: list[str], feature_mode: str = "occ"):
     if not data_root.exists():
         raise FileNotFoundError(f"DATA_ROOT not found: {data_root}")
 
@@ -113,7 +146,7 @@ def collect_dataset_fixed_order(data_root: Path, grid: int, label_order: list[st
 
         for pf in sorted(lab_dir.glob("*.ply")):
             pts = load_points_from_ply(pf)
-            feat = occupancy_grid_features_count(pts, grid=grid)
+            feat = extract_features(pts, grid=grid, feature_mode=feature_mode)
             X_list.append(feat)
             y_list.append(lab)
 
@@ -153,8 +186,9 @@ def predict_from_mouth_pcd(mouth_pcd: o3d.geometry.PointCloud, payload: dict):
         return None, None, None
 
     pts = np.asarray(mouth_pcd.points, dtype=np.float64)
-    grid = int(payload.get("grid", 20))
-    feat = occupancy_grid_features_count(pts, grid=grid).reshape(1, -1)
+    grid = int(payload.get("grid", 30))
+    feature_mode = str(payload.get("feature_mode", "occ"))
+    feat = extract_features(pts, grid=grid, feature_mode=feature_mode).reshape(1, -1)
 
     model = payload["model"]
     label_order = payload["label_order"]
@@ -187,6 +221,7 @@ def capture_and_process_3cams_to_dirs_save(
     raw_dir.mkdir(parents=True, exist_ok=True)
     mouth_dir.mkdir(parents=True, exist_ok=True)
     mpimg_dir.mkdir(parents=True, exist_ok=True)
+    saved_paths: list[Path] = []
 
     base = raw_dir.parent.parent.parent # raw_dir = <base>/<subject>/raw_ply/<label>
     all_root = base / "ALL" / "mouth_ply"
@@ -241,6 +276,7 @@ def capture_and_process_3cams_to_dirs_save(
     for i, pcd_raw in enumerate(raw_pcds):
         raw_path = raw_dir / f"face_cam{i}_raw_{int(pitch_label_deg)}deg_{timestamp}.ply"
         o3d.io.write_point_cloud(str(raw_path), pcd_raw)
+        saved_paths.append(raw_path)
 
     base_pcd = pcds[0]
     T_1_to_0_icp = core.icp_to_cam0(pcds[1], base_pcd, core.T_1_to_0, source_cam_index=1)
@@ -257,6 +293,7 @@ def capture_and_process_3cams_to_dirs_save(
 
     merged_path = raw_dir / f"face_3cams_geom_merged_{int(pitch_label_deg)}deg_{timestamp}.ply"
     o3d.io.write_point_cloud(str(merged_path), merged_pcd)
+    saved_paths.append(merged_path)
 
     lip_results = []
     for cam_idx in range(len(core.SERIALS)):
@@ -307,6 +344,7 @@ def capture_and_process_3cams_to_dirs_save(
     annotated = selected.get("annotated_image", None)
     if annotated is not None:
         img_path = mpimg_dir / f"lip_cam{cam_index}_{timestamp}.png"
+        saved_paths.append(img_path)
         cv2.imwrite(str(img_path), annotated)
 
     h, w, _ = np.asanyarray(color_frames[cam_index].get_data()).shape
@@ -371,14 +409,16 @@ def capture_and_process_3cams_to_dirs_save(
 
     idx = get_next_index(mouth_dir, subject_prefix)
     mouth_path = mouth_dir / f"{subject_prefix}_{idx}.ply"
+    saved_paths.append(mouth_path)
     
     all_label_dir = all_root / mouth_dir.name
     all_label_dir.mkdir(parents=True, exist_ok=True)
     all_path = all_label_dir / f"{subject_prefix}_{idx}.ply"
+    saved_paths.append(all_path)
 
     o3d.io.write_point_cloud(str(mouth_path), mouth_out)
     o3d.io.write_point_cloud(str(all_path), mouth_out)
-    return True
+    return saved_paths
 
 # -------------------------
 # 推論用収録（保存せず mouth_out を返す）
@@ -570,6 +610,8 @@ class AppState:
     stop_event: threading.Event | None = None
     worker_thread: threading.Thread | None = None
     capture_count : int = 0
+    last_saved_paths: list[Path] | None = None
+    last_saved_label: str | None = None
 
     # 推論
     infer_parent_dir: Path | None = None
@@ -587,6 +629,7 @@ def protocol_worker_capture(
     state: AppState,
     set_status_threadsafe,
     set_count_threadsafe,
+    set_done_threadsafe,
     preview: ft.Image,
     capture_event: threading.Event,
     quit_event: threading.Event,
@@ -622,6 +665,7 @@ def protocol_worker_capture(
         set_status_threadsafe("収録中：Flet画面にフォーカスして 'c' で撮影（ARマーカー必須）")
 
         is_processing = False
+        success_flash_until = 0.0
 
         while not state.stop_event.is_set() and not quit_event.is_set():
             frames0 = pipelines[0].wait_for_frames()
@@ -663,8 +707,12 @@ def protocol_worker_capture(
                 break
 
             capture_ready = matched_any
-            new_color = ft.Colors.RED_100 if not capture_ready else ft.Colors.WHITE
+            if time.time() < success_flash_until:
+                new_color = ft.Colors.BLUE_100
+            else:
+                new_color = ft.Colors.RED_100 if not capture_ready else ft.Colors.WHITE
             page.run_thread(lambda c=new_color: setattr(train_root, "bgcolor", c))
+            page.run_thread(page.update)
 
             cv2.putText(
                 frame_vis, f"CAPTURE: {'READY' if capture_ready else 'NG'}",
@@ -694,7 +742,7 @@ def protocol_worker_capture(
                 if capture_ready and (not is_processing) and (R_tag is not None) and (t_tag is not None):
                     is_processing = True
                     try:
-                        saved = capture_and_process_3cams_to_dirs_save(
+                        saved_paths = capture_and_process_3cams_to_dirs_save(
                             pipelines, profiles,
                             pitch_label_deg=pitch_deg_smooth,
                             tag_R=R_tag, tag_t=t_tag,
@@ -703,12 +751,16 @@ def protocol_worker_capture(
                             mpimg_dir=mpimg_dir_label,
                             subject_prefix=state.subject_dir.name,
                         )
-                        if saved:
+                        if saved_paths:
+                            state.last_saved_paths = saved_paths
                             state.capture_count += 1
                             # count_view を更新（後述の set_count_threadsafe を使う）
                             set_count_threadsafe(state.capture_count)
+                            set_done_threadsafe("撮影成功")
+                            success_flash_until = time.time() + 1.5  # 例：1.5秒だけ青
                             set_status_threadsafe(f"保存しました（COUNT={state.capture_count}, pitch={pitch_deg_smooth:.2f}deg）")
                         else:
+                            set_done_threadsafe("撮影失敗")
                             set_status_threadsafe("保存失敗（口検出/切り出し失敗など）")
                     except Exception as e:
                         set_status_threadsafe(f"保存処理でエラー: {e}")
@@ -733,10 +785,12 @@ def protocol_worker_infer(
     page: ft.Page,
     state: AppState,
     set_status_threadsafe,
+    set_done_threadsafe,
     set_pred_threadsafe,
     preview: ft.Image,
     capture_event: threading.Event,
     quit_event: threading.Event,
+    infer_root: ft.Container,
 ):
     pipelines = []
     profiles = []
@@ -759,6 +813,9 @@ def protocol_worker_infer(
         set_status_threadsafe("推論中：Flet画面にフォーカスして 'c' で推論（ARマーカー必須）")
         is_processing = False
         last_pred_overlay = "PRED: --"
+
+        success_flash_until = 0.0
+        is_processing = False
 
         while not state.stop_event_infer.is_set() and not quit_event.is_set():
             frames0 = pipelines[0].wait_for_frames()
@@ -800,6 +857,13 @@ def protocol_worker_infer(
                 break
 
             capture_ready = matched_any
+            if time.time() < success_flash_until:
+                new_color = ft.Colors.BLUE_100
+            else:
+                new_color = ft.Colors.RED_100 if not capture_ready else ft.Colors.WHITE
+
+            page.run_thread(lambda c=new_color: setattr(infer_root, "bgcolor", c))
+            page.run_thread(page.update)
 
             cv2.putText(
                 frame_vis, f"CAPTURE: {'READY' if capture_ready else 'NG'}",
@@ -843,6 +907,7 @@ def protocol_worker_infer(
                         if mouth_local is None:
                             last_pred_overlay = "PRED: -- (mouth detect failed)"
                             set_pred_threadsafe(last_pred_overlay)
+                            set_done_threadsafe("推論失敗")
                         else:
                             pred_label, pred_val, _ = predict_from_mouth_pcd(mouth_local, state.model_payload)
                             if pred_label is None:
@@ -853,6 +918,8 @@ def protocol_worker_infer(
                                 else:
                                     last_pred_overlay = f"PRED: {pred_label} ({pred_val:.1f}%)"
                             set_pred_threadsafe(last_pred_overlay)
+                            success_flash_until = time.time() + 2.0
+                            set_done_threadsafe("推論成功")
                     except Exception as e:
                         last_pred_overlay = f"PRED: ERROR ({e})"
                         set_pred_threadsafe(last_pred_overlay)
@@ -875,8 +942,9 @@ def protocol_worker_infer(
 # -------------------------
 def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
     # faceTrain_SVM_dens.py 相当（保存先だけ親フォルダに変更）
-    # 設定（必要ならここを変更）
-    GRID = 25
+    # 設定（必要に応じて変更）
+    GRID = 30
+    FEATURE_MODE = "occ"
     TEST_SIZE = 0.3
     SEED = 42
     LABEL_ORDER = ["A", "I", "U", "E", "O"]
@@ -896,7 +964,7 @@ def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
 
     set_status_threadsafe(f"学習開始：DATA_ROOT={data_root}")
 
-    X, y_str = collect_dataset_fixed_order(data_root, GRID, LABEL_ORDER)
+    X, y_str = collect_dataset_fixed_order(data_root, GRID, LABEL_ORDER, feature_mode=FEATURE_MODE)
     label_to_id = {lab: i for i, lab in enumerate(LABEL_ORDER)}
     y = np.array([label_to_id[s] for s in y_str], dtype=np.int64)
 
@@ -942,6 +1010,7 @@ def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
         "model": best_model,
         "label_order": LABEL_ORDER,
         "grid": GRID,
+        "feature_mode": FEATURE_MODE,
         "best_params": grid.best_params_,
         "best_cv_score": float(grid.best_score_),
         "test_accuracy": acc,
@@ -951,6 +1020,7 @@ def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
     meta = {
         "label_order": LABEL_ORDER,
         "grid": GRID,
+        "feature_mode": FEATURE_MODE,
         "best_params": grid.best_params_,
         "best_cv_score": float(grid.best_score_),
         "test_accuracy": acc,
@@ -975,6 +1045,7 @@ def main(page: ft.Page):
     page.window_width = 1080
     page.window_height = 720
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+    page.scroll = ft.ScrollMode.AUTO
 
     state = AppState()
 
@@ -985,7 +1056,7 @@ def main(page: ft.Page):
     count_view = ft.Text(value="COUNT: 0", size=24, weight=ft.FontWeight.BOLD)
     paths_view = ft.Text(value="", selectable=True)
     pred_view = ft.Text(value="PRED: --", selectable=True, size=30)
-
+    done_view = ft.Text(value="", size=32, weight=ft.FontWeight.BOLD) 
     
     # ---- 学習タブ：親フォルダ作成 + ラベル収録 + 学習開始 ----
     subject_name = ft.TextField(label="親フォルダ名（被験者名など）")
@@ -1047,6 +1118,10 @@ def main(page: ft.Page):
         status.value = msg
         page.update()
 
+    def set_done(msg: str):
+        done_view.value = msg
+        page.update()
+
     def set_pred(msg: str):
         pred_view.value = msg
         page.update()
@@ -1056,6 +1131,9 @@ def main(page: ft.Page):
 
     def set_pred_threadsafe(msg: str):
         page.run_thread(lambda: set_pred(msg))
+
+    def set_done_threadsafe(msg: str):
+        page.run_thread(lambda: set_done(msg))
 
     def set_paths():
         if state.subject_dir is None:
@@ -1096,6 +1174,31 @@ def main(page: ft.Page):
         set_status(f"作成しました: {subject_dir}")
         set_paths()
 
+    def on_retake(e):
+        if not state.last_saved_paths:
+            status.value = "再撮影：削除対象がありません（直前の保存が未実施 or 既に削除済み）"
+            page.update()
+            return
+
+        # 直前の保存ファイルを削除
+        for p in state.last_saved_paths:
+            try:
+                if p.exists():
+                    p.unlink()
+            except IsADirectoryError:
+                shutil.rmtree(p, ignore_errors=True)
+            except Exception as ex:
+                status.value = f"再撮影：削除に失敗: {p} / {ex}"
+                page.update()
+                return
+
+        state.last_saved_paths = []
+        state.capture_count = max(0, state.capture_count - 1)
+        count_view.value = f"COUNT: {state.capture_count}"  # もし直接更新しているなら
+
+        status.value = "直前データを削除しました。もう一度 'c' で撮影してください。"
+        page.update()
+
     def on_start_capture_for_label(label: str):
         if state.subject_dir is None:
             set_status("先に親フォルダを作成してください。")
@@ -1115,7 +1218,7 @@ def main(page: ft.Page):
 
         t = threading.Thread(
             target=protocol_worker_capture,
-            args=(page, state, set_status_threadsafe, set_count_threadsafe, preview, capture_event, quit_event, train_root),
+            args=(page, state, set_status_threadsafe, set_count_threadsafe, set_done_threadsafe, preview, capture_event, quit_event, train_root),
             daemon=True
         )
         state.worker_thread = t
@@ -1184,7 +1287,7 @@ def main(page: ft.Page):
 
         t = threading.Thread(
             target=protocol_worker_infer,
-            args=(page, state, set_status_threadsafe, set_pred_threadsafe, preview, capture_event, quit_event),
+            args=(page, state, set_status_threadsafe, set_done_threadsafe, set_pred_threadsafe, preview, capture_event, quit_event, infer_root),
             daemon=True
         )
         state.worker_thread_infer = t
@@ -1210,6 +1313,7 @@ def main(page: ft.Page):
                 subject_name,
                 ft.Row([
                     reg_button(ft.ElevatedButton(text="親フォルダ作成", on_click=on_create_folder)),
+                    reg_button(ft.ElevatedButton(text="再撮影", on_click=on_retake)),
                     reg_button(ft.ElevatedButton(text="収録停止", on_click=on_stop_capture)),
                     reg_button(ft.ElevatedButton(text="学習開始（モデル保存）", on_click=on_train_start)),
                 ], alignment=ft.MainAxisAlignment.CENTER),
@@ -1222,6 +1326,7 @@ def main(page: ft.Page):
                 preview,
                 ft.Divider(),
                 count_view,
+                done_view,
                 status,
                 paths_view,
                 ft.Text("※Flet画面にフォーカスして 'c'（ARマーカー検出時のみ） / 'q'で停止要求", size=12),
@@ -1238,7 +1343,7 @@ def main(page: ft.Page):
     def build_train_page():
         return train_root
 
-    def build_infer_page():
+    def build_infer_content():
         return ft.Column(
             [
                 ft.Row(
@@ -1257,6 +1362,7 @@ def main(page: ft.Page):
                 ft.Text("プレビュー（共通）"),
                 preview,
                 ft.Divider(),
+                done_view,
                 pred_view,
                 status,
                 ft.Text("※Flet画面にフォーカスして 'c'（ARマーカー検出時のみ） / 'q'で停止要求", size=12),
@@ -1264,6 +1370,14 @@ def main(page: ft.Page):
             spacing=10,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
+    infer_root = ft.Container(
+        bgcolor=ft.Colors.WHITE,
+        content=build_infer_content(),
+        padding=10
+    )
+
+    def build_infer_page():
+        return infer_root
 
     def build_home_page():
         return ft.Column(

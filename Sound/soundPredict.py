@@ -355,12 +355,12 @@ def main(page: ft.Page):
         model_parent.width = content_w  # 推論のモデル親フォルダは長くなりがちなので広め
 
         # ボタン幅
-        bw = max(140, int(w * 0.12))
+        bw = max(100, int(w * 0.12))
         for b in all_buttons:
             b.width = bw
 
         # 推論結果の表示領域：画面高さに応じて確保（小さい画面で見切れ対策）
-        #results_panel.height = max(200, int(h * 0.35))
+        results_panel.height = max(200, int(h * 0.35))
 
         page.update()
 
@@ -609,9 +609,9 @@ def main(page: ft.Page):
     results_panel = ft.Container(
         content=ft.ListView(
             controls=[
-                ft.Row([results_table], alignment=ft.MainAxisAlignment.CENTER)
+                ft.Row([results_table], alignment=ft.MainAxisAlignment.CENTER, scroll=ft.ScrollMode.AUTO)
             ],
-            expand=False,                      # 縦スクロール領域を確保
+            expand=True,                      # 縦スクロール領域を確保
             spacing=0,
             padding=0,
         ),
