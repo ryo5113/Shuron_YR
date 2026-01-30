@@ -15,7 +15,7 @@ CSV_LIST = [
 OUT_DIR = Path("./plots_from_multi_csv")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-FIG_W, FIG_H = 12, 7
+FIG_W, FIG_H = 16, 10
 DPI = 200
 AS_PERCENT = False  # Trueなら 0.923 -> 92.3 [%]
 
@@ -69,7 +69,7 @@ def compute_mean_except_all(non_all_frames: list[pd.DataFrame]) -> pd.DataFrame:
 
 def plot_mode(mode_name: str, out_png: Path):
     plt.figure(figsize=(FIG_W, FIG_H))
-    plt.rcParams["font.size"] = 30
+    plt.rcParams["font.size"] = 40
 
     any_plotted = False
     non_all_frames = []
@@ -114,12 +114,13 @@ def plot_mode(mode_name: str, out_png: Path):
     else:
         print("[WARN] no non-All data -> mean cannot be computed")
 
-    ylab = "test_accuracy [%]" if AS_PERCENT else "test_accuracy"
-    plt.xlabel("grid", fontsize=30)
-    plt.ylabel(ylab, fontsize=30)
-    plt.title(f"Grid vs Test accuracy ({mode_name})", fontsize=30)
+    ylab = "Test Accuracy [%]" if AS_PERCENT else "Test Accuracy"
+    plt.xlabel("Grid Width", fontsize=40)
+    plt.ylabel(ylab, fontsize=40)
+    plt.yticks([0.5,0.6,0.7,0.8,0.9,1.0], fontsize=40)
+    plt.title(f"Accuracy relative to Grid Width ({mode_name})", fontsize=38)
     plt.grid(True)
-    plt.legend(bbox_to_anchor=(1, 1), loc="upper left", fontsize=18)
+    plt.legend(bbox_to_anchor=(1, 1), loc="upper left", fontsize=30)
     plt.tight_layout()
 
     if any_plotted:

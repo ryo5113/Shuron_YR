@@ -6,11 +6,11 @@
     "E",
     "O"
   ],
-  "grid": 25,
+  "grid": 30,
   "best_params": {
-    "svc__C": 10,
+    "svc__C": 20,
     "svc__gamma": "auto"
   },
-  "best_cv_score": 0.8514285714285714,
-  "test_accuracy": 0.8266666666666667
+  "best_cv_score": 0.9371428571428572,
+  "test_accuracy": 0.9066666666666666
 }
