@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 import json
 import traceback
+import re
 
 import flet as ft
 
@@ -70,15 +71,28 @@ def safe_name(name: str) -> str:
     return name.strip()
 
 
-def get_next_index(out_dir: Path) -> int:
+def get_next_index(out_dir: Path, prefix: str) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     max_n = 0
+    pat = re.compile(rf"^{re.escape(prefix)}_(\d+)$")
+
     for p in out_dir.glob("*.wav"):
+        stem = p.stem
+
+        # 新形式: prefix_123.wav
+        m = pat.match(stem)
+        if m:
+            n = int(m.group(1))
+            max_n = max(max_n, n)
+            continue
+
+        # 旧形式: 123.wav（後方互換）
         try:
-            n = int(p.stem)
+            n = int(stem)
             max_n = max(max_n, n)
         except ValueError:
             pass
+
     return max_n + 1
 
 
@@ -99,11 +113,10 @@ def denoise_wav_to_path(in_wav: Path, out_wav: Path) -> tuple[np.ndarray, int]:
     return y_deno, int(fs)
 
 
-def split_cleaned_wav_to_folder(cleaned_wav: Path, out_dir: Path, start_index: int) -> list[Path]:
+def split_cleaned_wav_to_folder(cleaned_wav: Path, out_dir: Path, start_index: int, prefix: str, mirror_dir: Path | None = None,) -> list[Path]:
     voiceCutting.TARGET_COUNT = int(TARGET_COUNT)
 
     audio = AudioSegment.from_file(str(cleaned_wav))
-
     ranges = voiceCutting.detect_nonsilent(
         audio,
         min_silence_len=voiceCutting.MIN_SILENCE_LEN_MS,
@@ -111,6 +124,9 @@ def split_cleaned_wav_to_folder(cleaned_wav: Path, out_dir: Path, start_index: i
     )
 
     out_dir.mkdir(parents=True, exist_ok=True)
+    if mirror_dir is not None:
+        mirror_dir.mkdir(parents=True, exist_ok=True)
+
     if not ranges:
         return []
 
@@ -125,20 +141,30 @@ def split_cleaned_wav_to_folder(cleaned_wav: Path, out_dir: Path, start_index: i
 
         if voiceCutting.is_valid_chunk(chunk):
             saved += 1
-            out_path = out_dir / f"{start_index + saved - 1}.wav"
+            idx = start_index + saved - 1
+            filename = f"{prefix}_{idx}.wav"
 
-            # 分割wavも 48kHz/mono/PCM16 を明示
+            out_path = out_dir / filename
             chunk.export(
                 str(out_path),
                 format="wav",
                 parameters=["-ac", "1", "-ar", "48000", "-acodec", "pcm_s16le"],
             )
             saved_paths.append(out_path)
+
+            # ALL側へも同名で保存（ミラー）
+            if mirror_dir is not None:
+                mirror_path = mirror_dir / filename
+                chunk.export(
+                    str(mirror_path),
+                    format="wav",
+                    parameters=["-ac", "1", "-ar", "48000", "-acodec", "pcm_s16le"],
+                )
+
             if saved >= TARGET_COUNT:
                 break
 
     return saved_paths
-
 
 def make_window(n: int, name: str) -> np.ndarray:
     name = name.lower()
@@ -316,6 +342,7 @@ class AppState:
     is_recording: bool = False
     stream: sd.InputStream | None = None
     frames: list[np.ndarray] | None = None
+    cue_stop_event: threading.Event | None = None
 
     # 推論用
     infer_dir: Path | None = None
@@ -349,13 +376,13 @@ def main(page: ft.Page):
         content_w = min(int(w * 0.95), 1400)
 
         # TextField類（画面幅に追従）
-        tfw = max(320, int(content_w * 0.60))
+        tfw = max(320, int(content_w * 0.40))
         subject_name.width = tfw
         labels_field.width = tfw
         model_parent.width = content_w  # 推論のモデル親フォルダは長くなりがちなので広め
 
         # ボタン幅
-        bw = max(100, int(w * 0.12))
+        bw = max(100, int(w * 0.10))
         for b in all_buttons:
             b.width = bw
 
@@ -382,6 +409,45 @@ def main(page: ft.Page):
                 expand=True,
             )
         )
+    
+    def start_cue_cycle():
+    # 既に動いていたら止めてから開始
+        stop_cue_cycle()
+
+        ev = threading.Event()
+        state.cue_stop_event = ev
+
+        def worker():
+            try:
+                # 録音開始直後：緑を2秒
+                cue_box.bgcolor = "green"
+                page.update()
+                if ev.wait(2.0):
+                    return
+
+                # 以降：赤1秒→青0.5秒を繰り返し
+                while not ev.is_set():
+                    cue_box.bgcolor = "red"
+                    page.update()
+                    if ev.wait(1.0):
+                        break
+
+                    cue_box.bgcolor = "blue"
+                    page.update()
+                    if ev.wait(0.5):
+                        break
+
+            finally:
+                # 終了時は緑に戻す（任意）
+                cue_box.bgcolor = "green"
+                page.update()
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def stop_cue_cycle():
+        if state.cue_stop_event is not None:
+            state.cue_stop_event.set()
+            state.cue_stop_event = None
 
     # =========================
     # 学習View UI & handlers
@@ -389,6 +455,12 @@ def main(page: ft.Page):
     subject_name = ft.TextField(label="学習：保存フォルダ名", width=520)
     labels_field = ft.TextField(label="学習：ラベル（カンマ区切り）", width=520, value="sakana,shakana,takana,thakana,tyakana")
     train_paths = ft.Text(value="", selectable=True)
+    cue_box = ft.Container(
+        width=140,
+        height=140,
+        bgcolor="green",   # 初期は緑
+        border_radius=8,
+    )
 
     def update_train_paths():
         if state.subject_dir is None:
@@ -447,9 +519,11 @@ def main(page: ft.Page):
                 callback=callback,
             )
             state.stream.start()
+            start_cue_cycle()
             set_status(f"学習：録音中... label={label}（Stopで保存→分割→datasetへ）")
             update_train_paths()
         except Exception as e:
+            stop_cue_cycle()
             state.is_recording = False
             state.stream = None
             state.frames = None
@@ -469,6 +543,7 @@ def main(page: ft.Page):
             state.stream.close()
         except Exception:
             pass
+        stop_cue_cycle()
 
         state.stream = None
         state.is_recording = False
@@ -498,8 +573,14 @@ def main(page: ft.Page):
 
                 out_label_dir = state.dataset_root / state.current_label
                 out_label_dir.mkdir(parents=True, exist_ok=True)
-                start_index = get_next_index(out_label_dir)
-                chunks = split_cleaned_wav_to_folder(cleaned_wav, out_label_dir, start_index=start_index)
+                prefix = state.subject_dir.name
+
+                all_dataset_root = Path.cwd() / "ALL" / "dataset_wav"
+                out_all_label_dir = all_dataset_root / state.current_label
+                out_all_label_dir.mkdir(parents=True, exist_ok=True)
+
+                start_index = get_next_index(out_label_dir, prefix=prefix)
+                chunks = split_cleaned_wav_to_folder(cleaned_wav, out_label_dir, start_index=start_index, prefix=prefix, mirror_dir=out_all_label_dir)
                 state.last_train_chunks = list(chunks)
 
                 set_status(f"学習：保存完了 label={state.current_label} / 分割={len(chunks)}")
@@ -572,6 +653,7 @@ def main(page: ft.Page):
                 ft.Text("学習（録音→ノイズ処理→分割→学習→モデル保存）", size=18),
                 subject_name,
                 labels_field,
+                ft.Row([cue_box], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Row([
                     reg_button(ft.ElevatedButton(text="親フォルダ作成", on_click=on_create_train_folder)),
                     reg_button(ft.ElevatedButton(text="録音停止（保存→分割）", on_click=on_stop_train_record)),

@@ -1,0 +1,27 @@
+{
+  "fft": {
+    "sr": 48000,
+    "nfft": 65536,
+    "fmin": 0.0,
+    "fmax": 8000.0,
+    "window": "hann",
+    "zero_mean": true,
+    "use_log1p": true
+  },
+  "feature": {
+    "band_hz": 60.0
+  },
+  "best_params": {
+    "svc__C": 10.0,
+    "svc__gamma": "scale"
+  },
+  "cv_best_score": 0.9179435483870968,
+  "label_names": [
+    "sakana",
+    "shakana",
+    "takana",
+    "thakana",
+    "tyakana"
+  ],
+  "test_accuracy": 0.9565217391304348
+}

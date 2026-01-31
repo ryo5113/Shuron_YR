@@ -630,6 +630,7 @@ def protocol_worker_capture(
     set_status_threadsafe,
     set_count_threadsafe,
     set_done_threadsafe,
+    update_ply_count_threadsafe,
     preview: ft.Image,
     capture_event: threading.Event,
     quit_event: threading.Event,
@@ -662,7 +663,7 @@ def protocol_worker_capture(
         mouth_dir_label.mkdir(parents=True, exist_ok=True)
         mpimg_dir_label.mkdir(parents=True, exist_ok=True)
 
-        set_status_threadsafe("収録中：Flet画面にフォーカスして 'c' で撮影（ARマーカー必須）")
+        set_status_threadsafe("収録中：Flet画面にフォーカスして撮影ボタンで撮影（ARマーカー必須）")
 
         is_processing = False
         success_flash_until = 0.0
@@ -707,10 +708,13 @@ def protocol_worker_capture(
                 break
 
             capture_ready = matched_any
-            if time.time() < success_flash_until:
+            if not capture_ready:
+                new_color = ft.Colors.BLACK
+            elif is_processing:
                 new_color = ft.Colors.BLUE_100
             else:
-                new_color = ft.Colors.RED_100 if not capture_ready else ft.Colors.WHITE
+                new_color = ft.Colors.WHITE
+
             page.run_thread(lambda c=new_color: setattr(train_root, "bgcolor", c))
             page.run_thread(page.update)
 
@@ -734,6 +738,8 @@ def protocol_worker_capture(
             ok, buf = cv2.imencode(".jpg", frame_vis, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
             if ok:
                 b64 = base64.b64encode(buf).decode("ascii")
+                if state.stop_event.is_set() or quit_event.is_set():
+                    break
                 page.run_thread(lambda b64=b64: setattr(preview, "src_base64", b64))
                 page.run_thread(page.update)
 
@@ -741,6 +747,8 @@ def protocol_worker_capture(
                 capture_event.clear()
                 if capture_ready and (not is_processing) and (R_tag is not None) and (t_tag is not None):
                     is_processing = True
+                    page.run_thread(lambda: setattr(train_root, "bgcolor", ft.Colors.BLUE_100))
+                    page.run_thread(page.update)
                     try:
                         saved_paths = capture_and_process_3cams_to_dirs_save(
                             pipelines, profiles,
@@ -757,17 +765,19 @@ def protocol_worker_capture(
                             # count_view を更新（後述の set_count_threadsafe を使う）
                             set_count_threadsafe(state.capture_count)
                             set_done_threadsafe("撮影成功")
+                            update_ply_count_threadsafe(label)
+                            state.last_saved_label = label
                             success_flash_until = time.time() + 1.5  # 例：1.5秒だけ青
-                            set_status_threadsafe(f"保存しました（COUNT={state.capture_count}, pitch={pitch_deg_smooth:.2f}deg）")
+                            set_status_threadsafe("保存しました", kind="success")
                         else:
                             set_done_threadsafe("撮影失敗")
-                            set_status_threadsafe("保存失敗（口検出/切り出し失敗など）")
+                            set_status_threadsafe("撮影に失敗しました（もう一度撮影してください）", kind="warn")
                     except Exception as e:
-                        set_status_threadsafe(f"保存処理でエラー: {e}")
+                        set_status_threadsafe("保存でエラーが出ました（もう一度お試しください）", kind="error")
                     finally:
                         is_processing = False
                 else:
-                    set_status_threadsafe("c入力：ARマーカー未検出のため撮影しません（NG）")
+                    set_status_threadsafe("撮影：ARマーカー未検出のため撮影しません（NG）", kind="warn")
 
     except Exception:
         set_status_threadsafe("収録プロトコルで例外:\n" + traceback.format_exc())
@@ -798,7 +808,7 @@ def protocol_worker_infer(
     pitch_hist = core.deque(maxlen=10)
 
     try:
-        set_status_threadsafe("推論：RealSenseカメラを初期化中…")
+        set_status_threadsafe("推論：RealSenseカメラを初期化中…", kind="info")
 
         for serial in core.SERIALS:
             pipeline, profile = core.create_pipeline(serial)
@@ -810,7 +820,7 @@ def protocol_worker_infer(
         if state.model_payload is None:
             raise RuntimeError("モデルが未ロードです。先に推論タブでモデルをロードしてください。")
 
-        set_status_threadsafe("推論中：Flet画面にフォーカスして 'c' で推論（ARマーカー必須）")
+        set_status_threadsafe("カメラ起動中です。撮影ボタンで評価できます", kind="info")
         is_processing = False
         last_pred_overlay = "PRED: --"
 
@@ -857,10 +867,12 @@ def protocol_worker_infer(
                 break
 
             capture_ready = matched_any
-            if time.time() < success_flash_until:
+            if not capture_ready:
+                new_color = ft.Colors.BLACK
+            elif is_processing:
                 new_color = ft.Colors.BLUE_100
             else:
-                new_color = ft.Colors.RED_100 if not capture_ready else ft.Colors.WHITE
+                new_color = ft.Colors.WHITE
 
             page.run_thread(lambda c=new_color: setattr(infer_root, "bgcolor", c))
             page.run_thread(page.update)
@@ -891,6 +903,8 @@ def protocol_worker_infer(
             ok, buf = cv2.imencode(".jpg", frame_vis, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
             if ok:
                 b64 = base64.b64encode(buf).decode("ascii")
+                if state.stop_event_infer.is_set() or quit_event.is_set():
+                    break
                 page.run_thread(lambda b64=b64: setattr(preview, "src_base64", b64))
                 page.run_thread(page.update)
 
@@ -926,7 +940,7 @@ def protocol_worker_infer(
                     finally:
                         is_processing = False
                 else:
-                    set_status_threadsafe("c入力：ARマーカー未検出のため推論しません（NG）")
+                    set_status_threadsafe("撮影できません（マーカーが見えていません）", kind="warn")
 
     except Exception:
         set_status_threadsafe("推論プロトコルで例外:\n" + traceback.format_exc())
@@ -1052,16 +1066,27 @@ def main(page: ft.Page):
     DUMMY_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/ax0f9kAAAAASUVORK5CYII="
     preview = ft.Image(src_base64=DUMMY_PNG_B64, fit=ft.ImageFit.CONTAIN,)
 
-    status = ft.Text(value="READY", selectable=True)
+    status_icon = ft.Icon(name=ft.Icons.INFO, size=28)
+    status_text = ft.Text(value="準備できました", size=28, weight=ft.FontWeight.BOLD)
+
+    status_bar = ft.Container(
+        content=ft.Row([status_icon, status_text], spacing=12),
+        bgcolor=ft.Colors.BLUE_50,
+        padding=12,
+        border_radius=12,
+    )
     count_view = ft.Text(value="COUNT: 0", size=24, weight=ft.FontWeight.BOLD)
     paths_view = ft.Text(value="", selectable=True)
     pred_view = ft.Text(value="PRED: --", selectable=True, size=30)
     done_view = ft.Text(value="", size=32, weight=ft.FontWeight.BOLD) 
+    label_ply_count_view: dict[str, ft.Text] = {
+        lbl: ft.Text(value="PLY: 0", size=14) for lbl in LABELS
+    }
     
     # ---- 学習タブ：親フォルダ作成 + ラベル収録 + 学習開始 ----
-    subject_name = ft.TextField(label="親フォルダ名（被験者名など）")
+    subject_name = ft.TextField(label="フォルダ名（苗字と名前のイニシャルを大文字で繋げたもの等）を入力")
     # ---- 推論タブ：親フォルダ指定→モデルロード→推論開始（c押下ごと） ----
-    infer_parent = ft.TextField(label="推論：親フォルダ名（例：被験者フォルダ）")
+    infer_parent = ft.TextField(label="AI学習を行ったフォルダ名を入力")
 
     all_buttons = []
 
@@ -1078,8 +1103,8 @@ def main(page: ft.Page):
         preview.height = int(h * 0.50)
         preview.fit = ft.ImageFit.CONTAIN
 
-        # 入力欄：映像幅に追従（映像幅の60%）
-        tfw = max(320, int(content_w * 0.60))
+        # 入力欄：映像幅に追従（映像幅の40%）
+        tfw = max(320, int(content_w * 0.40))
         subject_name.width = tfw
         infer_parent.width = tfw
 
@@ -1099,13 +1124,18 @@ def main(page: ft.Page):
     capture_event = threading.Event()
     quit_event = threading.Event()
 
-    def on_key(e: ft.KeyboardEvent):
-        if e.key.lower() == "c":
-            capture_event.set()
-        elif e.key.lower() == "q":
-            quit_event.set()
+    def on_capture_click(_):
+        if not state.is_running_capture:
+            set_status("撮影：先にカメラ起動してください。")
+            return
+        capture_event.set()
 
-    page.on_keyboard_event = on_key
+    def on_capture_infer_click(_):
+        if not state.is_running_infer:
+            set_status("撮影：先に『AI評価（撮影）開始』を押してください。")
+            return
+
+        capture_event.set()
 
     def set_count(n: int):
         count_view.value = f"COUNT: {n}"
@@ -1114,8 +1144,23 @@ def main(page: ft.Page):
     def set_count_threadsafe(n: int):
         page.run_thread(lambda n=n: set_count(n))
 
-    def set_status(msg: str):
-        status.value = msg
+    def set_status(msg: str, kind: str = "info"):
+        # kind: "info" | "success" | "warn" | "error"
+        status_text.value = msg
+
+        if kind == "success":
+            status_icon.name = ft.Icons.CHECK_CIRCLE
+            status_bar.bgcolor = ft.Colors.GREEN_100
+        elif kind == "warn":
+            status_icon.name = ft.Icons.WARNING_AMBER
+            status_bar.bgcolor = ft.Colors.AMBER_100
+        elif kind == "error":
+            status_icon.name = ft.Icons.ERROR
+            status_bar.bgcolor = ft.Colors.RED_100
+        else:
+            status_icon.name = ft.Icons.INFO
+            status_bar.bgcolor = ft.Colors.BLACK_50
+
         page.update()
 
     def set_done(msg: str):
@@ -1126,8 +1171,8 @@ def main(page: ft.Page):
         pred_view.value = msg
         page.update()
 
-    def set_status_threadsafe(msg: str):
-        page.run_thread(lambda: set_status(msg))
+    def set_status_threadsafe(msg: str, kind: str = "info"):
+        page.run_thread(lambda: set_status(msg, kind))
 
     def set_pred_threadsafe(msg: str):
         page.run_thread(lambda: set_pred(msg))
@@ -1140,7 +1185,7 @@ def main(page: ft.Page):
             paths_view.value = ""
         else:
             paths_view.value = (
-                f"親フォルダ: {state.subject_dir}\n"
+                f"フォルダ: {state.subject_dir}\n"
                 f"raw_ply: {state.raw_dir}\n"
                 f"mouth_ply: {state.mouth_dir}\n"
                 f"mediapipe_img: {state.mpimg_dir}\n"
@@ -1152,7 +1197,7 @@ def main(page: ft.Page):
     def on_create_folder(_):
         name = safe_subject_name(subject_name.value or "")
         if not name:
-            set_status("親フォルダ名が空です。")
+            set_status("フォルダ名が空です。", kind="error")
             return
 
         base = Path.cwd()
@@ -1171,12 +1216,13 @@ def main(page: ft.Page):
         state.mouth_dir = mouth_dir
         state.mpimg_dir = mpimg_dir
 
-        set_status(f"作成しました: {subject_dir}")
+        set_status(f"フォルダを作成しました。", kind="success")
+        update_ply_count()
         set_paths()
 
     def on_retake(e):
         if not state.last_saved_paths:
-            status.value = "再撮影：削除対象がありません（直前の保存が未実施 or 既に削除済み）"
+            status_bar.value = "削除対象がありません（直前の保存が未実施 or 既に削除済み）"
             page.update()
             return
 
@@ -1188,23 +1234,45 @@ def main(page: ft.Page):
             except IsADirectoryError:
                 shutil.rmtree(p, ignore_errors=True)
             except Exception as ex:
-                status.value = f"再撮影：削除に失敗: {p} / {ex}"
+                status_bar.value = "削除に失敗しました。もう一度撮影ボタンで撮影してください。"
                 page.update()
                 return
 
         state.last_saved_paths = []
         state.capture_count = max(0, state.capture_count - 1)
         count_view.value = f"COUNT: {state.capture_count}"  # もし直接更新しているなら
+        if state.last_saved_label:
+            update_ply_count(state.last_saved_label)
 
-        status.value = "直前データを削除しました。もう一度 'c' で撮影してください。"
+
+        status_bar.value = "直前データを削除しました。もう一度撮影ボタンで撮影してください。"
         page.update()
+
+    def _count_ply(label: str) -> int:
+        if state.subject_dir is None or state.mouth_dir is None:
+            return 0
+        d = state.mouth_dir / label
+        if not d.exists():
+            return 0
+        return sum(1 for _ in d.glob("*.ply"))
+
+    def update_ply_count(label: str | None = None):
+        # label=None のとき全ラベル更新
+        targets = [label] if label else LABELS
+        for lab in targets:
+            n = _count_ply(lab)
+            label_ply_count_view[lab].value = f"PLY: {n}"
+        page.update()
+
+    def update_ply_count_threadsafe(label: str | None = None):
+        page.run_thread(lambda lab=label: update_ply_count(lab))
 
     def on_start_capture_for_label(label: str):
         if state.subject_dir is None:
-            set_status("先に親フォルダを作成してください。")
+            set_status("先にフォルダを作成してください。")
             return
         if state.is_running_capture:
-            set_status("すでに収録プロトコル実行中です。")
+            set_status("すでに撮影実行中です。")
             return
 
         capture_event.clear()
@@ -1218,13 +1286,13 @@ def main(page: ft.Page):
 
         t = threading.Thread(
             target=protocol_worker_capture,
-            args=(page, state, set_status_threadsafe, set_count_threadsafe, set_done_threadsafe, preview, capture_event, quit_event, train_root),
+            args=(page, state, set_status_threadsafe, set_count_threadsafe, set_done_threadsafe,update_ply_count_threadsafe, preview, capture_event, quit_event, train_root),
             daemon=True
         )
         state.worker_thread = t
         t.start()
 
-        set_status(f"[学習-収録] {label} 開始：'c'で撮影（ARマーカー必須） / 停止はStop")
+        set_status(f"[学習-収録] {label} 開始：撮影ボタンで撮影（ARマーカー必須） / 停止はStop")
         set_paths()
 
     def on_stop_capture(_):
@@ -1235,13 +1303,15 @@ def main(page: ft.Page):
         state.is_running_capture = False
         state.capture_count = 0
         count_view.value = "COUNT: 0"
+        preview.src_base64 = None
+        train_root.bgcolor = ft.Colors.WHITE
         page.update()
         set_status("停止要求を出しました。")
         set_paths()
 
     def on_train_start(_):
         if state.subject_dir is None:
-            set_status("先に親フォルダを作成してください。")
+            set_status("先にフォルダを作成してください。")
             return
 
         def worker():
@@ -1255,28 +1325,28 @@ def main(page: ft.Page):
     def on_load_model(_):
         name = safe_subject_name(infer_parent.value or "")
         if not name:
-            set_status("推論：親フォルダ名が空です。")
+            set_status("推論：フォルダ名が空です。", kind="error")
             return
 
         base = Path.cwd()
         parent_dir = base / name
         model_path = parent_dir / MODEL_FILENAME
         if not model_path.exists():
-            set_status(f"推論：モデルが見つかりません: {model_path}")
+            set_status(f"AI評価用モデルが見つかりません", kind="error")
             return
 
         payload = joblib.load(model_path)
         state.infer_parent_dir = parent_dir
         state.model_payload = payload
-        set_status(f"推論：モデルをロードしました: {model_path}\nlabel_order={payload.get('label_order')} grid={payload.get('grid')}")
+        set_status(f"AI評価用モデルをロードしました", kind="success")
         set_pred("PRED: --")
 
     def on_start_infer(_):
         if state.model_payload is None:
-            set_status("推論：先にモデルをロードしてください。")
+            set_status("推論：先にモデルをロードしてください。", kind="error")
             return
         if state.is_running_infer:
-            set_status("推論：すでに推論実行中です。")
+            set_status("推論：すでに推論実行中です。", kind="error")
             return
 
         capture_event.clear()
@@ -1293,7 +1363,7 @@ def main(page: ft.Page):
         state.worker_thread_infer = t
         t.start()
 
-        set_status("推論開始：'c'で推論（ARマーカー必須） / 停止は推論停止")
+        set_status("推論開始：撮影ボタンで推論（ARマーカー必須） / 停止は推論停止")
         set_paths()
 
     def on_stop_infer(_):
@@ -1302,34 +1372,49 @@ def main(page: ft.Page):
             return
         state.stop_event_infer.set()
         state.is_running_infer = False
+        preview.src_base64 = None
+        infer_root.bgcolor = ft.Colors.WHITE
+        page.update()
         set_status("推論：停止要求を出しました。")
         set_paths()
 
     def build_train_content():
+        btn_mkdir = reg_button(ft.ElevatedButton(text="フォルダ作成", on_click=on_create_folder))
+
+        label_rows = ft.Column([
+            ft.Row(
+                [
+                    ft.Text(lbl, width=40),
+                    reg_button(ft.ElevatedButton(text="カメラ起動", on_click=lambda e, l=lbl: on_start_capture_for_label(l))),
+                    reg_button(ft.ElevatedButton(text="撮影", on_click=on_capture_click)),
+                    reg_button(ft.ElevatedButton(text="カメラ停止", on_click=on_stop_capture)),
+                    reg_button(ft.ElevatedButton(text="削除", tooltip="うまく撮影できなかった時に押してください。", on_click=on_retake)),
+                    label_ply_count_view[lbl], 
+                ],
+                alignment=ft.MainAxisAlignment.CENTER
+            )
+            for lbl in LABELS
+        ])
+        
         return ft.Column(
             [
                 ft.Row([ft.ElevatedButton("戻る", on_click=lambda _: show_home())]),
-                ft.Text("学習（収録→学習→モデル保存）", size=18),
-                subject_name,
-                ft.Row([
-                    reg_button(ft.ElevatedButton(text="親フォルダ作成", on_click=on_create_folder)),
-                    reg_button(ft.ElevatedButton(text="再撮影", on_click=on_retake)),
-                    reg_button(ft.ElevatedButton(text="収録停止", on_click=on_stop_capture)),
-                    reg_button(ft.ElevatedButton(text="学習開始（モデル保存）", on_click=on_train_start)),
-                ], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Row([
-                    reg_button(ft.ElevatedButton(text=f"{lbl} 収録開始", on_click=lambda e, l=lbl: on_start_capture_for_label(l)))
-                    for lbl in LABELS
-                ], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Text("AI学習（口形状撮影）", size=18),
+                ft.Row([subject_name, btn_mkdir], alignment=ft.MainAxisAlignment.CENTER),
+                label_rows,
+                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=12),
+                ft.Row([ft.ElevatedButton("AI学習開始", on_click=lambda _: on_train_start())], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Text("※学習には時間がかかります。進捗はステータス欄で確認してください。", size=12),
+                status_bar,
                 ft.Divider(),
                 ft.Text("プレビュー（共通）"),
                 preview,
                 ft.Divider(),
                 count_view,
                 done_view,
-                status,
-                paths_view,
-                ft.Text("※Flet画面にフォーカスして 'c'（ARマーカー検出時のみ） / 'q'で停止要求", size=12),
+                #status,
+                #paths_view,
+                ft.Text("※Flet画面にフォーカスして撮影ボタン（ARマーカー検出時のみ)", size=12),
             ],
             spacing=10,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
@@ -1351,21 +1436,24 @@ def main(page: ft.Page):
                         ft.ElevatedButton("戻る", on_click=lambda _: show_home()),
                     ]
                 ),
-                ft.Text("推論（モデルロード→リアルタイム推論）", size=18),
+                ft.Text("AI評価", size=18),
                 infer_parent,
                 ft.Row([
                     reg_button(ft.ElevatedButton(text="モデルロード", on_click=on_load_model)),
-                    reg_button(ft.ElevatedButton(text="推論開始", on_click=on_start_infer)),
-                    reg_button(ft.ElevatedButton(text="推論停止", on_click=on_stop_infer)),
+                    reg_button(ft.ElevatedButton(text="AI評価（撮影）開始", on_click=on_start_infer)),
+                    reg_button(ft.ElevatedButton(text="撮影", on_click=on_capture_infer_click)),
+                    reg_button(ft.ElevatedButton(text="AI評価停止", on_click=on_stop_infer)),
                 ], alignment=ft.MainAxisAlignment.CENTER),
+                status_bar,
+                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可", size=12),
                 ft.Divider(),
                 ft.Text("プレビュー（共通）"),
                 preview,
                 ft.Divider(),
                 done_view,
                 pred_view,
-                status,
-                ft.Text("※Flet画面にフォーカスして 'c'（ARマーカー検出時のみ） / 'q'で停止要求", size=12),
+                #status,
+                ft.Text("※Flet画面にフォーカスして撮影ボタン（ARマーカー検出時のみ）", size=12),
             ],
             spacing=10,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
@@ -1385,13 +1473,13 @@ def main(page: ft.Page):
                 ft.Text("モード選択", size=20),
                 ft.Row(
                     [
-                        reg_button(ft.ElevatedButton("学習へ", on_click=lambda _: show_train())),
-                        reg_button(ft.ElevatedButton("推論へ", on_click=lambda _: show_infer())),
+                        reg_button(ft.ElevatedButton("AI学習へ", on_click=lambda _: show_train())),
+                        reg_button(ft.ElevatedButton("AI評価へ", on_click=lambda _: show_infer())),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER
                 ),
                 ft.Divider(),
-                status,
+                status_bar,
             ],
             spacing=10
         )

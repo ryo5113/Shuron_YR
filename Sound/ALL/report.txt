@@ -1,0 +1,11 @@
+              precision    recall  f1-score   support
+
+      sakana     0.9701    0.8667    0.9155        75
+     shakana     0.8554    0.9467    0.8987        75
+      takana     0.8718    0.9067    0.8889        75
+     thakana     0.8718    0.9067    0.8889        75
+     tyakana     0.8841    0.8133    0.8472        75
+
+    accuracy                         0.8880       375
+   macro avg     0.8906    0.8880    0.8878       375
+weighted avg     0.8906    0.8880    0.8878       375
