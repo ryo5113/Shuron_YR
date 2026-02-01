@@ -620,6 +620,7 @@ class AppState:
     stop_event_infer: threading.Event | None = None
     worker_thread_infer: threading.Thread | None = None
     last_pred_text: str = "PRED: --"
+    picked_model_path: Path | None = None
 
 # -------------------------
 # ワーカ（学習収録）
@@ -1080,8 +1081,9 @@ def main(page: ft.Page):
     pred_view = ft.Text(value="PRED: --", selectable=True, size=30)
     done_view = ft.Text(value="", size=32, weight=ft.FontWeight.BOLD) 
     label_ply_count_view: dict[str, ft.Text] = {
-        lbl: ft.Text(value="PLY: 0", size=14) for lbl in LABELS
+        lbl: ft.Text(value="撮影枚数: 0", size=14) for lbl in LABELS
     }
+    model_dir_label = ft.Text(value="フォルダ：未選択", size=16, weight=ft.FontWeight.BOLD)
     
     # ---- 学習タブ：親フォルダ作成 + ラベル収録 + 学習開始 ----
     subject_name = ft.TextField(label="フォルダ名（苗字と名前のイニシャルを大文字で繋げたもの等）を入力")
@@ -1159,7 +1161,7 @@ def main(page: ft.Page):
             status_bar.bgcolor = ft.Colors.RED_100
         else:
             status_icon.name = ft.Icons.INFO
-            status_bar.bgcolor = ft.Colors.BLACK_50
+            status_bar.bgcolor = ft.Colors.BLUE_50
 
         page.update()
 
@@ -1220,6 +1222,37 @@ def main(page: ft.Page):
         update_ply_count()
         set_paths()
 
+    def load_model_from_dir(parent_dir: Path):
+        model_path = parent_dir / MODEL_FILENAME
+        if not model_path.exists():
+            set_status("AI評価用モデルが見つかりません", kind="error")
+            return
+
+        payload = joblib.load(model_path)
+        state.infer_parent_dir = parent_dir
+        state.model_payload = payload
+        set_status("モデルを読み込みました", kind="success")
+        set_pred("PRED: --")
+        # フルパスではなくフォルダ名だけ表示
+        model_dir_label.value = f"モデル：{parent_dir.name}"
+        page.update()
+
+    def on_pick_model_dir_result(e: ft.FilePickerResultEvent):
+        # フォルダ選択は e.path を使います（files ではありません）
+        if not getattr(e, "path", None):
+            set_status("モデル選択をキャンセルしました", kind="warn")
+            return
+        try:
+            load_model_from_dir(Path(e.path))
+        except Exception:
+            set_status("モデルの読み込みに失敗しました", kind="error")
+
+    model_dir_picker = ft.FilePicker(on_result=on_pick_model_dir_result)
+    page.overlay.append(model_dir_picker)
+
+    def on_pick_model_dir_click(_):
+        model_dir_picker.get_directory_path(dialog_title="モデルフォルダを選択")
+
     def on_retake(e):
         if not state.last_saved_paths:
             status_bar.value = "削除対象がありません（直前の保存が未実施 or 既に削除済み）"
@@ -1240,7 +1273,7 @@ def main(page: ft.Page):
 
         state.last_saved_paths = []
         state.capture_count = max(0, state.capture_count - 1)
-        count_view.value = f"COUNT: {state.capture_count}"  # もし直接更新しているなら
+        count_view.value = f"撮影枚数: {state.capture_count}"  # もし直接更新しているなら
         if state.last_saved_label:
             update_ply_count(state.last_saved_label)
 
@@ -1261,7 +1294,7 @@ def main(page: ft.Page):
         targets = [label] if label else LABELS
         for lab in targets:
             n = _count_ply(lab)
-            label_ply_count_view[lab].value = f"PLY: {n}"
+            label_ply_count_view[lab].value = f"撮影枚数: {n}"
         page.update()
 
     def update_ply_count_threadsafe(label: str | None = None):
@@ -1292,7 +1325,7 @@ def main(page: ft.Page):
         state.worker_thread = t
         t.start()
 
-        set_status(f"[学習-収録] {label} 開始：撮影ボタンで撮影（ARマーカー必須） / 停止はStop")
+        set_status(f" {label} 撮影開始：撮影ボタンで撮影（ARマーカー必須）")
         set_paths()
 
     def on_stop_capture(_):
@@ -1325,7 +1358,7 @@ def main(page: ft.Page):
     def on_load_model(_):
         name = safe_subject_name(infer_parent.value or "")
         if not name:
-            set_status("推論：フォルダ名が空です。", kind="error")
+            set_status("フォルダが指定されていません。", kind="error")
             return
 
         base = Path.cwd()
@@ -1343,10 +1376,10 @@ def main(page: ft.Page):
 
     def on_start_infer(_):
         if state.model_payload is None:
-            set_status("推論：先にモデルをロードしてください。", kind="error")
+            set_status("先にフォルダを指定し、モデルロードボタンを押してください。", kind="error")
             return
         if state.is_running_infer:
-            set_status("推論：すでに推論実行中です。", kind="error")
+            set_status("すでに評価実行中です。", kind="error")
             return
 
         capture_event.clear()
@@ -1363,19 +1396,19 @@ def main(page: ft.Page):
         state.worker_thread_infer = t
         t.start()
 
-        set_status("推論開始：撮影ボタンで推論（ARマーカー必須） / 停止は推論停止")
+        set_status("評価開始：撮影ボタンで推論（ARマーカー必須） / 停止は推論停止")
         set_paths()
 
     def on_stop_infer(_):
         if not state.is_running_infer or state.stop_event_infer is None:
-            set_status("推論：実行中ではありません。")
+            set_status("撮影中ではありません。")
             return
         state.stop_event_infer.set()
         state.is_running_infer = False
         preview.src_base64 = None
         infer_root.bgcolor = ft.Colors.WHITE
         page.update()
-        set_status("推論：停止要求を出しました。")
+        set_status("撮影を停止しました。")
         set_paths()
 
     def build_train_content():
@@ -1408,12 +1441,7 @@ def main(page: ft.Page):
                 status_bar,
                 ft.Divider(),
                 ft.Text("プレビュー（共通）"),
-                preview,
-                ft.Divider(),
-                count_view,
-                done_view,
-                #status,
-                #paths_view,
+                ft.Row([preview, ft.Column([count_view, done_view,], spacing=10,),], alignment=ft.MainAxisAlignment.CENTER,),
                 ft.Text("※Flet画面にフォーカスして撮影ボタン（ARマーカー検出時のみ)", size=12),
             ],
             spacing=10,
@@ -1437,9 +1465,14 @@ def main(page: ft.Page):
                     ]
                 ),
                 ft.Text("AI評価", size=18),
-                infer_parent,
+                ft.Row(
+                    [
+                        reg_button(ft.ElevatedButton(text="モデルフォルダ選択", on_click=on_pick_model_dir_click)),
+                        model_dir_label,
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER
+                ),
                 ft.Row([
-                    reg_button(ft.ElevatedButton(text="モデルロード", on_click=on_load_model)),
                     reg_button(ft.ElevatedButton(text="AI評価（撮影）開始", on_click=on_start_infer)),
                     reg_button(ft.ElevatedButton(text="撮影", on_click=on_capture_infer_click)),
                     reg_button(ft.ElevatedButton(text="AI評価停止", on_click=on_stop_infer)),
@@ -1453,7 +1486,7 @@ def main(page: ft.Page):
                 done_view,
                 pred_view,
                 #status,
-                ft.Text("※Flet画面にフォーカスして撮影ボタン（ARマーカー検出時のみ）", size=12),
+                ft.Text("※Flet画面にフォーカスして撮影ボタン（ARマーカー検出時のみ）を押す", size=12),
             ],
             spacing=10,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
@@ -1497,6 +1530,7 @@ def main(page: ft.Page):
 
         page.controls.clear()
         page.add(build_home_page())
+        set_status("")
         page.update()
         apply_responsive_layout(page.width, page.height)
 

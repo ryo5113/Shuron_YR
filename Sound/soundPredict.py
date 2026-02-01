@@ -10,6 +10,7 @@ from pathlib import Path
 import json
 import traceback
 import re
+import tempfile
 
 import flet as ft
 
@@ -345,12 +346,14 @@ class AppState:
     cue_stop_event: threading.Event | None = None
     last_train_label: str | None = None
     prepared_labels: list[str] | None = None
+    cue_count: int = 0
 
     # 推論用
     infer_dir: Path | None = None
     is_recording_infer: bool = False
     stream_infer: sd.InputStream | None = None
     frames_infer: list[np.ndarray] | None = None
+    model_payload: dict | None = None
 
     # 一時保存用
     last_train_raw: Path | None = None
@@ -378,14 +381,14 @@ def main(page: ft.Page):
         content_w = min(int(w * 0.95), 1400)
 
         # TextField類（画面幅に追従）
-        tfw = max(320, int(content_w * 0.40))
+        tfw = max(320, int(content_w * 0.30))
         subject_name.width = tfw
+        word_w = max(160, int(content_w * 0.18))
         for tf in word_fields:
-            tf.width = tfw
-        model_parent.width = content_w  # 推論のモデル親フォルダは長くなりがちなので広め
+            tf.width = word_w
 
         # ボタン幅
-        bw = max(100, int(w * 0.10))
+        bw = max(100, int(w * 0.12))
         for b in all_buttons:
             b.width = bw
 
@@ -403,14 +406,14 @@ def main(page: ft.Page):
         status.value = msg
         page.update()
 
-    def centered_cell(text: str):
-        return ft.DataCell(
-            ft.Container(
-                content=ft.Text(text),
-                alignment=ft.alignment.center,
-                expand=True,
+    def centered_cell_infer(text: str):
+            return ft.DataCell(
+                ft.Container(
+                    content=ft.Text(text, size=22, weight=ft.FontWeight.BOLD),
+                    alignment=ft.alignment.center,
+                    expand=True,
+                )
             )
-        )
     
     def start_cue_cycle():
     # 既に動いていたら止めてから開始
@@ -418,16 +421,27 @@ def main(page: ft.Page):
         ev = threading.Event()
         state.cue_stop_event = ev
 
+        state.cue_count = 0
+        cue_count_text.value = "発音回数: 0"
+        page.update()
+
         def worker():
             try:
                 colors = ["red", "green"]
+                cue_box.bgcolor = colors[0]
+                state.cue_count = 0
+                cue_count_text.value = "発音回数: 0"
+                page.update()
+
                 idx = 0
                 while not ev.is_set():
-                    cue_box.bgcolor = colors[idx % 2]
-                    page.update()
-                    idx += 1
                     if ev.wait(1.0):
                         break
+                    idx = (idx + 1) % 2
+                    cue_box.bgcolor = colors[idx]
+                    state.cue_count += 1
+                    cue_count_text.value = f"発音回数: {state.cue_count}"
+                    page.update()
             finally:
                 cue_box.bgcolor = "red"
                 page.update()
@@ -443,12 +457,13 @@ def main(page: ft.Page):
     # 学習View UI & handlers
     # =========================
     subject_name = ft.TextField(label="学習：保存フォルダ名", width=520)
+    WORD_TF_W = 220
     word_fields = [
-        ft.TextField(label="覚えさせたい単語①", value="sakana", width=520),
-        ft.TextField(label="覚えさせたい単語②", value="shakana", width=520),
-        ft.TextField(label="覚えさせたい単語③", value="takana", width=520),
-        ft.TextField(label="覚えさせたい単語④", value="thakana", width=520),
-        ft.TextField(label="覚えさせたい単語⑤", value="tyakana", width=520),
+        ft.TextField(label="覚えさせたい単語①", value="sakana", width=WORD_TF_W, text_size=16, label_style=ft.TextStyle(size=12)),
+        ft.TextField(label="覚えさせたい単語②", value="shakana", width=WORD_TF_W, text_size=16, label_style=ft.TextStyle(size=12)),
+        ft.TextField(label="覚えさせたい単語③", value="takana", width=WORD_TF_W, text_size=16, label_style=ft.TextStyle(size=12)),
+        ft.TextField(label="覚えさせたい単語④", value="thakana", width=WORD_TF_W, text_size=16, label_style=ft.TextStyle(size=12)),
+        ft.TextField(label="覚えさせたい単語⑤", value="tyakana", width=WORD_TF_W, text_size=16, label_style=ft.TextStyle(size=12)),
     ]
     train_paths = ft.Text(value="", selectable=True)
     cue_box = ft.Container(
@@ -458,6 +473,7 @@ def main(page: ft.Page):
         border_radius=8,
     )
     cue_text = ft.Text("色が切り替わるタイミングで発音してください", size=18)
+    cue_count_text = ft.Text(value="発音回数：0", size=18)
     label_counts: dict[str, int] = {}
     label_count_view: dict[str, ft.Text] = {}
 
@@ -632,6 +648,7 @@ def main(page: ft.Page):
 
     def on_delete_last_for(word: str):
         deleted = 0
+        deleted_chunks = 0
 
         if state.last_train_label != word:
             set_status("この単語の直近データはありません。")
@@ -644,6 +661,7 @@ def main(page: ft.Page):
                     if p and p.exists():
                         p.unlink()
                         deleted += 1
+                        deleted_chunks += 1
                 except Exception:
                     pass
 
@@ -656,13 +674,18 @@ def main(page: ft.Page):
             except Exception:
                 pass
 
+        ensure_label_state()
+        label_counts[word] = max(0, label_counts.get(word, 0) - deleted_chunks)
+        label_count_view[word].value = f"取得回数: {label_counts[word]}"
+        page.update()
+
         # 状態クリア
         state.last_train_raw = None
         state.last_train_clean = None
         state.last_train_chunks = []
         state.last_train_label = None
 
-        set_status(f"学習：直近データを削除しました（{deleted}件）")
+        set_status(f"録音：直近データを削除しました（{deleted_chunks}件）")
         update_train_paths()
 
     def on_train_start(_):
@@ -678,9 +701,9 @@ def main(page: ft.Page):
         def worker():
             try:
                 res = train_60hz_and_export(state.dataset_root, labels, export_dir=state.subject_dir)
-                set_status("学習が完了しました。AI評価に移るため、「戻る」ボタンを押し、AI評価を行ってください。")
+                set_status("AI学習が完了しました。AI評価に移るため、「戻る」ボタンを押し、AI評価を行ってください。")
             except Exception:
-                set_status("収録でエラーが発生しました。収録をやり直してください。")
+                set_status("AI学習でエラーが発生しました。収録できていない音声がないか確かめてください。")
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -726,12 +749,13 @@ def main(page: ft.Page):
                     alignment=ft.MainAxisAlignment.CENTER,
                     scroll=ft.ScrollMode.AUTO,
                 ),
+                ft.Text("覚えさせたい単語をローマ字で入力してください。", size=18),
                 ft.Row(
                     [reg_button(ft.ElevatedButton(text="準備完了", on_click=on_prepare_words))],
                     alignment=ft.MainAxisAlignment.CENTER,
                 ),
                 status,
-                ft.Row([cue_box], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Row([cue_box, cue_count_text], alignment=ft.MainAxisAlignment.CENTER),
                 cue_text,
                 ft.Divider(),
                 label_rows,
@@ -746,65 +770,146 @@ def main(page: ft.Page):
     # =========================
     # 推論View UI & handlers
     # =========================
-    model_parent = ft.TextField(label="AI学習で登録したフォルダ名を入力", width=900)
+    # モデルフォルダ表示（探索で入る）
+    model_dir_label = ft.Text(value="フォルダ：未選択", size=16, weight=ft.FontWeight.BOLD)
 
-    infer_paths = ft.Text(value="", selectable=True)
     results_table = ft.DataTable(
         columns=[
-            ft.DataColumn(ft.Text("No.")),
-            ft.DataColumn(ft.Text("推定ラベル")),
-            ft.DataColumn(ft.Text("確率(%)")),
-            ft.DataColumn(ft.Text("wav")),
+            ft.DataColumn(ft.Text("No.", size=20, weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("評価結果", size=20, weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("認識精度(%)", size=20, weight=ft.FontWeight.BOLD)),
         ],
         rows=[],
     )
     results_panel = ft.Container(
-        content=ft.ListView(
-            controls=[
-                ft.Row([results_table], alignment=ft.MainAxisAlignment.CENTER, scroll=ft.ScrollMode.AUTO)
-            ],
-            expand=True,                      # 縦スクロール領域を確保
-            spacing=0,
-            padding=0,
-        ),
-        expand=True, 
-        alignment=ft.alignment.center,                     # 親Column内で残り領域を使う
-    )
-
-    def update_infer_paths():
-        if state.infer_dir is None:
-            infer_paths.value = ""
-        else:
-            infer_paths.value = (
-                f"infer_dir: {state.infer_dir}\n"
-                f"recording: {state.is_recording_infer}\n"
-                f"録音条件: sr={SAMPLE_RATE}, ch={CHANNELS}, dtype={DTYPE}, wav={SAVE_SUBTYPE}\n"
-                f"モデル親フォルダ: {model_parent.value or ''}\n"
+    content=ft.ListView(
+        controls=[
+            ft.Row(
+                [results_table],
+                alignment=ft.MainAxisAlignment.CENTER,
+                #scroll=ft.ScrollMode.AUTO,
+                expand=True,
             )
+        ],
+        expand=True,
+        spacing=0,
+        padding=0,
+    ),
+    expand=True,
+    alignment=ft.alignment.center,  # 中央寄せはContainer側
+)
+
+    def load_model_from_dir(parent_dir: Path):
+        model_path = parent_dir / "model.joblib"
+        if not model_path.exists():
+            set_status("フォルダが見つかりません")
+            return
+
+        payload = joblib.load(str(model_path))
+        # soundPredict.py の前提キー（model / label_names）に合わせる
+        if "model" not in payload or "label_names" not in payload:
+            set_status("モデルが存在していません。再度フォルダ選択を行ってください。")
+            return
+
+        state.model_dir = parent_dir
+        state.model_payload = payload
+        set_status("フォルダ読み込み完了")
+
+        # フルパスではなくフォルダ名だけ表示（fletMouthPredict.pyと同じ）
+        model_dir_label.value = f"フォルダ：{parent_dir.name}"
         page.update()
 
-    def on_create_infer_folder(_):
-        name = safe_name(model_parent.value or "")
-        if not name:
-            set_status("推論：保存フォルダ名が空です。")
+    def on_pick_model_dir_result(e: ft.FilePickerResultEvent):
+        if not getattr(e, "path", None):
+            set_status("フォルダ選択が中止されました。")
             return
-        base = Path.cwd()
-        state.infer_dir = base / name
-        (state.infer_dir / "raw").mkdir(parents=True, exist_ok=True)
-        (state.infer_dir / "clean").mkdir(parents=True, exist_ok=True)
-        (state.infer_dir / "chunks").mkdir(parents=True, exist_ok=True)
-        set_status(f"推論：フォルダ作成 {state.infer_dir}")
-        update_infer_paths()
+
+        parent_dir = Path(e.path)
+        state.model_dir = parent_dir
+
+        # 先に表示は必ず更新（未選択→選択済み）
+        model_dir_label.value = f"フォルダ：{parent_dir.name}"
+        page.update()
+
+        # ここから joblib 読み込み（例外でも落ちないようにする）
+        try:
+            model_path = parent_dir / MODEL_FILENAME  # "model.joblib"
+            if not model_path.exists():
+                state.model_payload = None
+                set_status("モデルが存在していません。再度フォルダ選択を行ってください。")
+                page.update()
+                return
+
+            payload = joblib.load(str(model_path))
+            if "model" not in payload or "label_names" not in payload:
+                state.model_payload = None
+                set_status("モデルが存在していません。再度フォルダ選択を行ってください。")
+                page.update()
+                return
+
+            state.model_payload = payload
+            set_status("読み込み完了。AI評価が可能です。")
+            page.update()
+
+        except Exception:
+            state.model_payload = None
+            set_status("読み込みでエラーが発生しました。再度フォルダ選択を行ってください。")
+            page.update()
+
+    model_dir_picker = ft.FilePicker(on_result=on_pick_model_dir_result)
+    page.overlay.append(model_dir_picker)
+
+    def on_pick_model_dir_click(_):
+        model_dir_picker.get_directory_path(dialog_title="モデルフォルダを選択")
+
+
+    # def update_infer_paths():
+    #     if state.infer_dir is None:
+    #         infer_paths.value = ""
+    #     else:
+    #         infer_paths.value = (
+    #             f"infer_dir: {state.infer_dir}\n"
+    #             f"recording: {state.is_recording_infer}\n"
+    #             f"録音条件: sr={SAMPLE_RATE}, ch={CHANNELS}, dtype={DTYPE}, wav={SAVE_SUBTYPE}\n"
+    #             f"モデル親フォルダ: {infer_save_name.value or ''}\n"
+    #         )
+    #     page.update()
+
+    # def on_create_infer_folder(_):
+    #     name = safe_name(infer_save_name.value or "")
+    #     if not name:
+    #         set_status("保存フォルダ名がありません。")
+    #         return
+    #     base = Path.cwd()
+    #     state.infer_dir = base / name
+    #     (state.infer_dir / "raw").mkdir(parents=True, exist_ok=True)
+    #     (state.infer_dir / "clean").mkdir(parents=True, exist_ok=True)
+    #     (state.infer_dir / "chunks").mkdir(parents=True, exist_ok=True)
+    #     set_status("保存フォルダを作成しました。")
+    #     update_infer_paths()
+
+    def on_load_infer_model(_):
+        if state.model_dir is None:
+            set_status("先にフォルダを選択してください。")
+            return
+
+        try:
+            model_path = state.model_dir / "model.joblib"
+            payload = joblib.load(str(model_path))
+            # 期待キー確認（あなたの保存形式：{"model":..., "label_names":...}）
+            if "model" not in payload or "label_names" not in payload:
+                set_status("AI評価ができません。再度AI学習を行ってください。")
+                return
+
+            state.model_payload = payload
+            set_status("読み込み完了。AI評価が可能です。")
+            page.update()
+        except Exception:
+            set_status("読み込みでエラーが発生しました。再度フォルダ選択を行ってください。")
 
     def start_infer_record(_):
-        if state.infer_dir is None:
-            set_status("推論：先に保存フォルダを作成してください。")
-            return
         if state.is_recording_infer:
-            set_status("推論：すでに録音中です。")
-            return
-        if not (model_parent.value or "").strip():
-            set_status("推論：モデル親フォルダを指定してください。")
+            set_status("すでに録音中です。")
             return
 
         state.frames_infer = []
@@ -821,23 +926,16 @@ def main(page: ft.Page):
                 callback=callback,
             )
             state.stream_infer.start()
-            set_status("推論：録音中...（Stopで保存→分割→推論）")
-            update_infer_paths()
+            set_status("録音中...(録音終了で評価開始)")
         except Exception as e:
             state.is_recording_infer = False
             state.stream_infer = None
             state.frames_infer = None
-            set_status(f"推論：録音開始失敗: {e}")
+            set_status(f"録音に失敗しました。")
 
     def stop_and_infer(_):
         if not state.is_recording_infer or state.stream_infer is None or state.frames_infer is None:
-            set_status("推論：録音中ではありません。")
-            return
-        if state.infer_dir is None:
-            set_status("推論：保存フォルダが未作成です。")
-            return
-        if not (model_parent.value or "").strip():
-            set_status("推論：モデル親フォルダを指定してください。")
+            set_status("録音中ではありません。")
             return
 
         # stop stream
@@ -850,72 +948,79 @@ def main(page: ft.Page):
         state.stream_infer = None
         state.is_recording_infer = False
 
-        stamp = now_stamp()
-        raw_wav = state.infer_dir / "raw" / f"{stamp}.wav"
-        cleaned_wav = state.infer_dir / "clean" / f"cleaned_{stamp}.wav"
-        chunk_dir = state.infer_dir / "chunks"
-
-        # raw保存
+        # いったんメモリ上の音声を取り出す
         try:
             audio = np.concatenate(state.frames_infer, axis=0)  # int16
-            sf.write(str(raw_wav), audio, SAMPLE_RATE, subtype=SAVE_SUBTYPE)
         except Exception as e:
-            set_status(f"推論：raw保存失敗: {e}")
+            set_status(f"録音に失敗しました。もう一度録音してください。")
             state.frames_infer = None
             return
         finally:
             state.frames_infer = None
 
+        set_status("録音完了（評価中）")
+
         def worker():
             try:
-                parent = Path(model_parent.value.strip())
-                model_path = parent / "model.joblib"
-                payload = joblib.load(str(model_path))
+                payload = state.model_payload
                 model = payload["model"]
                 label_names = payload["label_names"]
 
-                denoise_wav_to_path(raw_wav, cleaned_wav)
-                start_index = get_next_index(chunk_dir, prefix="infer")
-                chunks = split_cleaned_wav_to_folder(cleaned_wav, chunk_dir, start_index=start_index, prefix="infer", mirror_dir=None,)
+                with tempfile.TemporaryDirectory() as td:
+                    td_path = Path(td)
+                    raw_wav = td_path / "raw.wav"
+                    cleaned_wav = td_path / "cleaned.wav"
+                    chunk_dir = td_path / "chunks"
+                    chunk_dir.mkdir(parents=True, exist_ok=True)
 
-                rows = []
-                for i, wp in enumerate(chunks, start=1):
-                    try:
-                        feat = wav_to_feature_vector(wp)
-                        proba = model.predict_proba([feat])[0]
-                        pred_id = int(np.argmax(proba))
-                        pred_label = str(label_names[pred_id])
-                        pred_pct = float(proba[pred_id]) * 100.0
+                    # 一時ファイルにだけ保存（ユーザー用保存はしない）
+                    sf.write(str(raw_wav), audio, SAMPLE_RATE, subtype=SAVE_SUBTYPE)
 
-                        rows.append(
-                            ft.DataRow(
-                                cells=[
-                                    centered_cell(str(i)),
-                                    centered_cell(pred_label),
-                                    centered_cell(f"{pred_pct:.1f}"),
-                                    centered_cell(f"{wp.name}"),
-                                ]
+                    denoise_wav_to_path(raw_wav, cleaned_wav)
+                    start_index = get_next_index(chunk_dir, prefix="infer")
+                    chunks = split_cleaned_wav_to_folder(
+                        cleaned_wav,
+                        chunk_dir,
+                        start_index=start_index,
+                        prefix="infer",
+                        mirror_dir=None,
+                    )
+
+                    rows = []
+                    for i, wp in enumerate(chunks, start=1):
+                        try:
+                            feat = wav_to_feature_vector(wp)
+                            proba = model.predict_proba([feat])[0]
+                            pred_id = int(np.argmax(proba))
+                            pred_label = str(label_names[pred_id])
+                            pred_pct = float(proba[pred_id]) * 100.0
+
+                            rows.append(
+                                ft.DataRow(
+                                    cells=[
+                                        centered_cell_infer(str(i)),
+                                        centered_cell_infer(pred_label),
+                                        centered_cell_infer(f"{pred_pct:.1f}"),
+                                    ]
+                                )
                             )
-                        )
-                    except Exception as e:
-                        rows.append(
-                            ft.DataRow(
-                                cells=[
-                                    centered_cell(str(i)),
-                                    centered_cell("ERROR"),
-                                    centered_cell("-"),
-                                    centered_cell(f"{wp.name}"),
-                                ]
+                        except Exception:
+                            rows.append(
+                                ft.DataRow(
+                                    cells=[
+                                        centered_cell_infer(str(i)),
+                                        centered_cell_infer("ERROR"),
+                                        centered_cell_infer("-"),
+                                    ]
+                                )
                             )
-                        )
 
-                results_table.rows = rows
-                set_status(f"推論：完了（分割={len(chunks)} → 推論={len(chunks)}）")
-                update_infer_paths()
-                page.update()
+                    results_table.rows = rows
+                    set_status("評価結果を表示しました")
+                    page.update()
 
             except Exception:
-                set_status("推論処理でエラーが発生しました。再度録音してください。")
+                set_status("評価処理でエラーが発生しました。再度録音してください。")
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -923,23 +1028,29 @@ def main(page: ft.Page):
         return ft.Column(
             [
                 ft.Row([reg_button(ft.ElevatedButton("戻る", on_click=lambda _: show_home()))]),
-                ft.Text("AI推論", size=18),
-                model_parent,
-                ft.Row([
-                    reg_button(ft.ElevatedButton(text="AI推論モデル読みこみ", on_click=on_create_infer_folder)),
-                ], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Text("AI評価", size=18),
+                ft.Row(
+                    [
+                        reg_button(ft.ElevatedButton(text="モデルフォルダ選択", on_click=on_pick_model_dir_click)),
+                        ft.Container(
+                            content=model_dir_label,
+                            width=240,                      # 表示用の適度な幅（必要なら数値だけ調整）
+                            alignment=ft.alignment.center,   # 中央寄せ
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    expand=True,
+                ),
                 ft.Divider(),
+                ft.Text("AI学習で覚えこませた単語のうち、１種類を１度だけ発音してください。", size=18),
                 ft.Row([
                     reg_button(ft.ElevatedButton(text="録音開始", on_click=start_infer_record)),
                     reg_button(ft.ElevatedButton(text="録音終了", on_click=stop_and_infer)),
                 ], alignment=ft.MainAxisAlignment.CENTER),
                 status,
                 ft.Divider(),
-                #status,
-                infer_paths,
-                ft.Divider(),
-                ft.Text("推論結果（推定ラベル / 確率%）"),
-                results_panel,
+                ft.Text("評価結果", size=18, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+                ft.Row([results_panel], alignment=ft.MainAxisAlignment.CENTER)
             ],
             spacing=10,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -954,8 +1065,8 @@ def main(page: ft.Page):
                 ft.Text("モード選択", size=20),
                 ft.Row(
                     [
-                        reg_button(ft.ElevatedButton("学習へ", on_click=lambda _: show_train())),
-                        reg_button(ft.ElevatedButton("推論へ", on_click=lambda _: show_infer())),
+                        reg_button(ft.ElevatedButton("AI学習（録音）へ", on_click=lambda _: show_train())),
+                        reg_button(ft.ElevatedButton("AI評価へ", on_click=lambda _: show_infer())),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
                 ),
@@ -986,7 +1097,6 @@ def main(page: ft.Page):
 
     # 起動時
     show_home()
-
 
 if __name__ == "__main__":
     ft.app(target=main)
