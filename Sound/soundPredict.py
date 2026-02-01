@@ -343,6 +343,8 @@ class AppState:
     stream: sd.InputStream | None = None
     frames: list[np.ndarray] | None = None
     cue_stop_event: threading.Event | None = None
+    last_train_label: str | None = None
+    prepared_labels: list[str] | None = None
 
     # 推論用
     infer_dir: Path | None = None
@@ -356,14 +358,14 @@ class AppState:
     last_train_chunks: list[Path] | None = None
 
 def main(page: ft.Page):
-    page.title = "音声GUI（学習/推論）"
+    page.title = "発音識別アプリ"
     page.window_width = 1080
     page.window_height = 720
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
     state = AppState()
 
-    status = ft.Text(value="READY", selectable=True)
+    status = ft.Text(value="準備できました", size=24, weight=ft.FontWeight.BOLD)
 
     all_buttons = []
 
@@ -378,7 +380,8 @@ def main(page: ft.Page):
         # TextField類（画面幅に追従）
         tfw = max(320, int(content_w * 0.40))
         subject_name.width = tfw
-        labels_field.width = tfw
+        for tf in word_fields:
+            tf.width = tfw
         model_parent.width = content_w  # 推論のモデル親フォルダは長くなりがちなので広め
 
         # ボタン幅
@@ -396,7 +399,6 @@ def main(page: ft.Page):
 
     page.on_resize = on_resize
 
-
     def set_status(msg: str):
         status.value = msg
         page.update()
@@ -413,33 +415,21 @@ def main(page: ft.Page):
     def start_cue_cycle():
     # 既に動いていたら止めてから開始
         stop_cue_cycle()
-
         ev = threading.Event()
         state.cue_stop_event = ev
 
         def worker():
             try:
-                # 録音開始直後：緑を2秒
-                cue_box.bgcolor = "green"
-                page.update()
-                if ev.wait(2.0):
-                    return
-
-                # 以降：赤1秒→青0.5秒を繰り返し
+                colors = ["red", "green"]
+                idx = 0
                 while not ev.is_set():
-                    cue_box.bgcolor = "red"
+                    cue_box.bgcolor = colors[idx % 2]
                     page.update()
+                    idx += 1
                     if ev.wait(1.0):
                         break
-
-                    cue_box.bgcolor = "blue"
-                    page.update()
-                    if ev.wait(0.5):
-                        break
-
             finally:
-                # 終了時は緑に戻す（任意）
-                cue_box.bgcolor = "green"
+                cue_box.bgcolor = "red"
                 page.update()
 
         threading.Thread(target=worker, daemon=True).start()
@@ -453,14 +443,56 @@ def main(page: ft.Page):
     # 学習View UI & handlers
     # =========================
     subject_name = ft.TextField(label="学習：保存フォルダ名", width=520)
-    labels_field = ft.TextField(label="学習：ラベル（カンマ区切り）", width=520, value="sakana,shakana,takana,thakana,tyakana")
+    word_fields = [
+        ft.TextField(label="覚えさせたい単語①", value="sakana", width=520),
+        ft.TextField(label="覚えさせたい単語②", value="shakana", width=520),
+        ft.TextField(label="覚えさせたい単語③", value="takana", width=520),
+        ft.TextField(label="覚えさせたい単語④", value="thakana", width=520),
+        ft.TextField(label="覚えさせたい単語⑤", value="tyakana", width=520),
+    ]
     train_paths = ft.Text(value="", selectable=True)
     cue_box = ft.Container(
         width=140,
         height=140,
-        bgcolor="green",   # 初期は緑
+        bgcolor="red",   # 初期は緑
         border_radius=8,
     )
+    cue_text = ft.Text("色が切り替わるタイミングで発音してください", size=18)
+    label_counts: dict[str, int] = {}
+    label_count_view: dict[str, ft.Text] = {}
+
+    def ensure_label_state():
+        """現在の単語に対して、取得回数の表示オブジェクトを用意する"""
+        labs = state.prepared_labels if state.prepared_labels is not None else get_words()
+        for lab in get_words():
+            if lab not in label_counts:
+                label_counts[lab] = 0
+            if lab not in label_count_view:
+                label_count_view[lab] = ft.Text(value=f"取得回数: {label_counts[lab]}")
+
+    def get_words():
+        words = []
+        for tf in word_fields:
+            w = (tf.value or "").strip()
+            if w:
+                words.append(w)
+        return words[:5]
+    
+    def on_prepare_words(_):
+        labels = get_words()
+        if not labels:
+            set_status("覚えさせたい単語を1つ以上入力してください。")
+            return
+
+        # 準備完了で確定
+        state.prepared_labels = labels
+
+        # 取得回数表示の生成（確定単語に対して）
+        ensure_label_state()
+
+        # ページ更新（ボタン数を確定単語数に合わせて作り直す）
+        show_train()
+
 
     def update_train_paths():
         if state.subject_dir is None:
@@ -493,7 +525,7 @@ def main(page: ft.Page):
         state.clean_dir.mkdir(parents=True, exist_ok=True)
         state.dataset_root.mkdir(parents=True, exist_ok=True)
 
-        set_status(f"学習：フォルダ作成 {state.subject_dir}")
+        set_status("AI学習：フォルダを作成しました")
         update_train_paths()
 
     def start_record_for_label(label: str):
@@ -529,12 +561,12 @@ def main(page: ft.Page):
             state.frames = None
             set_status(f"学習：録音開始失敗: {e}")
 
-    def on_stop_train_record(_):
+    def on_stop_train_record_for(word: str):
         if not state.is_recording or state.stream is None or state.frames is None:
-            set_status("学習：録音中ではありません。")
+            set_status("録音中ではありません。")
             return
-        if state.current_label is None:
-            set_status("学習：labelが未設定です。")
+        if state.current_label != word:
+            set_status("この単語は録音中ではありません。")
             return
 
         # stop stream
@@ -557,7 +589,7 @@ def main(page: ft.Page):
             audio = np.concatenate(state.frames, axis=0)  # int16
             sf.write(str(raw_wav), audio, SAMPLE_RATE, subtype=SAVE_SUBTYPE)
         except Exception as e:
-            set_status(f"学習：raw保存失敗: {e}")
+            set_status("音声の保存に失敗しました。もう一度録音してください。")
             state.frames = None
             return
         finally:
@@ -582,23 +614,34 @@ def main(page: ft.Page):
                 start_index = get_next_index(out_label_dir, prefix=prefix)
                 chunks = split_cleaned_wav_to_folder(cleaned_wav, out_label_dir, start_index=start_index, prefix=prefix, mirror_dir=out_all_label_dir)
                 state.last_train_chunks = list(chunks)
+                # ★ここを追加：直近がどの単語かを「保存完了時」に確定させる
+                state.last_train_label = state.current_label
 
-                set_status(f"学習：保存完了 label={state.current_label} / 分割={len(chunks)}")
+                # ★ここを追加：取得回数の更新
+                ensure_label_state()
+                label_counts[state.current_label] = label_counts.get(state.current_label, 0) + len(chunks)
+                label_count_view[state.current_label].value = f"取得回数: {label_counts[state.current_label]}"
+
+                set_status(f"学習：{len(chunks)}個の保存を行いました。")
                 update_train_paths()
+                page.update()
             except Exception:
-                set_status("学習：後処理で例外\n" + traceback.format_exc())
+                set_status("録音時にエラーが発生しました。もう一度録音してください。")
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def on_rerecord_delete_last(_):
-        # ★ 直近に作った学習データを削除
+    def on_delete_last_for(word: str):
         deleted = 0
+
+        if state.last_train_label != word:
+            set_status("この単語の直近データはありません。")
+            return
 
         # chunks（dataset内）を先に消す
         if state.last_train_chunks:
             for p in state.last_train_chunks:
                 try:
-                    if p.exists():
+                    if p and p.exists():
                         p.unlink()
                         deleted += 1
                 except Exception:
@@ -616,57 +659,84 @@ def main(page: ft.Page):
         # 状態クリア
         state.last_train_raw = None
         state.last_train_clean = None
-        state.last_train_chunks = None
+        state.last_train_chunks = []
+        state.last_train_label = None
 
-        set_status(f"学習：再録音のため直近データを削除しました（削除数={deleted}）")
+        set_status(f"学習：直近データを削除しました（{deleted}件）")
         update_train_paths()
 
     def on_train_start(_):
         if state.dataset_root is None:
-            set_status("学習：先にフォルダ作成してください。")
+            set_status("先にフォルダ作成を行ってください。")
             return
 
-        labels = [s.strip() for s in (labels_field.value or "").split(",") if s.strip()]
+        labels = get_words()
         if not labels:
-            set_status("学習：ラベルが空です。")
+            set_status("覚えさせたい単語が登録されていません。")
             return
 
         def worker():
             try:
                 res = train_60hz_and_export(state.dataset_root, labels, export_dir=state.subject_dir)
-                set_status(
-                    "学習：完了\n"
-                    f"- model_dir: {res['model_dir']}\n"
-                    f"- test_accuracy: {res['test_accuracy']:.4f}\n"
-                    f"- labels: {res['labels']}\n"
-                )
+                set_status("学習が完了しました。AI評価に移るため、「戻る」ボタンを押し、AI評価を行ってください。")
             except Exception:
-                set_status("学習：学習で例外\n" + traceback.format_exc())
+                set_status("収録でエラーが発生しました。収録をやり直してください。")
 
         threading.Thread(target=worker, daemon=True).start()
 
     def build_train_page():
-        labels = [s.strip() for s in (labels_field.value or "").split(",") if s.strip()]
+        ensure_label_state()
+        words = state.prepared_labels if state.prepared_labels is not None else []
+
+        # 単語ごとの Row（開始・停止・削除・取得回数）を縦に並べる
+        label_rows = ft.Column(
+            controls=[
+                ft.Row(
+                    [
+                        reg_button(ft.ElevatedButton(
+                            text=f"単語{i+1} 録音開始",
+                            on_click=lambda e, w=word: start_record_for_label(w)
+                        )),
+                        reg_button(ft.ElevatedButton(
+                            text="録音停止",
+                            on_click=lambda e, w=word: on_stop_train_record_for(w)
+                        )),
+                        reg_button(ft.ElevatedButton(
+                            text="削除",
+                            on_click=lambda e, w=word: on_delete_last_for(w)
+                        )),
+                        label_count_view[word],
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER
+                )
+                for i, word in enumerate(words)
+            ],
+            spacing=8,
+        )
+        folder_btn = reg_button(ft.ElevatedButton(text="フォルダ作成", on_click=on_create_train_folder))
+
         return ft.Column(
             [
                 ft.Row([reg_button(ft.ElevatedButton("戻る", on_click=lambda _: show_home()))]),
-                ft.Text("学習（録音→ノイズ処理→分割→学習→モデル保存）", size=18),
-                subject_name,
-                labels_field,
-                ft.Row([cue_box], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Row([
-                    reg_button(ft.ElevatedButton(text="親フォルダ作成", on_click=on_create_train_folder)),
-                    reg_button(ft.ElevatedButton(text="録音停止（保存→分割）", on_click=on_stop_train_record)),
-                    reg_button(ft.ElevatedButton(text="再録音（直近データ削除）", on_click=on_rerecord_delete_last)),
-                    reg_button(ft.ElevatedButton(text="学習開始（モデル保存）", on_click=on_train_start)),
-                ], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Text("録音開始（ラベル別）"),
-                ft.Row([
-                    reg_button(ft.ElevatedButton(text=f"{lab} 録音開始", on_click=lambda e, l=lab: start_record_for_label(l)))
-                    for lab in labels
-                ], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Divider(),
+                ft.Text("AI学習", size=18),
+                # 単語入力欄（最大5）
+                ft.Row([subject_name, folder_btn], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Row(
+                    word_fields,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    scroll=ft.ScrollMode.AUTO,
+                ),
+                ft.Row(
+                    [reg_button(ft.ElevatedButton(text="準備完了", on_click=on_prepare_words))],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
                 status,
+                ft.Row([cue_box], alignment=ft.MainAxisAlignment.CENTER),
+                cue_text,
+                ft.Divider(),
+                label_rows,
+                reg_button(ft.ElevatedButton(text="AI学習開始", on_click=on_train_start)),
+                ft.Divider(),
                 train_paths,
             ],
             spacing=10,
@@ -676,7 +746,7 @@ def main(page: ft.Page):
     # =========================
     # 推論View UI & handlers
     # =========================
-    model_parent = ft.TextField(label="推論：モデル親フォルダ", width=900)
+    model_parent = ft.TextField(label="AI学習で登録したフォルダ名を入力", width=900)
 
     infer_paths = ft.Text(value="", selectable=True)
     results_table = ft.DataTable(
@@ -805,8 +875,8 @@ def main(page: ft.Page):
                 label_names = payload["label_names"]
 
                 denoise_wav_to_path(raw_wav, cleaned_wav)
-                start_index = get_next_index(chunk_dir)
-                chunks = split_cleaned_wav_to_folder(cleaned_wav, chunk_dir, start_index=start_index)
+                start_index = get_next_index(chunk_dir, prefix="infer")
+                chunks = split_cleaned_wav_to_folder(cleaned_wav, chunk_dir, start_index=start_index, prefix="infer", mirror_dir=None,)
 
                 rows = []
                 for i, wp in enumerate(chunks, start=1):
@@ -845,7 +915,7 @@ def main(page: ft.Page):
                 page.update()
 
             except Exception:
-                set_status("推論：後処理/推論で例外\n" + traceback.format_exc())
+                set_status("推論処理でエラーが発生しました。再度録音してください。")
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -853,18 +923,19 @@ def main(page: ft.Page):
         return ft.Column(
             [
                 ft.Row([reg_button(ft.ElevatedButton("戻る", on_click=lambda _: show_home()))]),
-                ft.Text("推論（モデル選択→録音→分割→推論）", size=18),
+                ft.Text("AI推論", size=18),
                 model_parent,
                 ft.Row([
-                    reg_button(ft.ElevatedButton(text="推論フォルダ作成", on_click=on_create_infer_folder)),
+                    reg_button(ft.ElevatedButton(text="AI推論モデル読みこみ", on_click=on_create_infer_folder)),
                 ], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Divider(),
                 ft.Row([
-                    reg_button(ft.ElevatedButton(text="録音Start", on_click=start_infer_record)),
-                    reg_button(ft.ElevatedButton(text="Stop（保存→分割→推論）", on_click=stop_and_infer)),
+                    reg_button(ft.ElevatedButton(text="録音開始", on_click=start_infer_record)),
+                    reg_button(ft.ElevatedButton(text="録音終了", on_click=stop_and_infer)),
                 ], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Divider(),
                 status,
+                ft.Divider(),
+                #status,
                 infer_paths,
                 ft.Divider(),
                 ft.Text("推論結果（推定ラベル / 確率%）"),
@@ -897,7 +968,8 @@ def main(page: ft.Page):
     def show_home():
         page.controls.clear()
         page.add(build_home_page())
-        page.update()
+        set_status("")
+        page.update() 
         apply_responsive_layout(page.width, page.height)
 
     def show_train():
