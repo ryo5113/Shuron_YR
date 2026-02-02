@@ -472,7 +472,7 @@ def main(page: ft.Page, root_home=None):
         bgcolor="red",   # 初期は緑
         border_radius=8,
     )
-    cue_text = ft.Text("色が切り替わるタイミングで発音してください", size=18)
+    cue_text = ft.Text("色が切り替わるタイミングで発音してください。", size=18)
     cue_count_text = ft.Text(value="発音回数：0", size=18)
     label_counts: dict[str, int] = {}
     label_count_view: dict[str, ft.Text] = {}
@@ -502,6 +502,7 @@ def main(page: ft.Page, root_home=None):
 
         # 準備完了で確定
         state.prepared_labels = labels
+        set_status("単語を確定しました。録音を開始できます。")
 
         # 取得回数表示の生成（確定単語に対して）
         ensure_label_state()
@@ -568,14 +569,14 @@ def main(page: ft.Page, root_home=None):
             )
             state.stream.start()
             start_cue_cycle()
-            set_status(f"学習：録音中... label={label}（Stopで保存→分割→datasetへ）")
+            set_status(f"録音中... 単語={label}")
             update_train_paths()
         except Exception as e:
             stop_cue_cycle()
             state.is_recording = False
             state.stream = None
             state.frames = None
-            set_status(f"学習：録音開始失敗: {e}")
+            set_status(f"録音開始時にエラーが発生しました。もう一度お試しください。")
 
     def on_stop_train_record_for(word: str):
         if not state.is_recording or state.stream is None or state.frames is None:
@@ -749,12 +750,13 @@ def main(page: ft.Page, root_home=None):
                 ft.Text("AI学習", size=18),
                 # 単語入力欄（最大5）
                 ft.Row([subject_name, folder_btn], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Text("覚えさせたい単語をローマ字で入力してください。（最大5つ）", size=18),
                 ft.Row(
                     word_fields,
                     alignment=ft.MainAxisAlignment.CENTER,
                     scroll=ft.ScrollMode.AUTO,
                 ),
-                ft.Text("覚えさせたい単語をローマ字で入力してください。", size=18),
+                ft.Text("単語を設定できたら、以下の「準備完了」を押してください。", size=18),
                 ft.Row(
                     [reg_button(ft.ElevatedButton(text="準備完了", on_click=on_prepare_words))],
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -1070,9 +1072,15 @@ def main(page: ft.Page, root_home=None):
     # Home View（モード選択）: fletMouthPredect.py と同様に controls を入れ替える
     # =========================
     def build_home_page():
-        return ft.Column(
+        back_btn = reg_button(
+            ft.ElevatedButton(
+                "発音/口形状選択ページに戻る",
+                on_click=lambda _: go_root_home()
+            )
+        )
+
+        center_block = ft.Column(
             [
-                ft.Row([reg_button(ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()))]),
                 ft.Text("モード選択", size=20),
                 ft.Row(
                     [
@@ -1084,9 +1092,30 @@ def main(page: ft.Page, root_home=None):
                 ft.Divider(),
                 status,
             ],
-            spacing=10
+            spacing=10,
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
-    
+
+        return ft.Stack(
+            expand=True,
+            controls=[
+                # まず中央ブロック（画面全体を使って中央配置）
+                ft.Container(
+                    content=center_block,
+                    alignment=ft.alignment.center,
+                    expand=True,
+                ),
+
+                # 最後に戻るボタン（左上に位置固定。expandしないのでクリックが邪魔されない）
+                ft.Container(
+                    content=back_btn,
+                    left=10,
+                    top=10,
+                ),
+            ],
+        )
+
     def go_root_home():
         # 統合ホームが渡されていればそこへ、なければ従来通りこのアプリ内ホームへ
         if callable(root_home):
@@ -1100,6 +1129,7 @@ def main(page: ft.Page, root_home=None):
             show_home()
 
     def show_home():
+        page.scroll = None
         page.controls.clear()
         page.add(build_home_page())
         set_status("")
@@ -1107,12 +1137,14 @@ def main(page: ft.Page, root_home=None):
         apply_responsive_layout(page.width, page.height)
 
     def show_train():
+        page.scroll = ft.ScrollMode.AUTO
         page.controls.clear()
         page.add(build_train_page())
         page.update()
         apply_responsive_layout(page.width, page.height)
 
     def show_infer():
+        page.scroll = ft.ScrollMode.AUTO
         page.controls.clear()
         page.add(build_infer_page())
         page.update()

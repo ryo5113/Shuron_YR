@@ -1,16 +1,12 @@
 @echo off
 setlocal
 
-pushd "%~dp0"
+rem STフォルダ（stLauncher.py と st_env がある場所）を固定
+set ST_DIR=C:\Users\edu01\Documents\GitHub\Shuron_YR\ST
 
-rem 仮想環境の python を直接指定（確実）
-set VENV_PY=%~dp0st_env\Scripts\python.exe
+pushd "%ST_DIR%"
 
-rem どの python が使われるか確認
-"%VENV_PY%" -c "import sys; print(sys.executable)"
-
-rem 起動
-"%VENV_PY%" stLauncher.py
+"%ST_DIR%\st_env\Scripts\python.exe" "%ST_DIR%\stLauncher.py"
 
 pause
 popd

@@ -8,6 +8,7 @@ def main(page: ft.Page):
     page.window_width = 1080
     page.window_height = 720
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+    page.vertical_alignment = ft.MainAxisAlignment.CENTER
     all_buttons = []
 
     def apply_responsive_layout(w: float, h: float):
@@ -40,24 +41,19 @@ def main(page: ft.Page):
         all_buttons.extend([btn_sound, btn_mouth])
 
         page.add(
-            ft.Container(
+            ft.Column(
                 expand=True,
-                alignment=ft.alignment.center,
-                content=ft.Column(
-                    [
-                        ft.Text("モード選択", size=24, weight=ft.FontWeight.BOLD),
-                        ft.Row(
-                            [btn_sound, btn_mouth],
-                            alignment=ft.MainAxisAlignment.CENTER,
-                        ),
-                    ],
-                    spacing=20,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    alignment=ft.MainAxisAlignment.CENTER,  # 縦方向の中央寄せ
-                ),
+                alignment=ft.MainAxisAlignment.CENTER,                # 縦方向中央
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,    # 横方向中央
+                spacing=20,
+                controls=[
+                    ft.Text("モード選択", size=24, weight=ft.FontWeight.BOLD),
+                    ft.Row([btn_sound, btn_mouth], alignment=ft.MainAxisAlignment.CENTER),
+                ],
             )
         )
-        apply_responsive_layout(page.window_width, page.window_height)
+
+        apply_responsive_layout(page.width, page.height)
 
     show_root_home()
 

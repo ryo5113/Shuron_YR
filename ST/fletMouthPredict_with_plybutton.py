@@ -1471,7 +1471,7 @@ def main(page: ft.Page, root_home=None):
                 ft.Text("AI学習（口形状撮影）", size=18),
                 ft.Row([subject_name, btn_mkdir], alignment=ft.MainAxisAlignment.CENTER),
                 label_rows,
-                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=15),
+                ft.Text("色の意味：白=待機中（撮影可能）、青=処理中（なるべく動かないでください）、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=15),
                 ft.Row([ft.ElevatedButton("AI学習開始", on_click=lambda _: on_train_start())], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Text("※学習には時間がかかります。進捗はステータス欄で確認してください。", size=12),
                 status_bar,
@@ -1515,7 +1515,7 @@ def main(page: ft.Page, root_home=None):
                     reg_button(ft.ElevatedButton(text="AI評価停止", on_click=on_stop_infer)),
                 ], alignment=ft.MainAxisAlignment.CENTER),
                 status_bar,
-                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可", size=15),
+                ft.Text("色の意味：白=待機中（撮影可能）、青=処理中（なるべく動かないでください）、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=15),
                 ft.Divider(),
                 ft.Text("プレビュー（共通）"),
                 reg_button(ft.ElevatedButton(text="口形状確認", on_click=on_open_plyviewer)),
@@ -1538,23 +1538,50 @@ def main(page: ft.Page, root_home=None):
         return infer_root
 
     def build_home_page():
-        return ft.Column(
+        back_btn = reg_button(
+            ft.ElevatedButton(
+                "発音/口形状選択ページに戻る",
+                on_click=lambda _: go_root_home()
+            )
+        )
+
+        center_block = ft.Column(
             [
-                ft.Row([reg_button(ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()))]),
                 ft.Text("モード選択", size=20),
                 ft.Row(
                     [
-                        reg_button(ft.ElevatedButton("AI学習へ", on_click=lambda _: show_train())),
+                        reg_button(ft.ElevatedButton("AI学習（撮影）へ", on_click=lambda _: show_train())),
                         reg_button(ft.ElevatedButton("AI評価へ", on_click=lambda _: show_infer())),
                     ],
-                    alignment=ft.MainAxisAlignment.CENTER
+                    alignment=ft.MainAxisAlignment.CENTER,
                 ),
                 ft.Divider(),
                 status_bar,
             ],
-            spacing=10
+            spacing=10,
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
-    
+
+        return ft.Stack(
+            expand=True,
+            controls=[
+                # まず中央ブロック（画面全体を使って中央配置）
+                ft.Container(
+                    content=center_block,
+                    alignment=ft.alignment.center,
+                    expand=True,
+                ),
+
+                # 最後に戻るボタン（左上に位置固定。expandしないのでクリックが邪魔されない）
+                ft.Container(
+                    content=back_btn,
+                    left=10,
+                    top=10,
+                ),
+            ],
+        )
+
     def go_root_home():
         # 既存の停止処理を呼んでから戻る（UI/処理は変えず、戻る前に止めるだけ）
         try:
@@ -1572,6 +1599,7 @@ def main(page: ft.Page, root_home=None):
             show_home()
 
     def show_home():
+        page.scroll = None
         # 実行中なら止める（戻る動作）
         try:
             on_stop_capture(None)
@@ -1589,12 +1617,14 @@ def main(page: ft.Page, root_home=None):
         apply_responsive_layout(page.width, page.height)
 
     def show_train():
+        page.scroll = ft.ScrollMode.AUTO
         page.controls.clear()
         page.add(build_train_page())
         page.update()
         apply_responsive_layout(page.width, page.height)
 
     def show_infer():
+        page.scroll = ft.ScrollMode.AUTO
         page.controls.clear()
         page.add(build_infer_page())
         page.update()
