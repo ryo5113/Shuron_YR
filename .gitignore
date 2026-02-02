@@ -146,6 +146,7 @@ venv.bak/
 face_env/
 sound_env/
 st_env/
+ST/st_env/
 
 # Spyder project settings
 .spyderproject

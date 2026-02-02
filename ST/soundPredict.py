@@ -740,8 +740,12 @@ def main(page: ft.Page, root_home=None):
 
         return ft.Column(
             [
-                ft.Row([reg_button(ft.ElevatedButton("学習/評価選択ページに戻る", on_click=lambda _: show_home()))]),
-                ft.Row([reg_button(ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()))]),
+                ft.Row(
+                    [
+                        ft.ElevatedButton("学習/評価選択ページに戻る", on_click=lambda _: show_home()),
+                        ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()),
+                    ]
+                ),
                 ft.Text("AI学習", size=18),
                 # 単語入力欄（最大5）
                 ft.Row([subject_name, folder_btn], alignment=ft.MainAxisAlignment.CENTER),
@@ -1028,8 +1032,12 @@ def main(page: ft.Page, root_home=None):
     def build_infer_page():
         return ft.Column(
             [
-                ft.Row([reg_button(ft.ElevatedButton("学習/評価選択ページに戻る", on_click=lambda _: show_home()))]),
-                ft.Row([reg_button(ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()))]),
+                ft.Row(
+                    [
+                        ft.ElevatedButton("学習/評価選択ページに戻る", on_click=lambda _: show_home()),
+                        ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()),
+                    ]
+                ),
                 ft.Text("AI評価", size=18),
                 ft.Row(
                     [
@@ -1064,6 +1072,7 @@ def main(page: ft.Page, root_home=None):
     def build_home_page():
         return ft.Column(
             [
+                ft.Row([reg_button(ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()))]),
                 ft.Text("モード選択", size=20),
                 ft.Row(
                     [

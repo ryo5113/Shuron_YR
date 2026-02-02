@@ -12,6 +12,9 @@ import traceback
 import base64
 import json
 import time
+import os
+import sys
+import subprocess
 
 import flet as ft
 import cv2
@@ -621,6 +624,7 @@ class AppState:
     worker_thread_infer: threading.Thread | None = None
     last_pred_text: str = "PRED: --"
     picked_model_path: Path | None = None
+    last_infer_mouth_ply: Path | None = None  # 推論で直近撮影した口形状PLY（確認用）
 
 # -------------------------
 # ワーカ（学習収録）
@@ -647,7 +651,7 @@ def protocol_worker_capture(
 
         for serial in core.SERIALS:
             pipeline, profile = core.create_pipeline(serial)
-            set_status_threadsafe(f"RealSenseカメラ {serial} 起動完了")
+            set_status_threadsafe(f"カメラ起動中…")
             pipelines.append(pipeline)
             profiles.append(profile)
 
@@ -919,6 +923,17 @@ def protocol_worker_infer(
                             pitch_label_deg=pitch_deg_smooth,
                             tag_R=R_tag, tag_t=t_tag,
                         )
+
+                        # 口形状確認用に、直近の推論用口形状PLYを保存（UI/推論処理自体は変更しない）
+                        try:
+                            out_dir = Path("PLY") / "infer_preview"
+                            out_dir.mkdir(parents=True, exist_ok=True)
+                            out_ply = out_dir / "last_mouth_infer.ply"
+                            o3d.io.write_point_cloud(str(out_ply), mouth_local)
+                            state.last_infer_mouth_ply = out_ply.resolve()
+                        except Exception:
+                            # 保存に失敗しても推論は継続（確認機能のみのため）
+                            pass
                         if mouth_local is None:
                             last_pred_overlay = "PRED: -- (mouth detect failed)"
                             set_pred_threadsafe(last_pred_overlay)
@@ -944,7 +959,7 @@ def protocol_worker_infer(
                     set_status_threadsafe("撮影できません（マーカーが見えていません）", kind="warn")
 
     except Exception:
-        set_status_threadsafe("推論プロトコルで例外:\n" + traceback.format_exc())
+        set_status_threadsafe("評価プロセスでエラーが発生しました。", kind="error")
     finally:
         for p in pipelines:
             try:
@@ -965,7 +980,7 @@ def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
     LABEL_ORDER = ["A", "I", "U", "E", "O"]
 
     SVM_KERNEL = "rbf"
-    C_GRID = [0.1, 1, 3, 5, 10, 30, 100]
+    C_GRID = [0.1, 1, 3, 5, 10, 20]
     GAMMA_GRID = ["scale", "auto"]
     CLASS_WEIGHT = None
     PROBABILITY = True
@@ -977,7 +992,7 @@ def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
     out_meta = subject_dir / META_FILENAME
     out_cm = subject_dir / CM_FILENAME
 
-    set_status_threadsafe(f"学習開始：DATA_ROOT={data_root}")
+    set_status_threadsafe("AI学習開始：データ読み込み中…")
 
     X, y_str = collect_dataset_fixed_order(data_root, GRID, LABEL_ORDER, feature_mode=FEATURE_MODE)
     label_to_id = {lab: i for i, lab in enumerate(LABEL_ORDER)}
@@ -1043,13 +1058,7 @@ def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
     out_meta.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
     set_status_threadsafe(
-        "学習完了\n"
-        f"- model: {out_model}\n"
-        f"- meta: {out_meta}\n"
-        f"- cm: {out_cm}\n"
-        f"- test_accuracy: {acc:.4f}\n"
-        f"- best_params: {grid.best_params_}\n"
-        f"- report:\n{report}"
+        "学習完了：精度 {:.2f}%、モデルを保存しました".format(acc * 100), kind="success"
     )
 
 # -------------------------
@@ -1111,7 +1120,7 @@ def main(page: ft.Page, root_home=None):
         infer_parent.width = tfw
 
         # ボタン：画面幅の10%
-        bw = max(140, int(w * 0.10))
+        bw = max(140, int(w * 0.13))
         for b in all_buttons:
             b.width = bw
 
@@ -1137,10 +1146,32 @@ def main(page: ft.Page, root_home=None):
             set_status("撮影：先に『AI評価（撮影）開始』を押してください。")
             return
 
+
         capture_event.set()
 
+    def on_open_plyviewer(_):
+        # 推論で直近撮影した口形状PLYを、別ウィンドウ（mainPlyViewer）で表示する
+        ply_path = state.last_infer_mouth_ply
+        if ply_path is None or (not Path(ply_path).exists()):
+            set_status("口形状確認：先に撮影してください。")
+            return
+
+        viewer_script = Path(__file__).with_name("mainPlyViewer_with_args.py")
+        if not viewer_script.exists():
+            set_status(f"口形状確認が利用できません。")
+            return
+
+        try:
+            cmd = [sys.executable, str(viewer_script), str(ply_path)]
+            creationflags = 0
+            if hasattr(subprocess, "CREATE_NEW_CONSOLE"):
+                creationflags |= subprocess.CREATE_NEW_CONSOLE
+            subprocess.Popen(cmd, creationflags=creationflags)
+        except Exception as e:
+            set_status(f"口形状確認：起動に失敗しました。")
+
     def set_count(n: int):
-        count_view.value = f"COUNT: {n}"
+        count_view.value = f"撮影枚数: {n}"
         page.update()
 
     def set_count_threadsafe(n: int):
@@ -1199,7 +1230,7 @@ def main(page: ft.Page, root_home=None):
     def on_create_folder(_):
         name = safe_subject_name(subject_name.value or "")
         if not name:
-            set_status("フォルダ名が空です。", kind="error")
+            set_status("フォルダ名が入力されていません。", kind="error")
             return
 
         base = Path.cwd()
@@ -1351,7 +1382,7 @@ def main(page: ft.Page, root_home=None):
             try:
                 train_svm_and_save(state.subject_dir, set_status_threadsafe)
             except Exception:
-                set_status_threadsafe("学習で例外:\n" + traceback.format_exc())
+                set_status_threadsafe("学習時にエラーが発生しました。", kind="error")
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -1431,11 +1462,16 @@ def main(page: ft.Page, root_home=None):
         
         return ft.Column(
             [
-                ft.Row([ft.ElevatedButton("戻る", on_click=lambda _: show_home())]),
+                ft.Row(
+                    [
+                        ft.ElevatedButton("学習/評価選択ページに戻る", on_click=lambda _: show_home()),
+                        ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()),
+                    ]
+                ),
                 ft.Text("AI学習（口形状撮影）", size=18),
                 ft.Row([subject_name, btn_mkdir], alignment=ft.MainAxisAlignment.CENTER),
                 label_rows,
-                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=12),
+                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=15),
                 ft.Row([ft.ElevatedButton("AI学習開始", on_click=lambda _: on_train_start())], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Text("※学習には時間がかかります。進捗はステータス欄で確認してください。", size=12),
                 status_bar,
@@ -1479,14 +1515,14 @@ def main(page: ft.Page, root_home=None):
                     reg_button(ft.ElevatedButton(text="AI評価停止", on_click=on_stop_infer)),
                 ], alignment=ft.MainAxisAlignment.CENTER),
                 status_bar,
-                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可", size=12),
+                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可", size=15),
                 ft.Divider(),
                 ft.Text("プレビュー（共通）"),
+                reg_button(ft.ElevatedButton(text="口形状確認", on_click=on_open_plyviewer)),
                 preview,
                 ft.Divider(),
                 done_view,
                 pred_view,
-                #status,
                 ft.Text("※Flet画面にフォーカスして撮影ボタン（ARマーカー検出時のみ）を押す", size=12),
             ],
             spacing=10,
@@ -1504,6 +1540,7 @@ def main(page: ft.Page, root_home=None):
     def build_home_page():
         return ft.Column(
             [
+                ft.Row([reg_button(ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()))]),
                 ft.Text("モード選択", size=20),
                 ft.Row(
                     [
@@ -1533,7 +1570,6 @@ def main(page: ft.Page, root_home=None):
             root_home()
         else:
             show_home()
-
 
     def show_home():
         # 実行中なら止める（戻る動作）

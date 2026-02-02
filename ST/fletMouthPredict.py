@@ -965,7 +965,7 @@ def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
     LABEL_ORDER = ["A", "I", "U", "E", "O"]
 
     SVM_KERNEL = "rbf"
-    C_GRID = [0.1, 1, 3, 5, 10, 30, 100]
+    C_GRID = [0.1, 1, 3, 5, 10, 20]
     GAMMA_GRID = ["scale", "auto"]
     CLASS_WEIGHT = None
     PROBABILITY = True
@@ -977,7 +977,7 @@ def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
     out_meta = subject_dir / META_FILENAME
     out_cm = subject_dir / CM_FILENAME
 
-    set_status_threadsafe(f"学習開始：DATA_ROOT={data_root}")
+    set_status_threadsafe(f"AI学習開始：データ読み込み中…")
 
     X, y_str = collect_dataset_fixed_order(data_root, GRID, LABEL_ORDER, feature_mode=FEATURE_MODE)
     label_to_id = {lab: i for i, lab in enumerate(LABEL_ORDER)}
@@ -1043,13 +1043,7 @@ def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
     out_meta.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
     set_status_threadsafe(
-        "学習完了\n"
-        f"- model: {out_model}\n"
-        f"- meta: {out_meta}\n"
-        f"- cm: {out_cm}\n"
-        f"- test_accuracy: {acc:.4f}\n"
-        f"- best_params: {grid.best_params_}\n"
-        f"- report:\n{report}"
+        "学習完了：精度 {:.2f}%、モデルを保存しました".format(acc * 100), kind="success"
     )
 
 # -------------------------
@@ -1111,7 +1105,7 @@ def main(page: ft.Page, root_home=None):
         infer_parent.width = tfw
 
         # ボタン：画面幅の10%
-        bw = max(140, int(w * 0.10))
+        bw = max(140, int(w * 0.13))
         for b in all_buttons:
             b.width = bw
 
@@ -1140,7 +1134,7 @@ def main(page: ft.Page, root_home=None):
         capture_event.set()
 
     def set_count(n: int):
-        count_view.value = f"COUNT: {n}"
+        count_view.value = f"撮影枚数: {n}"
         page.update()
 
     def set_count_threadsafe(n: int):
@@ -1199,7 +1193,7 @@ def main(page: ft.Page, root_home=None):
     def on_create_folder(_):
         name = safe_subject_name(subject_name.value or "")
         if not name:
-            set_status("フォルダ名が空です。", kind="error")
+            set_status("フォルダ名が入力されていません。", kind="error")
             return
 
         base = Path.cwd()
@@ -1351,7 +1345,7 @@ def main(page: ft.Page, root_home=None):
             try:
                 train_svm_and_save(state.subject_dir, set_status_threadsafe)
             except Exception:
-                set_status_threadsafe("学習で例外:\n" + traceback.format_exc())
+                set_status_threadsafe("学習時にエラーが発生しました。", kind="error")
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -1431,13 +1425,14 @@ def main(page: ft.Page, root_home=None):
         
         return ft.Column(
             [
-                ft.Row([ft.ElevatedButton("戻る", on_click=lambda _: show_home())]),
+                ft.ElevatedButton("学習/評価選択ページに戻る", on_click=lambda _: show_home()),
+                ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()),
                 ft.Text("AI学習（口形状撮影）", size=18),
                 ft.Row([subject_name, btn_mkdir], alignment=ft.MainAxisAlignment.CENTER),
                 label_rows,
-                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=12),
+                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=16),
                 ft.Row([ft.ElevatedButton("AI学習開始", on_click=lambda _: on_train_start())], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Text("※学習には時間がかかります。進捗はステータス欄で確認してください。", size=12),
+                ft.Text("※学習には時間がかかります。少々お待ちください。", size=12),
                 status_bar,
                 ft.Divider(),
                 ft.Text("プレビュー（共通）"),
@@ -1479,7 +1474,7 @@ def main(page: ft.Page, root_home=None):
                     reg_button(ft.ElevatedButton(text="AI評価停止", on_click=on_stop_infer)),
                 ], alignment=ft.MainAxisAlignment.CENTER),
                 status_bar,
-                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可", size=12),
+                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可", size=15),
                 ft.Divider(),
                 ft.Text("プレビュー（共通）"),
                 preview,
