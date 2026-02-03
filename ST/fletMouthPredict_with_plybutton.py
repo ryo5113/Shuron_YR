@@ -40,6 +40,7 @@ from sklearn.metrics import (
 import captureMouth as core  # 収録側の処理を流用
 
 LABELS = ["A", "I", "U", "E", "O"]
+LABEL_DISPLAY = {"A": "あ", "I": "い", "U": "う", "E": "え", "O": "お"}
 MODEL_FILENAME = "ply_svm_model.joblib"
 META_FILENAME = "meta.json"
 CM_FILENAME = "confusion_matrix.png"
@@ -227,7 +228,7 @@ def capture_and_process_3cams_to_dirs_save(
     saved_paths: list[Path] = []
 
     base = raw_dir.parent.parent.parent # raw_dir = <base>/<subject>/raw_ply/<label>
-    all_root = base / "ALL" / "mouth_ply"
+    all_root = base / "ALLMouth" / "mouth_ply"
     all_root.mkdir(parents=True, exist_ok=True)
 
     color_frames = [None] * len(pipelines)
@@ -668,7 +669,11 @@ def protocol_worker_capture(
         mouth_dir_label.mkdir(parents=True, exist_ok=True)
         mpimg_dir_label.mkdir(parents=True, exist_ok=True)
 
-        set_status_threadsafe("収録中：Flet画面にフォーカスして撮影ボタンで撮影（ARマーカー必須）")
+        label_disp = LABEL_DISPLAY.get(label, label)  # A→あ など
+        set_status_threadsafe(
+            f"「{label_disp}」撮影可能：背景色が白のときに「撮影」を押してください。",
+            kind="info"
+        )
 
         is_processing = False
         success_flash_until = 0.0
@@ -719,27 +724,32 @@ def protocol_worker_capture(
                 new_color = ft.Colors.BLUE_100
             else:
                 new_color = ft.Colors.WHITE
+            if state.stop_event.is_set() or quit_event.is_set():
+                break
+            if state.stop_event.is_set() or quit_event.is_set():
+                break
 
             page.run_thread(lambda c=new_color: setattr(train_root, "bgcolor", c))
             page.run_thread(page.update)
 
-            cv2.putText(
-                frame_vis, f"CAPTURE: {'READY' if capture_ready else 'NG'}",
-                (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
-                (0, 255, 0) if capture_ready else (0, 0, 255), 2
-            )
-            if matched_any:
-                cv2.putText(
-                    frame_vis, f"R:{roll_deg:+.1f}  P:{pitch_deg_smooth:+.1f}  Y:{yaw_deg:+.1f} [deg]",
-                    (30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2
-                )
+            # cv2.putText(
+            #     frame_vis, f"CAPTURE: {'READY' if capture_ready else 'NG'}",
+            #     (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
+            #     (0, 255, 0) if capture_ready else (0, 0, 255), 2
+            # )
+            # if matched_any:
+            #     cv2.putText(
+            #         frame_vis, f"R:{roll_deg:+.1f}  P:{pitch_deg_smooth:+.1f}  Y:{yaw_deg:+.1f} [deg]",
+            #         (30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2
+            #     )
 
-            if is_processing:
-                cv2.putText(
-                    frame_vis, "PROCESSING... DO NOT MOVE",
-                    (30, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2
-                )
+            # if is_processing:
+            #     cv2.putText(
+            #         frame_vis, "PROCESSING... DO NOT MOVE",
+            #         (30, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2
+            #     )
 
+            frame_vis = cv2.flip(frame_vis, 1)
             ok, buf = cv2.imencode(".jpg", frame_vis, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
             if ok:
                 b64 = base64.b64encode(buf).decode("ascii")
@@ -792,6 +802,9 @@ def protocol_worker_capture(
                 p.stop()
             except Exception:
                 pass
+        page.run_thread(lambda: setattr(preview, "src_base64", None))
+        page.run_thread(lambda: setattr(train_root, "bgcolor", ft.Colors.WHITE))
+        page.run_thread(page.update)
 
 # -------------------------
 # ワーカ（推論）
@@ -813,7 +826,7 @@ def protocol_worker_infer(
     pitch_hist = core.deque(maxlen=10)
 
     try:
-        set_status_threadsafe("推論：RealSenseカメラを初期化中…", kind="info")
+        set_status_threadsafe("RealSenseカメラを初期化中…", kind="info")
 
         for serial in core.SERIALS:
             pipeline, profile = core.create_pipeline(serial)
@@ -827,7 +840,7 @@ def protocol_worker_infer(
 
         set_status_threadsafe("カメラ起動中です。撮影ボタンで評価できます", kind="info")
         is_processing = False
-        last_pred_overlay = "PRED: --"
+        last_pred_overlay = "評価結果： --"
 
         success_flash_until = 0.0
         is_processing = False
@@ -878,33 +891,38 @@ def protocol_worker_infer(
                 new_color = ft.Colors.BLUE_100
             else:
                 new_color = ft.Colors.WHITE
+            if state.stop_event_infer.is_set() or quit_event.is_set():
+                break
+            if state.stop_event_infer.is_set() or quit_event.is_set():
+                break
 
             page.run_thread(lambda c=new_color: setattr(infer_root, "bgcolor", c))
             page.run_thread(page.update)
 
-            cv2.putText(
-                frame_vis, f"CAPTURE: {'READY' if capture_ready else 'NG'}",
-                (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
-                (0, 255, 0) if capture_ready else (0, 0, 255), 2
-            )
-            if matched_any:
-                cv2.putText(
-                    frame_vis, f"R:{roll_deg:+.1f}  P:{pitch_deg_smooth:+.1f}  Y:{yaw_deg:+.1f} [deg]",
-                    (30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2
-                )
+            # cv2.putText(
+            #     frame_vis, f"CAPTURE: {'READY' if capture_ready else 'NG'}",
+            #     (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8,
+            #     (0, 255, 0) if capture_ready else (0, 0, 255), 2
+            # )
+            # if matched_any:
+            #     cv2.putText(
+            #         frame_vis, f"R:{roll_deg:+.1f}  P:{pitch_deg_smooth:+.1f}  Y:{yaw_deg:+.1f} [deg]",
+            #         (30, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2
+            #     )
 
-            # 推論結果オーバレイ
-            cv2.putText(
-                frame_vis, last_pred_overlay,
-                (30, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2
-            )
+            # # 推論結果オーバレイ
+            # cv2.putText(
+            #     frame_vis, last_pred_overlay,
+            #     (30, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2
+            # )
 
-            if is_processing:
-                cv2.putText(
-                    frame_vis, "PROCESSING... DO NOT MOVE",
-                    (30, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2
-                )
+            # if is_processing:
+            #     cv2.putText(
+            #         frame_vis, "PROCESSING... DO NOT MOVE",
+            #         (30, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2
+            #     )
 
+            frame_vis = cv2.flip(frame_vis, 1)
             ok, buf = cv2.imencode(".jpg", frame_vis, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
             if ok:
                 b64 = base64.b64encode(buf).decode("ascii")
@@ -917,6 +935,8 @@ def protocol_worker_infer(
                 capture_event.clear()
                 if capture_ready and (not is_processing) and (R_tag is not None) and (t_tag is not None):
                     is_processing = True
+                    page.run_thread(lambda: setattr(infer_root, "bgcolor", ft.Colors.BLUE_100))
+                    page.run_thread(page.update)
                     try:
                         mouth_local = capture_and_process_3cams_return_mouth_local(
                             pipelines, profiles,
@@ -935,23 +955,24 @@ def protocol_worker_infer(
                             # 保存に失敗しても推論は継続（確認機能のみのため）
                             pass
                         if mouth_local is None:
-                            last_pred_overlay = "PRED: -- (mouth detect failed)"
+                            last_pred_overlay = "評価結果： -- (口の検出に失敗しました。)"
                             set_pred_threadsafe(last_pred_overlay)
-                            set_done_threadsafe("推論失敗")
+                            set_done_threadsafe("評価失敗")
                         else:
                             pred_label, pred_val, _ = predict_from_mouth_pcd(mouth_local, state.model_payload)
                             if pred_label is None:
-                                last_pred_overlay = "PRED: --"
+                                last_pred_overlay = "評価結果： --"
                             else:
+                                pred_disp = LABEL_DISPLAY.get(pred_label, pred_label)
                                 if pred_val is None:
-                                    last_pred_overlay = f"PRED: {pred_label}"
+                                    last_pred_overlay = f"評価結果： {pred_disp} (撮影失敗です。もう一度撮影してください。)"
                                 else:
-                                    last_pred_overlay = f"PRED: {pred_label} ({pred_val:.1f}%)"
+                                    last_pred_overlay = f"評価結果： {pred_disp} ({pred_val:.1f}%)"
                             set_pred_threadsafe(last_pred_overlay)
                             success_flash_until = time.time() + 2.0
-                            set_done_threadsafe("推論成功")
+                            set_done_threadsafe("評価成功")
                     except Exception as e:
-                        last_pred_overlay = f"PRED: ERROR ({e})"
+                        last_pred_overlay = f"評価結果： -- (エラーが発生しました)"
                         set_pred_threadsafe(last_pred_overlay)
                     finally:
                         is_processing = False
@@ -966,6 +987,9 @@ def protocol_worker_infer(
                 p.stop()
             except Exception:
                 pass
+        page.run_thread(lambda: setattr(preview, "src_base64", None))
+        page.run_thread(lambda: setattr(infer_root, "bgcolor", ft.Colors.WHITE))
+        page.run_thread(page.update)
 
 # -------------------------
 # 学習処理（親フォルダ/mouth_ply を DATA_ROOT として学習 → 親フォルダ直下に保存）
@@ -1065,7 +1089,7 @@ def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
 # Flet UI
 # -------------------------
 def main(page: ft.Page, root_home=None):
-    page.title = "口点群GUI（学習/推論統合）"
+    page.title = "口形状収録・AI学習・評価ツール"
     page.window_width = 1080
     page.window_height = 720
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
@@ -1085,12 +1109,14 @@ def main(page: ft.Page, root_home=None):
         padding=12,
         border_radius=12,
     )
-    count_view = ft.Text(value="COUNT: 0", size=24, weight=ft.FontWeight.BOLD)
+    count_view = ft.Text(value="撮影枚数： 0", size=24, weight=ft.FontWeight.BOLD)
     paths_view = ft.Text(value="", selectable=True)
-    pred_view = ft.Text(value="PRED: --", selectable=True, size=30)
+    pred_view = ft.Text(value="評価結果： --", selectable=True, size=30)
     done_view = ft.Text(value="", size=32, weight=ft.FontWeight.BOLD) 
-    label_ply_count_view: dict[str, ft.Text] = {
-        lbl: ft.Text(value="撮影枚数: 0", size=14) for lbl in LABELS
+    capture_hint_view = ft.Text("撮影したい発音の「カメラ起動」を押してください。", size=12)
+    label_ply_count_view = {
+        lbl: ft.Text(value=f"{LABEL_DISPLAY.get(lbl, lbl)}: 0", size=16, weight=ft.FontWeight.BOLD)
+        for lbl in LABELS
     }
     model_dir_label = ft.Text(value="フォルダ：未選択", size=16, weight=ft.FontWeight.BOLD)
     
@@ -1111,7 +1137,7 @@ def main(page: ft.Page, root_home=None):
 
         # 映像：横余白を減らして大きく
         preview.width = content_w
-        preview.height = int(h * 0.50)
+        preview.height = int(h * 0.45)
         preview.fit = ft.ImageFit.CONTAIN
 
         # 入力欄：映像幅に追従（映像幅の40%）
@@ -1120,9 +1146,14 @@ def main(page: ft.Page, root_home=None):
         infer_parent.width = tfw
 
         # ボタン：画面幅の10%
-        bw = max(140, int(w * 0.13))
+        bw = max(100, int(w * 0.10))
         for b in all_buttons:
             b.width = bw
+            b.height = 40
+            b.style = ft.ButtonStyle(
+                padding=ft.padding.symmetric(horizontal=10, vertical=6),
+                text_style=ft.TextStyle(size=14),
+            )
 
         page.update()
 
@@ -1145,7 +1176,6 @@ def main(page: ft.Page, root_home=None):
         if not state.is_running_infer:
             set_status("撮影：先に『AI評価（撮影）開始』を押してください。")
             return
-
 
         capture_event.set()
 
@@ -1263,7 +1293,7 @@ def main(page: ft.Page, root_home=None):
         state.infer_parent_dir = parent_dir
         state.model_payload = payload
         set_status("モデルを読み込みました", kind="success")
-        set_pred("PRED: --")
+        set_pred("評価結果： --")
         # フルパスではなくフォルダ名だけ表示
         model_dir_label.value = f"モデル：{parent_dir.name}"
         page.update()
@@ -1282,11 +1312,11 @@ def main(page: ft.Page, root_home=None):
     page.overlay.append(model_dir_picker)
 
     def on_pick_model_dir_click(_):
-        model_dir_picker.get_directory_path(dialog_title="モデルフォルダを選択")
+        model_dir_picker.get_directory_path(dialog_title="モデルフォルダを選択", initial_directory=r"C:\Users\edu01\STApp")
 
     def on_retake(e):
         if not state.last_saved_paths:
-            status_bar.value = "削除対象がありません（直前の保存が未実施 or 既に削除済み）"
+            set_status("直前の撮影データが存在しません。", kind="error")
             page.update()
             return
 
@@ -1298,7 +1328,7 @@ def main(page: ft.Page, root_home=None):
             except IsADirectoryError:
                 shutil.rmtree(p, ignore_errors=True)
             except Exception as ex:
-                status_bar.value = "削除に失敗しました。もう一度撮影ボタンで撮影してください。"
+                set_status(f"直前のデータ削除でエラーが発生しました。", kind="error")
                 page.update()
                 return
 
@@ -1308,8 +1338,7 @@ def main(page: ft.Page, root_home=None):
         if state.last_saved_label:
             update_ply_count(state.last_saved_label)
 
-
-        status_bar.value = "直前データを削除しました。もう一度撮影ボタンで撮影してください。"
+        set_status("直前のデータを削除しました。もう一度「撮影」を押してください。", kind="success")
         page.update()
 
     def _count_ply(label: str) -> int:
@@ -1325,11 +1354,21 @@ def main(page: ft.Page, root_home=None):
         targets = [label] if label else LABELS
         for lab in targets:
             n = _count_ply(lab)
-            label_ply_count_view[lab].value = f"撮影枚数: {n}"
+            lab_disp = LABEL_DISPLAY.get(lab, lab)    
+            label_ply_count_view[lab].value = f"{lab_disp}: {n}"
         page.update()
 
     def update_ply_count_threadsafe(label: str | None = None):
         page.run_thread(lambda lab=label: update_ply_count(lab))
+    
+    def update_capture_hint():
+        lab = getattr(state, "current_label", None)
+        if not lab:
+            capture_hint_view.value = "まずラベルを選んで「カメラ起動」を押してください。"
+        else:
+            lab_disp = LABEL_DISPLAY.get(lab, lab)  # A→あ
+            capture_hint_view.value = f"「{lab_disp}」撮影可能：ARマーカーが白のときに「撮影」を押してください。"
+        page.update()
 
     def on_start_capture_for_label(label: str):
         if state.subject_dir is None:
@@ -1356,7 +1395,10 @@ def main(page: ft.Page, root_home=None):
         state.worker_thread = t
         t.start()
 
-        set_status(f" {label} 撮影開始：撮影ボタンで撮影（ARマーカー必須）")
+        label_disp = LABEL_DISPLAY.get(label, label)
+        set_done(f"撮影中：{label_disp}")   # 追加（表示は好みで）
+        set_status(f"「{label_disp}」撮影開始：撮影ボタンで撮影（ARマーカーを装着してください。）", kind="info")
+        update_capture_hint()
         set_paths()
 
     def on_stop_capture(_):
@@ -1366,11 +1408,14 @@ def main(page: ft.Page, root_home=None):
         state.stop_event.set()
         state.is_running_capture = False
         state.capture_count = 0
-        count_view.value = "COUNT: 0"
+        set_count(0)
+        set_done("")
         preview.src_base64 = None
         train_root.bgcolor = ft.Colors.WHITE
+        state.current_label = None
+        update_capture_hint()
         page.update()
-        set_status("停止要求を出しました。")
+        set_status("撮影を停止しました。")
         set_paths()
 
     def on_train_start(_):
@@ -1403,7 +1448,7 @@ def main(page: ft.Page, root_home=None):
         state.infer_parent_dir = parent_dir
         state.model_payload = payload
         set_status(f"AI評価用モデルをロードしました", kind="success")
-        set_pred("PRED: --")
+        set_pred("評価結果： --")
 
     def on_start_infer(_):
         if state.model_payload is None:
@@ -1438,6 +1483,7 @@ def main(page: ft.Page, root_home=None):
         state.is_running_infer = False
         preview.src_base64 = None
         infer_root.bgcolor = ft.Colors.WHITE
+        set_done("")
         page.update()
         set_status("撮影を停止しました。")
         set_paths()
@@ -1448,19 +1494,46 @@ def main(page: ft.Page, root_home=None):
         label_rows = ft.Column([
             ft.Row(
                 [
-                    ft.Text(lbl, width=40),
+                    ft.Text(LABEL_DISPLAY.get(lbl, lbl), width=40),
                     reg_button(ft.ElevatedButton(text="カメラ起動", on_click=lambda e, l=lbl: on_start_capture_for_label(l))),
                     reg_button(ft.ElevatedButton(text="撮影", on_click=on_capture_click)),
                     reg_button(ft.ElevatedButton(text="カメラ停止", on_click=on_stop_capture)),
-                    reg_button(ft.ElevatedButton(text="削除", tooltip="うまく撮影できなかった時に押してください。", on_click=on_retake)),
-                    label_ply_count_view[lbl], 
+                    reg_button(ft.ElevatedButton(text="削除", tooltip="うまく撮影できなかった時に押してください。直前に撮影したデータを削除します。", on_click=on_retake)),
+                    label_ply_count_view[lbl],
                 ],
                 alignment=ft.MainAxisAlignment.CENTER
             )
             for lbl in LABELS
         ])
-        
-        return ft.Column(
+
+        # ★ 左（操作）
+        left_controls = ft.Column(
+            [
+                label_rows,
+                ft.Row([ft.ElevatedButton("AI学習開始", on_click=lambda _: on_train_start())],
+                    alignment=ft.MainAxisAlignment.CENTER),
+                ft.Text("※学習には時間がかかります。進捗はステータス欄で確認してください。", size=12),
+            ],
+            spacing=10,
+            scroll=ft.ScrollMode.AUTO,
+            expand=True,
+        )
+
+        # ★ 右（プレビュー）
+        right_preview = ft.Column(
+            [
+                ft.Text("撮影映像", size=20),
+                preview,
+                ft.Row([count_view, done_view], alignment=ft.MainAxisAlignment.CENTER),
+                capture_hint_view,
+            ],
+            spacing=10,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            expand=True,
+        )
+
+        # ★ 上部（独立領域）
+        header = ft.Column(
             [
                 ft.Row(
                     [
@@ -1469,20 +1542,39 @@ def main(page: ft.Page, root_home=None):
                     ]
                 ),
                 ft.Text("AI学習（口形状撮影）", size=18),
-                ft.Row([subject_name, btn_mkdir], alignment=ft.MainAxisAlignment.CENTER),
-                label_rows,
-                ft.Text("色の意味：白=待機中（撮影可能）、青=処理中（なるべく動かないでください）、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=15),
-                ft.Row([ft.ElevatedButton("AI学習開始", on_click=lambda _: on_train_start())], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Text("※学習には時間がかかります。進捗はステータス欄で確認してください。", size=12),
+
+                # ★ ここが「フォルダ作成が押せない」対策（後述）
+                ft.Row(
+                    [ft.Container(content=subject_name, expand=True), btn_mkdir],
+                    alignment=ft.MainAxisAlignment.START,
+                    expand=True,
+                ),
+
+                ft.Text("背景色の意味：白=待機中（撮影可能）、青=処理中（なるべく動かないでください）、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=15),
                 status_bar,
                 ft.Divider(),
-                ft.Text("プレビュー（共通）"),
-                ft.Row([preview, ft.Column([count_view, done_view,], spacing=10,),], alignment=ft.MainAxisAlignment.CENTER,),
-                ft.Text("※Flet画面にフォーカスして撮影ボタン（ARマーカー検出時のみ)", size=12),
             ],
-            spacing=10,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+            spacing=8,
         )
+
+        # ★ 全体
+        return ft.Column(
+            [
+                header,
+                ft.Row(
+                    [
+                        ft.Container(content=left_controls, expand=1, padding=10),
+                        ft.Divider(),
+                        ft.Container(content=right_preview, expand=2, padding=10),
+                    ],
+                    expand=True,
+                    vertical_alignment=ft.CrossAxisAlignment.START,
+                ),
+            ],
+            expand=True,
+            spacing=0,
+        )
+
     train_root = ft.Container(
         bgcolor=ft.Colors.WHITE,
         content=build_train_content(),
@@ -1493,7 +1585,20 @@ def main(page: ft.Page, root_home=None):
         return train_root
 
     def build_infer_content():
-        return ft.Column(
+        # 右側（結果・ボタン）
+        infer_btn = ft.Column(
+            [
+                reg_button(ft.ElevatedButton(text="口形状確認", on_click=on_open_plyviewer)),
+                done_view,
+                pred_view,
+            ],
+            spacing=10,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            # expand=True は付けない（←重要）
+        )
+
+        # 上部（ここまでは現状のまま）
+        header = ft.Column(
             [
                 ft.Row(
                     [
@@ -1509,25 +1614,53 @@ def main(page: ft.Page, root_home=None):
                     ],
                     alignment=ft.MainAxisAlignment.CENTER
                 ),
-                ft.Row([
-                    reg_button(ft.ElevatedButton(text="AI評価（撮影）開始", on_click=on_start_infer)),
-                    reg_button(ft.ElevatedButton(text="撮影", on_click=on_capture_infer_click)),
-                    reg_button(ft.ElevatedButton(text="AI評価停止", on_click=on_stop_infer)),
-                ], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Row(
+                    [
+                        reg_button(ft.ElevatedButton(text="AI評価（撮影）開始", on_click=on_start_infer)),
+                        reg_button(ft.ElevatedButton(text="撮影", on_click=on_capture_infer_click)),
+                        reg_button(ft.ElevatedButton(text="AI評価停止", on_click=on_stop_infer)),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER
+                ),
                 status_bar,
-                ft.Text("色の意味：白=待機中（撮影可能）、青=処理中（なるべく動かないでください）、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=15),
+                ft.Text(
+                    "背景色の意味：白=待機中（撮影可能）、青=処理中（なるべく動かないでください）、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）",
+                    size=15
+                ),
                 ft.Divider(),
-                ft.Text("プレビュー（共通）"),
-                reg_button(ft.ElevatedButton(text="口形状確認", on_click=on_open_plyviewer)),
-                preview,
-                ft.Divider(),
-                done_view,
-                pred_view,
-                ft.Text("※Flet画面にフォーカスして撮影ボタン（ARマーカー検出時のみ）を押す", size=12),
+                ft.Text("撮影映像および評価結果", size=20),
             ],
             spacing=10,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
+
+        # 下部（ここから2分割）
+        body = ft.Row(
+            [
+                ft.Container(
+                    content=ft.Column(
+                        [preview],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    expand=2,
+                    padding=10,
+                ),
+                ft.Container(
+                    content=infer_btn,
+                    expand=1,
+                    padding=10,
+                ),
+            ],
+            expand=True,
+            vertical_alignment=ft.CrossAxisAlignment.START,
+        )
+
+        return ft.Column(
+            [header, body],
+            spacing=10,
+            expand=True,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
     infer_root = ft.Container(
         bgcolor=ft.Colors.WHITE,
         content=build_infer_content(),
