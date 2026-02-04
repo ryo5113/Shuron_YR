@@ -12,6 +12,9 @@ import traceback
 import re
 import tempfile
 import time
+import csv
+import math
+import shutil
 
 import flet as ft
 
@@ -124,6 +127,20 @@ def split_cleaned_wav_to_folder(cleaned_wav: Path, out_dir: Path, start_index: i
         min_silence_len=voiceCutting.MIN_SILENCE_LEN_MS,
         silence_thresh=voiceCutting.SILENCE_THRESH_DBFS,
     )
+    try:
+        if ranges:
+            first_start_ms, first_end_ms = ranges[0]
+            print(
+                f"[detect_nonsilent] first range: start_ms={first_start_ms}, end_ms={first_end_ms}, "
+                f"count={len(ranges)}, thresh={voiceCutting.SILENCE_THRESH_DBFS}, min_silence_len={voiceCutting.MIN_SILENCE_LEN_MS}"
+            )
+        else:
+            print(
+                f"[detect_nonsilent] no ranges. thresh={voiceCutting.SILENCE_THRESH_DBFS}, "
+                f"min_silence_len={voiceCutting.MIN_SILENCE_LEN_MS}"
+            )
+    except Exception as e:
+        print(f"[detect_nonsilent] debug print failed: {e}")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     if mirror_dir is not None:
@@ -360,6 +377,7 @@ class AppState:
     infer_history: list[dict] = field(default_factory=list)
     infer_history_csv: Path | None = None
     model_dir: Path | None = None
+    dataset_mean_dbfs: float | None = None
 
     # 一時保存用
     last_train_raw: Path | None = None
@@ -542,7 +560,7 @@ def main(page: ft.Page, root_home=None):
     def on_prepare_words(_):
         labels = get_words()
         if not labels:
-            set_status("覚えさせたい単語を1つ以上入力してください。")
+            set_status("覚えてもらいたい単語を1つ以上入力してください。")
             return
 
         # 準備完了で確定
@@ -834,31 +852,32 @@ def main(page: ft.Page, root_home=None):
     # =========================
     # モデルフォルダ表示（探索で入る）
     model_dir_label = ft.Text(value="フォルダ：未選択", size=16, weight=ft.FontWeight.BOLD)
+    INFER_HISTORY_FILENAME = "infer_history.csv"
 
     results_table = ft.DataTable(
         columns=[
-            ft.DataColumn(ft.Text("No.", size=20, weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("記録時間", size=20, weight=ft.FontWeight.BOLD)),
             ft.DataColumn(ft.Text("評価結果", size=20, weight=ft.FontWeight.BOLD)),
             ft.DataColumn(ft.Text("認識精度(%)", size=20, weight=ft.FontWeight.BOLD)),
         ],
         rows=[],
     )
     results_panel = ft.Container(
-    content=ft.ListView(
-        controls=[
-            ft.Row(
-                [results_table],
-                alignment=ft.MainAxisAlignment.CENTER,
-                expand=True,
-            )
-        ],
+        content=ft.ListView(
+            controls=[
+                ft.Row(
+                    [results_table],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    expand=True,
+                )
+            ],
+            expand=True,
+            spacing=0,
+            padding=0,
+        ),
         expand=True,
-        spacing=0,
-        padding=0,
-    ),
-    expand=True,
-    alignment=ft.alignment.center,  # 中央寄せはContainer側
-)
+        alignment=ft.alignment.center,  # 中央寄せはContainer側
+    )
 
     def load_model_from_dir(parent_dir: Path):
         model_path = parent_dir / "model.joblib"
@@ -878,6 +897,7 @@ def main(page: ft.Page, root_home=None):
 
         # フルパスではなくフォルダ名だけ表示（fletMouthPredict.pyと同じ）
         model_dir_label.value = f"フォルダ：{parent_dir.name}"
+
         page.update()
 
     def on_pick_model_dir_result(e: ft.FilePickerResultEvent):
@@ -943,17 +963,90 @@ def main(page: ft.Page, root_home=None):
         except Exception:
             set_status("読み込みでエラーが発生しました。再度フォルダ選択を行ってください。", kind="error")
         
-    def append_infer_csv(ts: str, pred_label: str, pred_pct: float):
-        if state.infer_history_csv is None:
+    def infer_history_path() -> Path | None:
+        if state.model_dir is None:
+            return None
+        return state.model_dir / INFER_HISTORY_FILENAME
+    
+    def infer_audio_save_dir() -> Path | None:
+        # モデルを読み込んだフォルダ配下に保存
+        if state.model_dir is None:
+            return None
+        d = state.model_dir / "infer_audio"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def append_infer_csv(ts: str, pred_label: str, pred_pct: float, label_names: list, proba: np.ndarray):
+        p = infer_history_path()
+        if p is None:
             return
-        import csv
-        path = state.infer_history_csv
-        new_file = not path.exists()
-        with open(path, "a", newline="", encoding="utf-8") as f:
+
+        # 保存する列順：基本3列 + 各ラベル確率
+        header = ["timestamp", "pred_label", "pred_pct"] + [f"p_{str(n)}" for n in label_names]
+
+        # 既存CSVが旧形式(3列)でも壊れにくいように、ヘッダを見て必要なら作り直す
+        if p.exists():
+            try:
+                with p.open("r", newline="", encoding="utf-8") as f:
+                    first = f.readline().strip()
+                old_header = [h.strip() for h in first.split(",")] if first else []
+            except Exception:
+                old_header = []
+        else:
+            old_header = []
+
+        if (not p.exists()) or (old_header != header):
+            # 旧形式を残すならバックアップ
+            if p.exists():
+                bak = p.with_suffix(".bak")
+                try:
+                    bak.write_text(p.read_text(encoding="utf-8"), encoding="utf-8")
+                except Exception:
+                    pass
+            with p.open("w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                w.writerow(header)
+
+        row = [ts, pred_label, f"{pred_pct:.1f}"] + [f"{float(x)*100.0:.3f}" for x in proba]
+        with p.open("a", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
-            if new_file:
-                w.writerow(["timestamp", "pred_label", "pred_pct"])
-            w.writerow([ts, pred_label, f"{pred_pct:.1f}"])
+            w.writerow(row)
+
+    def load_infer_csv_to_state():
+        # state.infer_history を CSV から復元（最新が上になるようにする）
+        state.infer_history = []
+        p = infer_history_path()
+        if p is None or not p.exists():
+            return
+
+        with p.open("r", newline="", encoding="utf-8") as f:
+            r = csv.DictReader(f)
+            rows = []
+            for row in r:
+                try:
+                    rows.append({
+                        "ts": row["timestamp"],
+                        "label": row["pred_label"],
+                        "pct": float(row["pred_pct"]),
+                    })
+                except Exception:
+                    pass
+
+        # CSVは追記で古い→新しいの順になりやすいので、表示は新しいものを上へ
+        rows.reverse()
+        state.infer_history = rows
+
+    def refresh_results_table_from_history():
+        results_table.rows = [
+            ft.DataRow(
+                cells=[
+                    centered_cell_infer(h["ts"]),                 # ← No. ではなく時刻
+                    centered_cell_infer(h["label"]),
+                    centered_cell_infer(f'{h["pct"]:.1f}'),
+                ]
+            )
+            for h in state.infer_history
+        ]
 
     def start_infer_record(_):
         if state.model_payload is None:
@@ -1032,22 +1125,29 @@ def main(page: ft.Page, root_home=None):
                     td_path = Path(td)
                     raw_wav = td_path / "raw.wav"
                     cleaned_wav = td_path / "cleaned.wav"
-                    chunk_dir = td_path / "chunks"
+                    chunk_dir = td_path / "infer_chunks"
                     chunk_dir.mkdir(parents=True, exist_ok=True)
 
                     # 一時ファイルにだけ保存（ユーザー用保存はしない）
                     sf.write(str(raw_wav), audio, SAMPLE_RATE, subtype=SAVE_SUBTYPE)
-
+            
                     denoise_wav_to_path(raw_wav, cleaned_wav)
-                    start_index = get_next_index(chunk_dir, prefix="infer")
-                    chunks = split_cleaned_wav_to_folder(
-                        cleaned_wav,
-                        chunk_dir,
-                        start_index=start_index,
-                        prefix="infer",
-                        mirror_dir=None,
-                    )
+                    save_root = infer_audio_save_dir()
+                    if save_root is None:
+                        set_status("モデルフォルダが未設定のため推論音声を保存できません。", kind="error")
+                        page.update()
+                        return
 
+                    persist_chunk_dir = save_root
+                    persist_chunk_dir.mkdir(parents=True, exist_ok=True)
+                    start_index = get_next_index(persist_chunk_dir, prefix="infer")
+                    chunks = split_cleaned_wav_to_folder(
+                            cleaned_wav,
+                            chunk_dir,
+                            start_index=start_index,
+                            prefix="infer",
+                            mirror_dir=persist_chunk_dir,
+                        )
                     ## chunks を作った直後（ここから下を置換）
                     if not chunks:
                         set_status("評価できる音が見つかりませんでした。もう一度録音してください。", kind="warn")
@@ -1055,8 +1155,9 @@ def main(page: ft.Page, root_home=None):
                         return
 
                     # ★1番目の音声だけ推論する（以前の「1番目のみ」を復活）
-                    wp = chunks[0]
-                    feat = wav_to_feature_vector(wp)
+                    wp = persist_chunk_dir / chunks[0].name
+                    infer_wav_for_model = wp
+                    feat = wav_to_feature_vector(infer_wav_for_model)
                     proba = model.predict_proba([feat])[0]
                     pred_id = int(np.argmax(proba))
                     pred_label = str(label_names[pred_id])
@@ -1069,13 +1170,14 @@ def main(page: ft.Page, root_home=None):
                     state.infer_history.insert(0, {"ts": ts, "label": pred_label, "pct": pred_pct})
 
                     # CSVへ追記
-                    append_infer_csv(ts, pred_label, pred_pct)
+                    append_infer_csv(ts, pred_label, pred_pct, label_names, proba)
+                    refresh_results_table_from_history()
 
                     # 表を履歴から再生成（常に上が最新）
                     results_table.rows = [
                         ft.DataRow(
                             cells=[
-                                centered_cell_infer(str(i + 1)),
+                                centered_cell_infer(r["ts"]),
                                 centered_cell_infer(r["label"]),
                                 centered_cell_infer(f'{r["pct"]:.1f}'),
                             ]

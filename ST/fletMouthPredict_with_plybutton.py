@@ -775,7 +775,7 @@ def protocol_worker_capture(
                             subject_prefix=state.subject_dir.name,
                         )
                         if saved_paths:
-                            state.last_saved_paths = saved_paths
+                            state.last_saved_paths = [Path(p) for p in saved_paths]
                             state.capture_count += 1
                             # count_view を更新（後述の set_count_threadsafe を使う）
                             set_count_threadsafe(state.capture_count)
@@ -804,7 +804,6 @@ def protocol_worker_capture(
                 pass
         page.run_thread(lambda: setattr(preview, "src_base64", None))
         page.run_thread(lambda: setattr(train_root, "bgcolor", ft.Colors.WHITE))
-        page.run_thread(page.update)
 
 # -------------------------
 # ワーカ（推論）
@@ -1099,6 +1098,11 @@ def main(page: ft.Page, root_home=None):
 
     DUMMY_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/ax0f9kAAAAASUVORK5CYII="
     preview = ft.Image(src_base64=DUMMY_PNG_B64, fit=ft.ImageFit.CONTAIN,)
+    preview_container = ft.Container(
+        content=preview,
+        alignment=ft.alignment.center,
+        clip_behavior=ft.ClipBehavior.HARD_EDGE,
+    )
 
     status_icon = ft.Icon(name=ft.Icons.INFO, size=28)
     status_text = ft.Text(value="準備できました", size=28, weight=ft.FontWeight.BOLD)
@@ -1132,21 +1136,27 @@ def main(page: ft.Page, root_home=None):
         return btn
 
     def apply_responsive_layout(w: float, h: float):
-    # 画面幅に追従しつつ、極端に広い画面では上限を設ける
         content_w = min(int(w * 0.95), 1400)
 
-        # 映像：横余白を減らして大きく
-        preview.width = content_w
-        preview.height = int(h * 0.45)
+        # 右ペイン幅（左:右=1:2 を想定）
+        right_w = int(content_w * (2 / 3))
+
+        # ★プレビューは「コンテナのサイズ」で必ず制限する
+        preview_container.width = right_w - 40          # paddingぶん少し引く（目安）
+        preview_container.height = int(h * 0.45)
+
+        # Image側は fit だけ設定（width=None のままでOK）
+        preview.width = None
+        preview.height = None
         preview.fit = ft.ImageFit.CONTAIN
 
-        # 入力欄：映像幅に追従（映像幅の40%）
+        # 入力欄：ここは後述（重なり対策）
         tfw = max(320, int(content_w * 0.40))
-        subject_name.width = tfw
-        infer_parent.width = tfw
+        # subject_name.width = tfw
+        # infer_parent.width = tfw
 
-        # ボタン：画面幅の10%
-        bw = max(100, int(w * 0.10))
+        # ボタン：画面幅の5%
+        bw = max(100, int(w * 0.05))
         for b in all_buttons:
             b.width = bw
             b.height = 40
@@ -1523,7 +1533,7 @@ def main(page: ft.Page, root_home=None):
         right_preview = ft.Column(
             [
                 ft.Text("撮影映像", size=20),
-                preview,
+                preview_container,  # ← preview 直置きではなくコンテナを置く
                 ft.Row([count_view, done_view], alignment=ft.MainAxisAlignment.CENTER),
                 capture_hint_view,
             ],
@@ -1547,7 +1557,7 @@ def main(page: ft.Page, root_home=None):
                 ft.Row(
                     [ft.Container(content=subject_name, expand=True), btn_mkdir],
                     alignment=ft.MainAxisAlignment.START,
-                    expand=True,
+                    #expand=True,
                 ),
 
                 ft.Text("背景色の意味：白=待機中（撮影可能）、青=処理中（なるべく動かないでください）、黒=ARマーカー未検出により撮影不可（顔の向きを変えてください）", size=15),
@@ -1564,8 +1574,8 @@ def main(page: ft.Page, root_home=None):
                 ft.Row(
                     [
                         ft.Container(content=left_controls, expand=1, padding=10),
-                        ft.Divider(),
-                        ft.Container(content=right_preview, expand=2, padding=10),
+                        ft.Container(width=1, bgcolor=ft.Colors.GREY_300),
+                        ft.Container(content=right_preview, expand=2, padding=10, clip_behavior=ft.ClipBehavior.HARD_EDGE,),
                     ],
                     expand=True,
                     vertical_alignment=ft.CrossAxisAlignment.START,

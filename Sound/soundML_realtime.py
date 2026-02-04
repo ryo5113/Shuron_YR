@@ -27,8 +27,9 @@ import voiceCutting  # 既存のものを利用
 
 
 # ========= ユーザー指定 =========
-MODEL_JOBLIB_PATH = Path("word_Ex1/trained_all_svm_model_band/EXPORTED_models/band_060Hz/model.joblib")  # 必要なら実パスに変更
+#MODEL_JOBLIB_PATH = Path("word_Ex1/trained_all_svm_model_band/EXPORTED_models/band_060Hz/model.joblib")  # 必要なら実パスに変更
 #MODEL_JOBLIB_PATH = Path("word/trained_Y_svm_model_band/EXPORTED_models/band_060Hz/model.joblib")  # 必要なら実パスに変更
+MODEL_JOBLIB_PATH = Path("YR/model.joblib")  # 必要なら実パスに変更
 
 # ========= 録音設定（fletSound系を踏襲） =========
 SAMPLE_RATE = 48000
@@ -270,13 +271,13 @@ class AppState:
 
 
 def main(page: ft.Page):
-    page.title = "録音→ノイズ処理→分割→SVM推論（band_060Hz）"
+    page.title = "発音評価リアルタイム推論"
     page.window_width = 980
     page.window_height = 720
 
     state = AppState()
 
-    subject_name = ft.TextField(label="被験者名（親フォルダ名）", width=520)
+    subject_name = ft.TextField(label="被験者名（フォルダ名）", width=520)
     status = ft.Text(value="未作成", selectable=True)
     paths_view = ft.Text(value="", selectable=True)
 
@@ -311,7 +312,7 @@ def main(page: ft.Page):
             paths_view.value = ""
         else:
             paths_view.value = (
-                f"親フォルダ: {state.subject_dir}\n"
+                f"フォルダ: {state.subject_dir}\n"
                 f"raw: {state.raw_dir}\n"
                 f"clean: {state.clean_dir}\n"
                 f"chunks: {state.chunk_dir}\n"
@@ -423,6 +424,7 @@ def main(page: ft.Page):
                 denoise_wav_to_path(raw_wav, cleaned_wav)
 
                 start_index = get_next_index(state.chunk_dir)
+                voiceCutting.SILENCE_THRESH_DBFS = -40  # 録音用にしきい値を上げる
                 chunk_paths = split_cleaned_wav_to_folder(
                     cleaned_wav=cleaned_wav,
                     out_dir=state.chunk_dir,
@@ -476,14 +478,14 @@ def main(page: ft.Page):
     page.add(
         ft.Column(
             [
-                ft.Text("① フォルダ作成 → ② 録音Start → Stopで『分割された個数だけ』推論", size=18, weight=ft.FontWeight.BOLD),
+                ft.Text("リアルタイム推論", size=18, weight=ft.FontWeight.BOLD),
                 subject_name,
-                ft.Row([ft.Button("① フォルダ作成", on_click=on_create_folder)]),
+                ft.Row([ft.Button("① フォルダ選択", on_click=on_create_folder)]),
                 ft.Divider(),
                 ft.Row(
                     [
-                        ft.Button("録音Start", on_click=start_recording),
-                        ft.Button("Stop（保存→分割→推論）", on_click=stop_and_infer),
+                        ft.Button("録音開始", on_click=start_recording),
+                        ft.Button("録音停止", on_click=stop_and_infer),
                     ]
                 ),
                 ft.Divider(),
