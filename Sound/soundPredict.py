@@ -778,7 +778,7 @@ def main(page: ft.Page, root_home=None):
         columns=[
             ft.DataColumn(ft.Text("No.", size=20, weight=ft.FontWeight.BOLD)),
             ft.DataColumn(ft.Text("評価結果", size=20, weight=ft.FontWeight.BOLD)),
-            ft.DataColumn(ft.Text("認識精度(%)", size=20, weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("推定確率(%)", size=20, weight=ft.FontWeight.BOLD)),
         ],
         rows=[],
     )
@@ -849,7 +849,7 @@ def main(page: ft.Page, root_home=None):
                 return
 
             state.model_payload = payload
-            set_status("読み込み完了。AI評価が可能です。")
+            set_status("読み込み完了。推論が可能です。")
             page.update()
 
         except Exception:
@@ -899,11 +899,11 @@ def main(page: ft.Page, root_home=None):
             payload = joblib.load(str(model_path))
             # 期待キー確認（あなたの保存形式：{"model":..., "label_names":...}）
             if "model" not in payload or "label_names" not in payload:
-                set_status("AI評価ができません。再度AI学習を行ってください。")
+                set_status("推論ができません。再度学習を行ってください。")
                 return
 
             state.model_payload = payload
-            set_status("読み込み完了。AI評価が可能です。")
+            set_status("読み込み完了。推論が可能です。")
             page.update()
         except Exception:
             set_status("読み込みでエラーが発生しました。再度フォルダ選択を行ってください。")
@@ -959,7 +959,7 @@ def main(page: ft.Page, root_home=None):
         finally:
             state.frames_infer = None
 
-        set_status("録音完了（評価中）")
+        set_status("録音完了（推論中）")
 
         def worker():
             try:
@@ -979,6 +979,7 @@ def main(page: ft.Page, root_home=None):
 
                     denoise_wav_to_path(raw_wav, cleaned_wav)
                     start_index = get_next_index(chunk_dir, prefix="infer")
+                    voiceCutting.SILENCE_THRESH_DBFS = -40  # 推論時は少し厳しめにカット
                     chunks = split_cleaned_wav_to_folder(
                         cleaned_wav,
                         chunk_dir,
@@ -1017,20 +1018,20 @@ def main(page: ft.Page, root_home=None):
                             )
 
                     results_table.rows = rows
-                    set_status("評価結果を表示しました")
+                    set_status("推論結果を表示しました")
                     page.update()
 
             except Exception:
-                set_status("評価処理でエラーが発生しました。再度録音してください。")
+                set_status("推論処理でエラーが発生しました。再度録音してください。")
 
         threading.Thread(target=worker, daemon=True).start()
 
     def build_infer_page():
         return ft.Column(
             [
-                ft.Row([reg_button(ft.ElevatedButton("学習/評価選択ページに戻る", on_click=lambda _: show_home()))]),
-                ft.Row([reg_button(ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()))]),
-                ft.Text("AI評価", size=18),
+                ft.Row([reg_button(ft.ElevatedButton("学習/推論選択ページに戻る", on_click=lambda _: show_home()))]),
+                #ft.Row([reg_button(ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()))]),
+                ft.Text("推論ページ", size=18),
                 ft.Row(
                     [
                         reg_button(ft.ElevatedButton(text="モデルフォルダ選択", on_click=on_pick_model_dir_click)),
@@ -1044,14 +1045,14 @@ def main(page: ft.Page, root_home=None):
                     expand=True,
                 ),
                 ft.Divider(),
-                ft.Text("AI学習で覚えこませた単語のうち、１種類を１度だけ発音してください。", size=18),
+                ft.Text("学習で発音した単語のうち、１種類を１度だけ発音してください。", size=18),
                 ft.Row([
                     reg_button(ft.ElevatedButton(text="録音開始", on_click=start_infer_record)),
                     reg_button(ft.ElevatedButton(text="録音終了", on_click=stop_and_infer)),
                 ], alignment=ft.MainAxisAlignment.CENTER),
                 status,
                 ft.Divider(),
-                ft.Text("評価結果", size=18, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+                ft.Text("推論結果", size=18, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
                 ft.Row([results_panel], alignment=ft.MainAxisAlignment.CENTER)
             ],
             spacing=10,
@@ -1067,8 +1068,8 @@ def main(page: ft.Page, root_home=None):
                 ft.Text("モード選択", size=20),
                 ft.Row(
                     [
-                        reg_button(ft.ElevatedButton("AI学習（録音）へ", on_click=lambda _: show_train())),
-                        reg_button(ft.ElevatedButton("AI評価へ", on_click=lambda _: show_infer())),
+                        reg_button(ft.ElevatedButton("学習（録音）へ", on_click=lambda _: show_train())),
+                        reg_button(ft.ElevatedButton("推論へ", on_click=lambda _: show_infer())),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
                 ),

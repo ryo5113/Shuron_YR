@@ -1,6 +1,6 @@
 import flet as ft
 
-import soundPredict
+import soundPredict2
 import fletMouthPredict_with_plybutton
 
 def main(page: ft.Page):
@@ -31,7 +31,7 @@ def main(page: ft.Page):
         page.controls.clear()
         btn_sound = ft.ElevatedButton(
             content=ft.Text("発音評価はこちら"),
-            on_click=lambda _: soundPredict.main(page, root_home=show_root_home),
+            on_click=lambda _: soundPredict2.main(page, root_home=show_root_home),
         )
         btn_mouth = ft.ElevatedButton(
             content=ft.Text("口形状評価はこちら"),

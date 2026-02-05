@@ -15,7 +15,7 @@ CSV_LIST = [
 OUT_DIR = Path("./plots_from_multi_csv")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-FIG_W, FIG_H = 16, 10
+FIG_W, FIG_H = 20, 8
 DPI = 200
 AS_PERCENT = False  # Trueなら 0.923 -> 92.3 [%]
 
@@ -120,7 +120,7 @@ def plot_mode(mode_name: str, out_png: Path):
     plt.yticks([0.5,0.6,0.7,0.8,0.9,1.0], fontsize=40)
     plt.title(f"Accuracy relative to Grid Width ({mode_name})", fontsize=38)
     plt.grid(True)
-    plt.legend(bbox_to_anchor=(1, 1), loc="upper left", fontsize=30)
+    #plt.legend(bbox_to_anchor=(1, 1.2), loc="upper left", fontsize=30)
     plt.tight_layout()
 
     if any_plotted:

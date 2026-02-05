@@ -4,13 +4,17 @@
 from __future__ import annotations
 
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 import json
 import traceback
 import re
 import tempfile
+import time
+import csv
+import math
+import shutil
 
 import flet as ft
 
@@ -123,6 +127,20 @@ def split_cleaned_wav_to_folder(cleaned_wav: Path, out_dir: Path, start_index: i
         min_silence_len=voiceCutting.MIN_SILENCE_LEN_MS,
         silence_thresh=voiceCutting.SILENCE_THRESH_DBFS,
     )
+    try:
+        if ranges:
+            first_start_ms, first_end_ms = ranges[0]
+            print(
+                f"[detect_nonsilent] first range: start_ms={first_start_ms}, end_ms={first_end_ms}, "
+                f"count={len(ranges)}, thresh={voiceCutting.SILENCE_THRESH_DBFS}, min_silence_len={voiceCutting.MIN_SILENCE_LEN_MS}"
+            )
+        else:
+            print(
+                f"[detect_nonsilent] no ranges. thresh={voiceCutting.SILENCE_THRESH_DBFS}, "
+                f"min_silence_len={voiceCutting.MIN_SILENCE_LEN_MS}"
+            )
+    except Exception as e:
+        print(f"[detect_nonsilent] debug print failed: {e}")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     if mirror_dir is not None:
@@ -347,6 +365,7 @@ class AppState:
     last_train_label: str | None = None
     prepared_labels: list[str] | None = None
     cue_count: int = 0
+    cue_interval_sec: float = 1.0
 
     # 推論用
     infer_dir: Path | None = None
@@ -354,6 +373,11 @@ class AppState:
     stream_infer: sd.InputStream | None = None
     frames_infer: list[np.ndarray] | None = None
     model_payload: dict | None = None
+    infer_auto_stop_sec: int | None = None
+    infer_history: list[dict] = field(default_factory=list)
+    infer_history_csv: Path | None = None
+    model_dir: Path | None = None
+    dataset_mean_dbfs: float | None = None
 
     # 一時保存用
     last_train_raw: Path | None = None
@@ -368,7 +392,14 @@ def main(page: ft.Page, root_home=None):
 
     state = AppState()
 
-    status = ft.Text(value="準備できました", size=24, weight=ft.FontWeight.BOLD)
+    status_icon = ft.Icon(name=ft.Icons.INFO, size=28)
+    status_text = ft.Text(value="準備できました", size=28, weight=ft.FontWeight.BOLD)
+    status_bar = ft.Container(
+        content=ft.Row([status_icon, status_text], spacing=12),
+        bgcolor=ft.Colors.BLUE_50,
+        padding=12,
+        border_radius=12,
+    )
 
     all_buttons = []
 
@@ -402,8 +433,23 @@ def main(page: ft.Page, root_home=None):
 
     page.on_resize = on_resize
 
-    def set_status(msg: str):
-        status.value = msg
+    def set_status(msg: str, kind: str = "info"):
+        # kind: "info" | "success" | "warn" | "error"
+        status_text.value = msg
+
+        if kind == "success":
+            status_icon.name = ft.Icons.CHECK_CIRCLE
+            status_bar.bgcolor = ft.Colors.GREEN_100
+        elif kind == "warn":
+            status_icon.name = ft.Icons.WARNING_AMBER
+            status_bar.bgcolor = ft.Colors.AMBER_100
+        elif kind == "error":
+            status_icon.name = ft.Icons.ERROR
+            status_bar.bgcolor = ft.Colors.RED_100
+        else:
+            status_icon.name = ft.Icons.INFO
+            status_bar.bgcolor = ft.Colors.BLUE_50
+
         page.update()
 
     def centered_cell_infer(text: str):
@@ -435,7 +481,8 @@ def main(page: ft.Page, root_home=None):
 
                 idx = 0
                 while not ev.is_set():
-                    if ev.wait(1.0):
+                    interval = float(getattr(state, "cue_interval_sec", 1.0))
+                    if ev.wait(interval):
                         break
                     idx = (idx + 1) % 2
                     cue_box.bgcolor = colors[idx]
@@ -474,13 +521,29 @@ def main(page: ft.Page, root_home=None):
     )
     cue_text = ft.Text("色が切り替わるタイミングで発音してください。", size=18)
     cue_count_text = ft.Text(value="発音回数：0", size=18)
+    cue_interval_group = ft.RadioGroup(
+            value="1.0",
+            on_change=lambda e: setattr(state, "cue_interval_sec", float(e.control.value)),
+            content=ft.Row(
+                [
+                    ft.Text("発音間隔:", size=16),
+                    ft.Radio(value="1.0", label="1秒"),
+                    ft.Radio(value="2.0", label="2秒"),
+                    ft.Radio(value="5.0", label="5秒"),
+                    ft.Radio(value="10.0", label="10秒"),
+                    ft.Radio(value="30.0", label="30秒"),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+        )
+    
     label_counts: dict[str, int] = {}
     label_count_view: dict[str, ft.Text] = {}
 
     def ensure_label_state():
         """現在の単語に対して、取得回数の表示オブジェクトを用意する"""
         labs = state.prepared_labels if state.prepared_labels is not None else get_words()
-        for lab in get_words():
+        for lab in labs:
             if lab not in label_counts:
                 label_counts[lab] = 0
             if lab not in label_count_view:
@@ -497,19 +560,18 @@ def main(page: ft.Page, root_home=None):
     def on_prepare_words(_):
         labels = get_words()
         if not labels:
-            set_status("覚えさせたい単語を1つ以上入力してください。")
+            set_status("覚えてもらいたい単語を1つ以上入力してください。")
             return
 
         # 準備完了で確定
         state.prepared_labels = labels
-        set_status("単語を確定しました。録音を開始できます。")
+        set_status("単語を確定しました。録音を開始できます。", kind="success")
 
         # 取得回数表示の生成（確定単語に対して）
         ensure_label_state()
 
         # ページ更新（ボタン数を確定単語数に合わせて作り直す）
         show_train()
-
 
     def update_train_paths():
         if state.subject_dir is None:
@@ -528,7 +590,7 @@ def main(page: ft.Page, root_home=None):
     def on_create_train_folder(_):
         name = safe_name(subject_name.value or "")
         if not name:
-            set_status("学習：保存フォルダ名が空です。")
+            set_status("学習：保存フォルダ名が入力されていません。", kind="warn")
             return
 
         base = Path.cwd()
@@ -542,15 +604,15 @@ def main(page: ft.Page, root_home=None):
         state.clean_dir.mkdir(parents=True, exist_ok=True)
         state.dataset_root.mkdir(parents=True, exist_ok=True)
 
-        set_status("AI学習：フォルダを作成しました")
+        set_status("AI学習：フォルダを作成しました。", kind="success")
         update_train_paths()
 
     def start_record_for_label(label: str):
         if state.subject_dir is None or state.raw_dir is None or state.clean_dir is None or state.dataset_root is None:
-            set_status("学習：先にフォルダ作成してください。")
+            set_status("AI学習：先にフォルダ作成してください。", kind="warn")
             return
         if state.is_recording:
-            set_status("学習：すでに録音中です。")
+            set_status("AI学習：すでに録音中です。", kind="warn")
             return
 
         state.current_label = label
@@ -576,14 +638,14 @@ def main(page: ft.Page, root_home=None):
             state.is_recording = False
             state.stream = None
             state.frames = None
-            set_status(f"録音開始時にエラーが発生しました。もう一度お試しください。")
+            set_status(f"録音開始時にエラーが発生しました。もう一度お試しください。", kind="error")
 
     def on_stop_train_record_for(word: str):
         if not state.is_recording or state.stream is None or state.frames is None:
             set_status("録音中ではありません。")
             return
         if state.current_label != word:
-            set_status("この単語は録音中ではありません。")
+            set_status("この単語は録音中ではありません。", kind="warn")
             return
 
         # stop stream
@@ -606,7 +668,7 @@ def main(page: ft.Page, root_home=None):
             audio = np.concatenate(state.frames, axis=0)  # int16
             sf.write(str(raw_wav), audio, SAMPLE_RATE, subtype=SAVE_SUBTYPE)
         except Exception as e:
-            set_status("音声の保存に失敗しました。もう一度録音してください。")
+            set_status("音声の保存に失敗しました。もう一度録音してください。", kind="error")
             state.frames = None
             return
         finally:
@@ -624,7 +686,7 @@ def main(page: ft.Page, root_home=None):
                 out_label_dir.mkdir(parents=True, exist_ok=True)
                 prefix = state.subject_dir.name
 
-                all_dataset_root = Path.cwd() / "ALL" / "dataset_wav"
+                all_dataset_root = Path.cwd() / "ALLSound" / "dataset_wav"
                 out_all_label_dir = all_dataset_root / state.current_label
                 out_all_label_dir.mkdir(parents=True, exist_ok=True)
 
@@ -639,11 +701,11 @@ def main(page: ft.Page, root_home=None):
                 label_counts[state.current_label] = label_counts.get(state.current_label, 0) + len(chunks)
                 label_count_view[state.current_label].value = f"取得回数: {label_counts[state.current_label]}"
 
-                set_status(f"学習：{len(chunks)}個の保存を行いました。")
+                set_status(f"録音：{len(chunks)}個の保存を行いました。", kind="success")
                 update_train_paths()
                 page.update()
             except Exception:
-                set_status("録音時にエラーが発生しました。もう一度録音してください。")
+                set_status("録音時にエラーが発生しました。もう一度録音してください。", kind="error")
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -652,7 +714,7 @@ def main(page: ft.Page, root_home=None):
         deleted_chunks = 0
 
         if state.last_train_label != word:
-            set_status("この単語の直近データはありません。")
+            set_status("この単語の直近データはありません。", kind="warn")
             return
 
         # chunks（dataset内）を先に消す
@@ -686,25 +748,25 @@ def main(page: ft.Page, root_home=None):
         state.last_train_chunks = []
         state.last_train_label = None
 
-        set_status(f"録音：直近データを削除しました（{deleted_chunks}件）")
+        set_status(f"録音：直近データを削除しました（{deleted_chunks}件）", kind="success")
         update_train_paths()
 
     def on_train_start(_):
         if state.dataset_root is None:
-            set_status("先にフォルダ作成を行ってください。")
+            set_status("先にフォルダ作成を行ってください。", kind="warn")
             return
 
         labels = get_words()
         if not labels:
-            set_status("覚えさせたい単語が登録されていません。")
+            set_status("覚えさせたい単語が登録されていません。", kind="warn")
             return
 
         def worker():
             try:
                 res = train_60hz_and_export(state.dataset_root, labels, export_dir=state.subject_dir)
-                set_status("AI学習が完了しました。AI評価に移るため、「戻る」ボタンを押し、AI評価を行ってください。")
+                set_status("AI学習が完了しました。AI評価に移るため、「戻る」ボタンを押し、AI評価を行ってください。", kind="success")
             except Exception:
-                set_status("AI学習でエラーが発生しました。収録できていない音声がないか確かめてください。")
+                set_status("AI学習でエラーが発生しました。収録できていない音声がないか確かめてください。", kind="error")
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -727,6 +789,7 @@ def main(page: ft.Page, root_home=None):
                         )),
                         reg_button(ft.ElevatedButton(
                             text="削除",
+                            tooltip="直近の録音データを削除します。録音を間違えた場合などに押してください。",
                             on_click=lambda e, w=word: on_delete_last_for(w)
                         )),
                         label_count_view[word],
@@ -739,6 +802,16 @@ def main(page: ft.Page, root_home=None):
         )
         folder_btn = reg_button(ft.ElevatedButton(text="フォルダ作成", on_click=on_create_train_folder))
 
+        right_group = ft.Column(
+            [
+                ft.Text("発音タイミング表示（以下のボタンから間隔を変更できます。）", size=18),
+                cue_interval_group,
+                ft.Row([cue_box, cue_count_text], alignment=ft.MainAxisAlignment.CENTER),
+                cue_text,
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.START,
+        )
+
         return ft.Column(
             [
                 ft.Row(
@@ -748,6 +821,7 @@ def main(page: ft.Page, root_home=None):
                     ]
                 ),
                 ft.Text("AI学習", size=18),
+                status_bar,
                 # 単語入力欄（最大5）
                 ft.Row([subject_name, folder_btn], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Text("覚えさせたい単語をローマ字で入力してください。（最大5つ）", size=18),
@@ -761,14 +835,13 @@ def main(page: ft.Page, root_home=None):
                     [reg_button(ft.ElevatedButton(text="準備完了", on_click=on_prepare_words))],
                     alignment=ft.MainAxisAlignment.CENTER,
                 ),
-                status,
-                ft.Row([cue_box, cue_count_text], alignment=ft.MainAxisAlignment.CENTER),
-                cue_text,
-                ft.Divider(),
-                label_rows,
+                ft.Row(
+                    [label_rows, right_group],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=80,
+                ),
                 reg_button(ft.ElevatedButton(text="AI学習開始", on_click=on_train_start)),
                 ft.Divider(),
-                train_paths,
             ],
             spacing=10,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -779,60 +852,62 @@ def main(page: ft.Page, root_home=None):
     # =========================
     # モデルフォルダ表示（探索で入る）
     model_dir_label = ft.Text(value="フォルダ：未選択", size=16, weight=ft.FontWeight.BOLD)
+    INFER_HISTORY_FILENAME = "infer_history.csv"
 
     results_table = ft.DataTable(
         columns=[
-            ft.DataColumn(ft.Text("No.", size=20, weight=ft.FontWeight.BOLD)),
+            ft.DataColumn(ft.Text("記録時間", size=20, weight=ft.FontWeight.BOLD)),
             ft.DataColumn(ft.Text("評価結果", size=20, weight=ft.FontWeight.BOLD)),
             ft.DataColumn(ft.Text("認識精度(%)", size=20, weight=ft.FontWeight.BOLD)),
         ],
         rows=[],
     )
     results_panel = ft.Container(
-    content=ft.ListView(
-        controls=[
-            ft.Row(
-                [results_table],
-                alignment=ft.MainAxisAlignment.CENTER,
-                #scroll=ft.ScrollMode.AUTO,
-                expand=True,
-            )
-        ],
+        content=ft.ListView(
+            controls=[
+                ft.Row(
+                    [results_table],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    expand=True,
+                )
+            ],
+            expand=True,
+            spacing=0,
+            padding=0,
+        ),
         expand=True,
-        spacing=0,
-        padding=0,
-    ),
-    expand=True,
-    alignment=ft.alignment.center,  # 中央寄せはContainer側
-)
+        alignment=ft.alignment.center,  # 中央寄せはContainer側
+    )
 
     def load_model_from_dir(parent_dir: Path):
         model_path = parent_dir / "model.joblib"
         if not model_path.exists():
-            set_status("フォルダが見つかりません")
+            set_status("フォルダが見つかりません", kind="error")
             return
 
         payload = joblib.load(str(model_path))
         # soundPredict.py の前提キー（model / label_names）に合わせる
         if "model" not in payload or "label_names" not in payload:
-            set_status("モデルが存在していません。再度フォルダ選択を行ってください。")
+            set_status("モデルが存在していません。再度フォルダ選択を行ってください。", kind="error")
             return
 
         state.model_dir = parent_dir
         state.model_payload = payload
-        set_status("フォルダ読み込み完了")
+        set_status("フォルダ読み込み完了", kind="success")
 
         # フルパスではなくフォルダ名だけ表示（fletMouthPredict.pyと同じ）
         model_dir_label.value = f"フォルダ：{parent_dir.name}"
+
         page.update()
 
     def on_pick_model_dir_result(e: ft.FilePickerResultEvent):
         if not getattr(e, "path", None):
-            set_status("フォルダ選択が中止されました。")
+            set_status("フォルダ選択が中止されました。", kind="warn")
             return
 
         parent_dir = Path(e.path)
         state.model_dir = parent_dir
+        state.infer_history_csv = parent_dir / "infer_history.csv"
 
         # 先に表示は必ず更新（未選択→選択済み）
         model_dir_label.value = f"フォルダ：{parent_dir.name}"
@@ -843,61 +918,35 @@ def main(page: ft.Page, root_home=None):
             model_path = parent_dir / MODEL_FILENAME  # "model.joblib"
             if not model_path.exists():
                 state.model_payload = None
-                set_status("モデルが存在していません。再度フォルダ選択を行ってください。")
+                set_status("モデルが存在していません。再度フォルダ選択を行ってください。", kind="error")
                 page.update()
                 return
 
             payload = joblib.load(str(model_path))
             if "model" not in payload or "label_names" not in payload:
                 state.model_payload = None
-                set_status("モデルが存在していません。再度フォルダ選択を行ってください。")
+                set_status("モデルが存在していません。再度フォルダ選択を行ってください。", kind="error")
                 page.update()
                 return
 
             state.model_payload = payload
-            set_status("読み込み完了。AI評価が可能です。")
+            set_status("読み込み完了。AI評価が可能です。", kind="success")
             page.update()
 
         except Exception:
             state.model_payload = None
-            set_status("読み込みでエラーが発生しました。再度フォルダ選択を行ってください。")
+            set_status("読み込みでエラーが発生しました。再度フォルダ選択を行ってください。", kind="error")
             page.update()
 
     model_dir_picker = ft.FilePicker(on_result=on_pick_model_dir_result)
     page.overlay.append(model_dir_picker)
 
     def on_pick_model_dir_click(_):
-        model_dir_picker.get_directory_path(dialog_title="モデルフォルダを選択")
-
-
-    # def update_infer_paths():
-    #     if state.infer_dir is None:
-    #         infer_paths.value = ""
-    #     else:
-    #         infer_paths.value = (
-    #             f"infer_dir: {state.infer_dir}\n"
-    #             f"recording: {state.is_recording_infer}\n"
-    #             f"録音条件: sr={SAMPLE_RATE}, ch={CHANNELS}, dtype={DTYPE}, wav={SAVE_SUBTYPE}\n"
-    #             f"モデル親フォルダ: {infer_save_name.value or ''}\n"
-    #         )
-    #     page.update()
-
-    # def on_create_infer_folder(_):
-    #     name = safe_name(infer_save_name.value or "")
-    #     if not name:
-    #         set_status("保存フォルダ名がありません。")
-    #         return
-    #     base = Path.cwd()
-    #     state.infer_dir = base / name
-    #     (state.infer_dir / "raw").mkdir(parents=True, exist_ok=True)
-    #     (state.infer_dir / "clean").mkdir(parents=True, exist_ok=True)
-    #     (state.infer_dir / "chunks").mkdir(parents=True, exist_ok=True)
-    #     set_status("保存フォルダを作成しました。")
-    #     update_infer_paths()
+        model_dir_picker.get_directory_path(dialog_title="モデルフォルダを選択",  initial_directory=r"C:\Users\edu01\STApp")
 
     def on_load_infer_model(_):
         if state.model_dir is None:
-            set_status("先にフォルダを選択してください。")
+            set_status("先にフォルダを選択してください。", kind="warn")
             return
 
         try:
@@ -905,18 +954,106 @@ def main(page: ft.Page, root_home=None):
             payload = joblib.load(str(model_path))
             # 期待キー確認（あなたの保存形式：{"model":..., "label_names":...}）
             if "model" not in payload or "label_names" not in payload:
-                set_status("AI評価ができません。再度AI学習を行ってください。")
+                set_status("AI評価ができません。再度AI学習を行ってください。", kind="error")
                 return
 
             state.model_payload = payload
-            set_status("読み込み完了。AI評価が可能です。")
+            set_status("読み込み完了。AI評価が可能です。", kind="success")
             page.update()
         except Exception:
-            set_status("読み込みでエラーが発生しました。再度フォルダ選択を行ってください。")
+            set_status("読み込みでエラーが発生しました。再度フォルダ選択を行ってください。", kind="error")
+        
+    def infer_history_path() -> Path | None:
+        if state.model_dir is None:
+            return None
+        return state.model_dir / INFER_HISTORY_FILENAME
+    
+    def infer_audio_save_dir() -> Path | None:
+        # モデルを読み込んだフォルダ配下に保存
+        if state.model_dir is None:
+            return None
+        d = state.model_dir / "infer_audio"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def append_infer_csv(ts: str, pred_label: str, pred_pct: float, label_names: list, proba: np.ndarray):
+        p = infer_history_path()
+        if p is None:
+            return
+
+        # 保存する列順：基本3列 + 各ラベル確率
+        header = ["timestamp", "pred_label", "pred_pct"] + [f"p_{str(n)}" for n in label_names]
+
+        # 既存CSVが旧形式(3列)でも壊れにくいように、ヘッダを見て必要なら作り直す
+        if p.exists():
+            try:
+                with p.open("r", newline="", encoding="utf-8") as f:
+                    first = f.readline().strip()
+                old_header = [h.strip() for h in first.split(",")] if first else []
+            except Exception:
+                old_header = []
+        else:
+            old_header = []
+
+        if (not p.exists()) or (old_header != header):
+            # 旧形式を残すならバックアップ
+            if p.exists():
+                bak = p.with_suffix(".bak")
+                try:
+                    bak.write_text(p.read_text(encoding="utf-8"), encoding="utf-8")
+                except Exception:
+                    pass
+            with p.open("w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                w.writerow(header)
+
+        row = [ts, pred_label, f"{pred_pct:.1f}"] + [f"{float(x)*100.0:.3f}" for x in proba]
+        with p.open("a", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(row)
+
+    def load_infer_csv_to_state():
+        # state.infer_history を CSV から復元（最新が上になるようにする）
+        state.infer_history = []
+        p = infer_history_path()
+        if p is None or not p.exists():
+            return
+
+        with p.open("r", newline="", encoding="utf-8") as f:
+            r = csv.DictReader(f)
+            rows = []
+            for row in r:
+                try:
+                    rows.append({
+                        "ts": row["timestamp"],
+                        "label": row["pred_label"],
+                        "pct": float(row["pred_pct"]),
+                    })
+                except Exception:
+                    pass
+
+        # CSVは追記で古い→新しいの順になりやすいので、表示は新しいものを上へ
+        rows.reverse()
+        state.infer_history = rows
+
+    def refresh_results_table_from_history():
+        results_table.rows = [
+            ft.DataRow(
+                cells=[
+                    centered_cell_infer(h["ts"]),                 # ← No. ではなく時刻
+                    centered_cell_infer(h["label"]),
+                    centered_cell_infer(f'{h["pct"]:.1f}'),
+                ]
+            )
+            for h in state.infer_history
+        ]
 
     def start_infer_record(_):
+        if state.model_payload is None:
+            set_status("先にモデルフォルダを選択してください。", kind="warn")
+            return
         if state.is_recording_infer:
-            set_status("すでに録音中です。")
+            set_status("すでに録音中です。", kind="warn")
             return
 
         state.frames_infer = []
@@ -933,16 +1070,27 @@ def main(page: ft.Page, root_home=None):
                 callback=callback,
             )
             state.stream_infer.start()
-            set_status("録音中...(録音終了で評価開始)")
+            set_status("録音中...(停止時間選択：自動で録音停止、手動停止：録音終了ボタンで評価開始)", kind="info")
+            sec = getattr(state, "infer_auto_stop_sec", None)
+            if sec is not None:
+                def auto_stop_worker(expected_sec=sec):
+                    # 指定秒待って、まだ録音中なら停止→推論
+                    import time
+                    time.sleep(expected_sec)
+                    if state.is_recording_infer and state.stream_infer is not None:
+                        # stop_and_infer を呼ぶ（既存ロジックを流用）
+                        stop_and_infer(None)
+
+                threading.Thread(target=auto_stop_worker, daemon=True).start()
         except Exception as e:
             state.is_recording_infer = False
             state.stream_infer = None
             state.frames_infer = None
-            set_status(f"録音に失敗しました。")
+            set_status(f"録音に失敗しました。", kind="error")
 
     def stop_and_infer(_):
         if not state.is_recording_infer or state.stream_infer is None or state.frames_infer is None:
-            set_status("録音中ではありません。")
+            set_status("録音中ではありません。", kind="warn")
             return
 
         # stop stream
@@ -959,13 +1107,13 @@ def main(page: ft.Page, root_home=None):
         try:
             audio = np.concatenate(state.frames_infer, axis=0)  # int16
         except Exception as e:
-            set_status(f"録音に失敗しました。もう一度録音してください。")
+            set_status(f"録音に失敗しました。もう一度録音してください。", kind="error")
             state.frames_infer = None
             return
         finally:
             state.frames_infer = None
 
-        set_status("録音完了（評価中）")
+        set_status("録音完了（評価中）", kind="info")
 
         def worker():
             try:
@@ -977,61 +1125,94 @@ def main(page: ft.Page, root_home=None):
                     td_path = Path(td)
                     raw_wav = td_path / "raw.wav"
                     cleaned_wav = td_path / "cleaned.wav"
-                    chunk_dir = td_path / "chunks"
+                    chunk_dir = td_path / "infer_chunks"
                     chunk_dir.mkdir(parents=True, exist_ok=True)
 
                     # 一時ファイルにだけ保存（ユーザー用保存はしない）
                     sf.write(str(raw_wav), audio, SAMPLE_RATE, subtype=SAVE_SUBTYPE)
-
+            
                     denoise_wav_to_path(raw_wav, cleaned_wav)
-                    start_index = get_next_index(chunk_dir, prefix="infer")
+                    save_root = infer_audio_save_dir()
+                    if save_root is None:
+                        set_status("モデルフォルダが未設定のため推論音声を保存できません。", kind="error")
+                        page.update()
+                        return
+
+                    persist_chunk_dir = save_root
+                    persist_chunk_dir.mkdir(parents=True, exist_ok=True)
+                    start_index = get_next_index(persist_chunk_dir, prefix="infer")
                     chunks = split_cleaned_wav_to_folder(
-                        cleaned_wav,
-                        chunk_dir,
-                        start_index=start_index,
-                        prefix="infer",
-                        mirror_dir=None,
-                    )
+                            cleaned_wav,
+                            chunk_dir,
+                            start_index=start_index,
+                            prefix="infer",
+                            mirror_dir=persist_chunk_dir,
+                        )
+                    ## chunks を作った直後（ここから下を置換）
+                    if not chunks:
+                        set_status("評価できる音が見つかりませんでした。もう一度録音してください。", kind="warn")
+                        page.update()
+                        return
 
-                    rows = []
-                    for i, wp in enumerate(chunks, start=1):
-                        try:
-                            feat = wav_to_feature_vector(wp)
-                            proba = model.predict_proba([feat])[0]
-                            pred_id = int(np.argmax(proba))
-                            pred_label = str(label_names[pred_id])
-                            pred_pct = float(proba[pred_id]) * 100.0
+                    # ★1番目の音声だけ推論する（以前の「1番目のみ」を復活）
+                    wp = persist_chunk_dir / chunks[0].name
+                    infer_wav_for_model = wp
+                    feat = wav_to_feature_vector(infer_wav_for_model)
+                    proba = model.predict_proba([feat])[0]
+                    pred_id = int(np.argmax(proba))
+                    pred_label = str(label_names[pred_id])
+                    pred_pct = float(proba[pred_id]) * 100.0
 
-                            rows.append(
-                                ft.DataRow(
-                                    cells=[
-                                        centered_cell_infer(str(i)),
-                                        centered_cell_infer(pred_label),
-                                        centered_cell_infer(f"{pred_pct:.1f}"),
-                                    ]
-                                )
-                            )
-                        except Exception:
-                            rows.append(
-                                ft.DataRow(
-                                    cells=[
-                                        centered_cell_infer(str(i)),
-                                        centered_cell_infer("ERROR"),
-                                        centered_cell_infer("-"),
-                                    ]
-                                )
-                            )
+                    # ここで初めて pred_label / pred_pct が確定するので、履歴・CSVはこの後に行う
+                    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                    results_table.rows = rows
-                    set_status("評価結果を表示しました")
+                    # 履歴を先頭に追加（新しいものが上）
+                    state.infer_history.insert(0, {"ts": ts, "label": pred_label, "pct": pred_pct})
+
+                    # CSVへ追記
+                    append_infer_csv(ts, pred_label, pred_pct, label_names, proba)
+                    refresh_results_table_from_history()
+
+                    # 表を履歴から再生成（常に上が最新）
+                    results_table.rows = [
+                        ft.DataRow(
+                            cells=[
+                                centered_cell_infer(r["ts"]),
+                                centered_cell_infer(r["label"]),
+                                centered_cell_infer(f'{r["pct"]:.1f}'),
+                            ]
+                        )
+                        for i, r in enumerate(state.infer_history)
+                    ]
+
+                    set_status("評価結果を表示しました", kind="success")
                     page.update()
 
             except Exception:
-                set_status("評価処理でエラーが発生しました。再度録音してください。")
+                set_status("評価処理でエラーが発生しました。再度録音してください。", kind="error")
 
         threading.Thread(target=worker, daemon=True).start()
 
     def build_infer_page():
+        infer_stop_group = ft.RadioGroup(
+            value="manual",
+            on_change=lambda e: setattr(
+                state, "infer_auto_stop_sec",
+                None if e.control.value == "manual" else int(e.control.value)
+            ),
+            content=ft.Row(
+                [
+                    ft.Text("録音時間:", size=16),
+                    ft.Radio(value="2", label="2秒"),
+                    ft.Radio(value="5", label="5秒"),
+                    ft.Radio(value="10", label="10秒"),
+                    ft.Radio(value="30", label="30秒"),
+                    ft.Radio(value="manual", label="手動停止"),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+        )
+
         return ft.Column(
             [
                 ft.Row(
@@ -1056,10 +1237,11 @@ def main(page: ft.Page, root_home=None):
                 ft.Divider(),
                 ft.Text("AI学習で覚えこませた単語のうち、１種類を１度だけ発音してください。", size=18),
                 ft.Row([
+                    infer_stop_group,
                     reg_button(ft.ElevatedButton(text="録音開始", on_click=start_infer_record)),
                     reg_button(ft.ElevatedButton(text="録音終了", on_click=stop_and_infer)),
                 ], alignment=ft.MainAxisAlignment.CENTER),
-                status,
+                status_bar,
                 ft.Divider(),
                 ft.Text("評価結果", size=18, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
                 ft.Row([results_panel], alignment=ft.MainAxisAlignment.CENTER)
@@ -1090,7 +1272,7 @@ def main(page: ft.Page, root_home=None):
                     alignment=ft.MainAxisAlignment.CENTER,
                 ),
                 ft.Divider(),
-                status,
+                status_bar,
             ],
             spacing=10,
             alignment=ft.MainAxisAlignment.CENTER,
@@ -1132,7 +1314,6 @@ def main(page: ft.Page, root_home=None):
         page.scroll = None
         page.controls.clear()
         page.add(build_home_page())
-        set_status("")
         page.update() 
         apply_responsive_layout(page.width, page.height)
 

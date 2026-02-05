@@ -913,6 +913,8 @@ def protocol_worker_infer(
                 capture_event.clear()
                 if capture_ready and (not is_processing) and (R_tag is not None) and (t_tag is not None):
                     is_processing = True
+                    page.run_thread(lambda: setattr(infer_root, "bgcolor", ft.Colors.BLUE_100))
+                    page.run_thread(page.update)
                     try:
                         mouth_local = capture_and_process_3cams_return_mouth_local(
                             pipelines, profiles,
@@ -1056,7 +1058,7 @@ def train_svm_and_save(subject_dir: Path, set_status_threadsafe):
 # Flet UI
 # -------------------------
 def main(page: ft.Page, root_home=None):
-    page.title = "口点群GUI（学習/推論統合）"
+    page.title = "口形状評価システム"
     page.window_width = 1080
     page.window_height = 720
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
@@ -1078,7 +1080,7 @@ def main(page: ft.Page, root_home=None):
     )
     count_view = ft.Text(value="COUNT: 0", size=24, weight=ft.FontWeight.BOLD)
     paths_view = ft.Text(value="", selectable=True)
-    pred_view = ft.Text(value="PRED: --", selectable=True, size=30)
+    pred_view = ft.Text(value="推論結果: --", selectable=True, size=30)
     done_view = ft.Text(value="", size=32, weight=ft.FontWeight.BOLD) 
     label_ply_count_view: dict[str, ft.Text] = {
         lbl: ft.Text(value="撮影枚数: 0", size=14) for lbl in LABELS
@@ -1088,7 +1090,7 @@ def main(page: ft.Page, root_home=None):
     # ---- 学習タブ：親フォルダ作成 + ラベル収録 + 学習開始 ----
     subject_name = ft.TextField(label="フォルダ名（苗字と名前のイニシャルを大文字で繋げたもの等）を入力")
     # ---- 推論タブ：親フォルダ指定→モデルロード→推論開始（c押下ごと） ----
-    infer_parent = ft.TextField(label="AI学習を行ったフォルダ名を入力")
+    infer_parent = ft.TextField(label="学習を行ったフォルダ名を入力")
 
     all_buttons = []
 
@@ -1379,7 +1381,7 @@ def main(page: ft.Page, root_home=None):
             set_status("先にフォルダを指定し、モデルロードボタンを押してください。", kind="error")
             return
         if state.is_running_infer:
-            set_status("すでに評価実行中です。", kind="error")
+            set_status("すでに推論実行中です。", kind="error")
             return
 
         capture_event.clear()
@@ -1396,7 +1398,7 @@ def main(page: ft.Page, root_home=None):
         state.worker_thread_infer = t
         t.start()
 
-        set_status("評価開始：撮影ボタンで推論（ARマーカー必須） / 停止は推論停止")
+        set_status("推論開始：撮影ボタンで推論（ARマーカー必須）")
         set_paths()
 
     def on_stop_infer(_):
@@ -1462,10 +1464,10 @@ def main(page: ft.Page, root_home=None):
                 ft.Row(
                     [
                         ft.ElevatedButton("学習/評価選択ページに戻る", on_click=lambda _: show_home()),
-                        ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()),
+                        #ft.ElevatedButton("発音/口形状選択ページに戻る", on_click=lambda _: go_root_home()),
                     ]
                 ),
-                ft.Text("AI評価", size=18),
+                ft.Text("リアルタイム推論", size=18),
                 ft.Row(
                     [
                         reg_button(ft.ElevatedButton(text="モデルフォルダ選択", on_click=on_pick_model_dir_click)),
@@ -1474,12 +1476,12 @@ def main(page: ft.Page, root_home=None):
                     alignment=ft.MainAxisAlignment.CENTER
                 ),
                 ft.Row([
-                    reg_button(ft.ElevatedButton(text="AI評価（撮影）開始", on_click=on_start_infer)),
+                    reg_button(ft.ElevatedButton(text="撮影（推論）開始", on_click=on_start_infer)),
                     reg_button(ft.ElevatedButton(text="撮影", on_click=on_capture_infer_click)),
-                    reg_button(ft.ElevatedButton(text="AI評価停止", on_click=on_stop_infer)),
+                    reg_button(ft.ElevatedButton(text="撮影（推論）停止", on_click=on_stop_infer)),
                 ], alignment=ft.MainAxisAlignment.CENTER),
                 status_bar,
-                ft.Text("色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可", size=12),
+                ft.Text("背景色の意味：白=待機中、青=処理中、黒=ARマーカー未検出により撮影不可", size=12),
                 ft.Divider(),
                 ft.Text("プレビュー（共通）"),
                 preview,
