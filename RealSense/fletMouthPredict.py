@@ -913,6 +913,8 @@ def protocol_worker_infer(
                 capture_event.clear()
                 if capture_ready and (not is_processing) and (R_tag is not None) and (t_tag is not None):
                     is_processing = True
+                    page.run_thread(lambda: setattr(infer_root, "bgcolor", ft.Colors.BLUE_100))
+                    page.run_thread(page.update)
                     try:
                         mouth_local = capture_and_process_3cams_return_mouth_local(
                             pipelines, profiles,
