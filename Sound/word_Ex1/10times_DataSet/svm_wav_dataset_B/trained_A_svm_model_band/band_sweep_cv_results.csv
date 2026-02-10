@@ -1,0 +1,2 @@
+band_hz,feature_dim,cv_mean_accuracy,test_accuracy,best_params_json
+60.0,134,0.7485714285714286,0.8533333333333334,"{""svm__C"": 3.0, ""svm__gamma"": ""scale""}"

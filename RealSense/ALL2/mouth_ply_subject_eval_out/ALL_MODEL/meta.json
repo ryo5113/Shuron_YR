@@ -1,0 +1,33 @@
+{
+  "subjects": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E"
+  ],
+  "subject_roots": {
+    "A": "DataSet\\mouth_ply_A",
+    "B": "DataSet\\mouth_ply_B",
+    "C": "DataSet\\mouth_ply_C",
+    "D": "DataSet\\mouth_ply_D",
+    "E": "DataSet\\mouth_ply_E"
+  },
+  "label_order": [
+    "A",
+    "I",
+    "U",
+    "E",
+    "O"
+  ],
+  "grid": 30,
+  "test_size": 0.3,
+  "seed": 42,
+  "cv_splits": 5,
+  "best_params": {
+    "svc__C": 10,
+    "svc__gamma": "auto"
+  },
+  "best_cv_score_on_all_train": 0.830857142857143,
+  "overall_accuracy_on_all_subject_tests": 0.8373333333333334
+}

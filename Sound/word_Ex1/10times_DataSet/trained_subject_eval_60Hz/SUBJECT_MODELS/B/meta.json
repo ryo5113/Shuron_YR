@@ -1,0 +1,20 @@
+{
+  "subject": "B",
+  "labels": [
+    "sakana",
+    "shakana",
+    "takana",
+    "thakana",
+    "tyakana"
+  ],
+  "band_hz": 60.0,
+  "test_size": 0.3,
+  "random_state": 42,
+  "cv_splits": 5,
+  "best_params": {
+    "svm__C": 3.0,
+    "svm__gamma": "scale"
+  },
+  "cv_best_score_on_subject_train": 0.7485714285714286,
+  "test_accuracy_on_subject_test": 0.8533333333333334
+}

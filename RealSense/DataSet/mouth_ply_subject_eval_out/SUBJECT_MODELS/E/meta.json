@@ -1,0 +1,21 @@
+{
+  "subject": "E",
+  "subject_root": "DataSet\\mouth_ply_E",
+  "label_order": [
+    "A",
+    "I",
+    "U",
+    "E",
+    "O"
+  ],
+  "grid": 30,
+  "test_size": 0.3,
+  "seed": 42,
+  "cv_splits": 5,
+  "best_params": {
+    "svc__C": 20,
+    "svc__gamma": "auto"
+  },
+  "best_cv_score_on_subject_train": 0.9371428571428572,
+  "test_accuracy_on_subject_test": 0.9066666666666666
+}
