@@ -50,10 +50,11 @@ SEED = 42
 LABEL_ORDER = ["A", "I", "U", "E", "O"]
 
 # 出力ルート（ここに ALL_MODEL / SUBJECT_MODELS などが作られる）
-OUT_ROOT = Path(r"./ALL2/mouth_ply_subject_eval_out")
+OUT_ROOT = Path(r"./DataSet/mouth_ply_subject_eval_out")
 OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
 CM_DPI = 200
+CM_VMAX = 15
 
 # SVM + GridSearch（必要なら範囲だけ編集。要求では「その他はCV」なのでここは現行踏襲）
 SVM_KERNEL = "rbf"
@@ -119,11 +120,13 @@ def build_pipeline(seed: int) -> Pipeline:
     ])
 
 
-def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: list[str], dpi: int = 200) -> None:
+def save_confusion_matrix_png(path: Path, cm: np.ndarray, label_names: list[str], dpi: int = 200, vmax=None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=label_names)
     plt.rcParams["font.size"] = 24
     disp.plot(values_format="d")
+    if vmax is not None and disp.im_ is not None:
+        disp.im_.set_clim(0, vmax)
     disp.figure_.tight_layout()
     disp.figure_.savefig(path, dpi=dpi)
     plt.close(disp.figure_)
@@ -251,7 +254,7 @@ def main():
 
         sd = per_subj_dir / subj
         sd.mkdir(parents=True, exist_ok=True)
-        save_confusion_matrix_png(sd / "confusion_matrix.png", cm, LABEL_ORDER, dpi=CM_DPI)
+        save_confusion_matrix_png(sd / "confusion_matrix.png", cm, LABEL_ORDER, dpi=CM_DPI, vmax=CM_VMAX)
         save_text = classification_report(
             y_te, y_pred, labels=labels_fixed, target_names=LABEL_ORDER, digits=4
         )
@@ -260,7 +263,7 @@ def main():
         per_subj_rows.append({"subject": subj, "n_test": int(len(y_te)), "acc_all_model": acc})
 
     overall_acc = float(correct_sum / total_sum) if total_sum else 0.0
-    save_confusion_matrix_png(all_model_dir / "confusion_matrix_ALL_subject_tests.png", cm_sum, LABEL_ORDER, dpi=CM_DPI)
+    save_confusion_matrix_png(all_model_dir / "confusion_matrix_ALL_subject_tests.png", cm_sum, LABEL_ORDER, dpi=CM_DPI, vmax=CM_VMAX)
 
     # ALLモデル保存
     joblib.dump(
@@ -327,7 +330,7 @@ def main():
         od = subj_models_dir / subj
         od.mkdir(parents=True, exist_ok=True)
 
-        save_confusion_matrix_png(od / "confusion_matrix.png", cm_sub, LABEL_ORDER, dpi=CM_DPI)
+        save_confusion_matrix_png(od / "confusion_matrix.png", cm_sub, LABEL_ORDER, dpi=CM_DPI, vmax=CM_VMAX)
         (od / "report.txt").write_text(report_sub, encoding="utf-8")
 
         joblib.dump(
