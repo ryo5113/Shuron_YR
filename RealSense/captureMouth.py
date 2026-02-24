@@ -94,8 +94,8 @@ def make_extrinsic(tx, ty, tz, angle_deg):
     return T
 
 T_0_to_0 = np.eye(4, dtype=np.float64)
-T_1_to_0 = make_extrinsic(-0.29, 0.0, 0.20,  45.0)
-T_2_to_0 = make_extrinsic( 0.285, 0.0, 0.20, -45.0)
+T_1_to_0 = make_extrinsic(-0.29, 0.0, 0.20,  45.0) # カメラ1の外部パラメータを記述（角度は変更しなくてよい、位置のみ要調整）
+T_2_to_0 = make_extrinsic( 0.285, 0.0, 0.20, -45.0) # カメラ2の外部パラメータを記述（角度は変更しなくてよい、位置のみ要調整）
 
 # 点群で使っている座標系補正（Y反転）を 3D特徴点にも合わせるために共有
 T_FLIP = np.array([
